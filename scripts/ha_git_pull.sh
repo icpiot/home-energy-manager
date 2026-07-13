@@ -4,15 +4,15 @@ cd /config || exit 1
 
 TOKEN_FILE="/config/.github_pat"
 LOG_DIR="/config/www/ha-git"
-LOG="$LOG_DIR/neovolt_git_last.txt"
-SCRIPT_BUILD="2026-07-12.01"
-REPO_URL="github.com/icpiot/neovoltBattery_HomeAssistantPlugin.git"
-REPO_DIR="/config/repos/neovoltBattery_HomeAssistantPlugin"
+LOG="$LOG_DIR/home_energy_manager_git_last.txt"
+SCRIPT_BUILD="2026-07-14.01"
+REPO_URL="github.com/icpiot/home-energy-manager.git"
+REPO_DIR="/config/repos/home-energy-manager"
 SOURCE_CARD_DIR="$REPO_DIR/examples/www"
 SOURCE_COMPONENT_DIR="$REPO_DIR/custom_components/bytewatt"
 DEPLOY_CARD_DIR="/config/www/community/bytewatt-card"
 DEPLOY_COMPONENT_DIR="/config/custom_components/bytewatt"
-BRANCH="${BYTEWATT_GIT_BRANCH:-codex/provider-abstraction-refactor}"
+BRANCH="${HOME_ENERGY_MANAGER_GIT_BRANCH:-${BYTEWATT_GIT_BRANCH:-main}}"
 
 mkdir -p "$LOG_DIR"
 
@@ -92,7 +92,7 @@ integration_version_from_manifest() {
 
 deploy_repo_to_ha() {
   echo ""
-  echo "Deploying ByteWatt integration and cards into Home Assistant..."
+  echo "Deploying Home Energy Manager integration and cards into Home Assistant..."
 
   if [ ! -f "$SOURCE_CARD_DIR/bytewatt-policy-card.js" ]; then
     echo "ERROR: Missing source file: $SOURCE_CARD_DIR/bytewatt-policy-card.js"
@@ -168,7 +168,7 @@ deploy_repo_to_ha() {
 
 {
   echo "=============================="
-  echo "Neovolt Git Pull"
+  echo "Home Energy Manager Git Pull"
   echo "Started: $(date '+%Y-%m-%d %H:%M:%S %Z')"
   echo "Repo: $REPO_DIR"
   echo "Script Build: $SCRIPT_BUILD"
