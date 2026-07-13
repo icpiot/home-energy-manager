@@ -1,0 +1,583 @@
+force_reconnect:
+  name: Force Reconnect
+  description: >-
+    Force the ByteWatt integration to reconnect to the API when it appears
+    to be stuck. Resets the client, re-authenticates, and refreshes data.
+  fields:
+    entry_id:
+      name: Integration ID
+      description: >-
+        Specific ByteWatt integration to act on. Required only if multiple
+        accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+health_check:
+  name: Health Check
+  description: >-
+    Run a comprehensive health check on the ByteWatt integration. Results
+    are shown in a persistent notification.
+  fields:
+    entry_id:
+      name: Integration ID
+      description: >-
+        Specific ByteWatt integration to act on. Required only if multiple
+        accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+toggle_diagnostics:
+  name: Toggle Diagnostics
+  description: Enable or disable detailed diagnostic logging.
+  fields:
+    enable:
+      name: Enable
+      description: True to enable, false to disable.
+      required: false
+      example: true
+      selector:
+        boolean:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+ensure_report_history:
+  name: Ensure Report History
+  description: >-
+    Download and store missing daily report history rows for a selected scope
+    and date range.
+  fields:
+    start_date:
+      name: Start Date
+      description: Inclusive start date in YYYY-MM-DD format.
+      required: true
+      example: "2026-07-04"
+      selector:
+        text:
+    end_date:
+      name: End Date
+      description: Inclusive end date in YYYY-MM-DD format.
+      required: true
+      example: "2026-07-04"
+      selector:
+        text:
+    scope_key:
+      name: Scope Key
+      description: Use "all" for all systems or a specific battery sys_sn.
+      required: false
+      example: "all"
+      selector:
+        text:
+    force:
+      name: Force Retry
+      description: Retry even if the date is currently marked missing.
+      required: false
+      example: true
+      selector:
+        boolean:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+set_discharge_time:
+  name: Set Discharge End Time
+  description: Set the end time for battery discharge.
+  fields:
+    end_discharge:
+      name: End Discharge Time
+      description: HH:MM
+      example: "23:00"
+      required: true
+      selector:
+        time: {}
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+set_discharge_start_time:
+  name: Set Discharge Start Time
+  description: Set the start time for battery discharge.
+  fields:
+    start_discharge:
+      name: Start Discharge Time
+      description: HH:MM
+      example: "16:00"
+      required: true
+      selector:
+        time: {}
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+set_charge_start_time:
+  name: Set Charge Start Time
+  description: Set the start time for battery charging.
+  fields:
+    start_charge:
+      name: Start Charge Time
+      description: HH:MM
+      example: "14:30"
+      required: true
+      selector:
+        time: {}
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+set_charge_end_time:
+  name: Set Charge End Time
+  description: Set the end time for battery charging.
+  fields:
+    end_charge:
+      name: End Charge Time
+      description: HH:MM
+      example: "16:00"
+      required: true
+      selector:
+        time: {}
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+set_minimum_soc:
+  name: Set Minimum SOC
+  description: Set the minimum battery state of charge percentage.
+  fields:
+    minimum_soc:
+      name: Minimum SOC
+      description: 1–100 %
+      example: 10
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+set_charge_cap:
+  name: Set Charge Cap
+  description: Set the maximum battery charge cap percentage.
+  fields:
+    charge_cap:
+      name: Charge Cap
+      description: 1–100 %
+      example: 90
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+update_battery_settings:
+  name: Update Battery Settings
+  description: Update multiple battery settings in one call.
+  fields:
+    start_discharge:
+      name: Start Discharge Time
+      description: HH:MM
+      example: "16:00"
+      required: false
+      selector:
+        time: {}
+    end_discharge:
+      name: End Discharge Time
+      description: HH:MM
+      example: "23:00"
+      required: false
+      selector:
+        time: {}
+    start_charge:
+      name: Start Charge Time
+      description: HH:MM
+      example: "14:30"
+      required: false
+      selector:
+        time: {}
+    end_charge:
+      name: End Charge Time
+      description: HH:MM
+      example: "16:00"
+      required: false
+      selector:
+        time: {}
+    minimum_soc:
+      name: Minimum SOC
+      description: 1–100 %
+      example: 10
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    charge_cap:
+      name: Charge Cap
+      description: 1–100 %
+      example: 90
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+set_grid_feedin_enabled:
+  name: Set Grid Feed-in Enabled
+  description: Enable or disable the Grid Feed-in Function.
+  fields:
+    feedin_enabled:
+      name: Enabled
+      description: True to enable, false to disable.
+      required: true
+      example: true
+      selector:
+        boolean:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+set_grid_feedin_cutoff_soc:
+  name: Set Grid Feed-in Cutoff SOC
+  description: Battery % at which grid feed-in stops discharging.
+  fields:
+    feedin_cutoff_soc:
+      name: Cutoff SOC
+      description: 0–100 %
+      required: true
+      example: 20
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+update_grid_feedin_slot:
+  name: Update Grid Feed-in Slot
+  description: >-
+    Update one of the grid feed-in time periods (start time, end time,
+    and/or power). The inverter supports up to 6 slots.
+  fields:
+    slot:
+      name: Slot Number
+      description: Time slot number (1–6).
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 6
+          step: 1
+    start_time:
+      name: Start Time
+      description: HH:MM
+      required: false
+      example: "17:00"
+      selector:
+        time: {}
+    end_time:
+      name: End Time
+      description: HH:MM
+      required: false
+      example: "21:00"
+      selector:
+        time: {}
+    power_watts:
+      name: Grid Feed-in Power (W)
+      description: 0–20 000 W
+      required: false
+      example: 4000
+      selector:
+        number:
+          min: 0
+          max: 20000
+          step: 100
+          unit_of_measurement: "W"
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+delete_grid_feedin_slot:
+  name: Delete Grid Feed-in Slot
+  description: Delete one configured grid feed-in row.
+  fields:
+    slot:
+      name: Slot Number
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 6
+          step: 1
+    entry_id:
+      name: Integration ID
+      required: false
+      selector:
+        text:
+
+update_battery_slot:
+  name: Update Battery Slot
+  description: Update one charge or discharge schedule row.
+  fields:
+    policy_kind:
+      name: Policy
+      required: true
+      selector:
+        select:
+          options:
+            - charge
+            - discharge
+    slot:
+      name: Slot Number
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 28
+          step: 1
+    start_time:
+      name: Start Time
+      required: false
+      selector:
+        time: {}
+    end_time:
+      name: End Time
+      required: false
+      selector:
+        time: {}
+    soc:
+      name: SOC
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+    power_watts:
+      name: Power
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 50000
+          step: 100
+          unit_of_measurement: "W"
+    weeks:
+      name: Weeks
+      required: false
+      selector:
+        object:
+    entry_id:
+      name: Integration ID
+      required: false
+      selector:
+        text:
+
+delete_battery_slot:
+  name: Delete Battery Slot
+  description: Delete one charge or discharge schedule row.
+  fields:
+    policy_kind:
+      name: Policy
+      required: true
+      selector:
+        select:
+          options:
+            - charge
+            - discharge
+    slot:
+      name: Slot Number
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 28
+          step: 1
+    entry_id:
+      name: Integration ID
+      required: false
+      selector:
+        text:
+
+start_force_charge:
+  name: Start Force Charge
+  description: Start immediate force charge to the requested charge cap.
+  fields:
+    charge_cap:
+      name: Charge Cap
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    entry_id:
+      name: Integration ID
+      required: false
+      selector:
+        text:
+
+stop_force_charge:
+  name: Stop Force Charge
+  description: Stop the immediate force-charge action.
+  fields:
+    entry_id:
+      name: Integration ID
+      required: false
+      selector:
+        text:
+
+start_discharge_now:
+  name: Start Discharge Now
+  description: Add a temporary valid discharge row and enable discharge policy.
+  fields:
+    soc:
+      name: SOC
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    power_watts:
+      name: Power
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 50000
+          step: 100
+          unit_of_measurement: "W"
+    duration_minutes:
+      name: Duration
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1439
+          step: 1
+          unit_of_measurement: "min"
+    entry_id:
+      name: Integration ID
+      required: false
+      selector:
+        text:
+
+stop_discharge_now:
+  name: Stop Discharge Now
+  description: Remove the temporary discharge-now row added by the integration.
+  fields:
+    entry_id:
+      name: Integration ID
+      required: false
+      selector:
+        text:
+
+start_feedin_now:
+  name: Start Feed-in Now
+  description: Add a temporary valid feed-in row and enable feed-in policy.
+  fields:
+    power_watts:
+      name: Power
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 20000
+          step: 100
+          unit_of_measurement: "W"
+    duration_minutes:
+      name: Duration
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1439
+          step: 1
+          unit_of_measurement: "min"
+    entry_id:
+      name: Integration ID
+      required: false
+      selector:
+        text:
+
+stop_feedin_now:
+  name: Stop Feed-in Now
+  description: Remove the temporary feed-in-now row added by the integration.
+  fields:
+    entry_id:
+      name: Integration ID
+      required: false
+      selector:
+        text:

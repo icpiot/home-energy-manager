@@ -1,0 +1,6 @@
+{
+  "name": "Byte-Watt Battery Monitor",
+  "content_in_root": false,
+  "render_readme": true,
+  "homeassistant": "2024.11.0"
+}

@@ -1,0 +1,1 @@
+@C:\Users\ieko\Documents\HA\repos\neovoltBattery_HomeAssistantPlugin\examples\www\bytewatt-report-card.js
