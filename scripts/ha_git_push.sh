@@ -4,17 +4,17 @@ cd /config || exit 1
 
 TOKEN_FILE="/config/.github_pat"
 LOG_DIR="/config/www/ha-git"
-LOG="$LOG_DIR/neovolt_git_last.txt"
-SCRIPT_BUILD="2026-07-07.01"
-REPO_URL="github.com/icpiot/neovoltBattery_HomeAssistantPlugin.git"
-REPO_DIR="/config/repos/neovoltBattery_HomeAssistantPlugin"
-BRANCH="${BYTEWATT_GIT_BRANCH:-codex/provider-abstraction-refactor}"
+LOG="$LOG_DIR/home_energy_manager_git_last.txt"
+SCRIPT_BUILD="2026-07-14.01"
+REPO_URL="github.com/icpiot/home-energy-manager.git"
+REPO_DIR="/config/repos/home-energy-manager"
+BRANCH="${HOME_ENERGY_MANAGER_GIT_BRANCH:-${BYTEWATT_GIT_BRANCH:-main}}"
 
 mkdir -p "$LOG_DIR"
 
 {
   echo "=============================="
-  echo "Neovolt Git Push"
+  echo "Home Energy Manager Git Push"
   echo "Started: $(date '+%Y-%m-%d %H:%M:%S %Z')"
   echo "Repo: $REPO_DIR"
   echo "Script Build: $SCRIPT_BUILD"
@@ -74,11 +74,15 @@ mkdir -p "$LOG_DIR"
   echo "Changes found:"
   git -C "$REPO_DIR" status --short
   echo ""
-  echo "Staging repo-managed ByteWatt files..."
+  echo "Staging repo-managed Home Energy Manager files..."
 
   git -C "$REPO_DIR" add \
     README.md \
-    examples/README_Bytewatt.md \
+    info.md \
+    RECOVERY_SYSTEM.md \
+    hacs.json \
+    pytest.ini \
+    requirements_test.txt \
     scripts/ \
     custom_components/bytewatt/ \
     examples/www/bytewatt-policy-card.js \
@@ -100,7 +104,7 @@ mkdir -p "$LOG_DIR"
     exit 1
   fi
 
-  MSG="Neovolt repo-managed update $(date '+%Y-%m-%d %H:%M:%S %Z')"
+  MSG="Home Energy Manager repo-managed update $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
   echo "Committing: $MSG"
   git -C "$REPO_DIR" commit -m "$MSG" || exit 1
