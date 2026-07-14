@@ -85,6 +85,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
         self._recovery_attempts = 0
         self._auto_reconnect_unsub = None
         self._last_history_ensure_result: Dict[str, Any] = {}
+        self._history_backfill_task: Optional[asyncio.Task] = None
         # async_call_later unsubscribe for the post-failure recovery retry.
         # Tracked so we can cancel it on entry unload — otherwise the
         # callback would fire on a torn-down coordinator.
@@ -713,7 +714,37 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                 label=label,
                 reporting=reporting,
             )
-    
+
+    def _schedule_history_backfill(
+        self,
+        *,
+        selected_battery_data: Optional[Dict[str, Any]],
+        inventory: List[Any],
+    ) -> None:
+        """Run the long history backfill after the refresh returns."""
+        if self._history_backfill_task is not None and not self._history_backfill_task.done():
+            return
+
+        task = self.hass.async_create_task(
+            self._backfill_history_snapshots(
+                selected_battery_data=selected_battery_data,
+                inventory=inventory,
+            )
+        )
+        self._history_backfill_task = task
+
+        def _handle_backfill_done(done_task: asyncio.Task) -> None:
+            if self._history_backfill_task is done_task:
+                self._history_backfill_task = None
+            try:
+                done_task.result()
+            except asyncio.CancelledError:
+                _LOGGER.debug("Historical backfill task cancelled")
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.warning("Historical backfill task failed: %s", err)
+
+        task.add_done_callback(_handle_backfill_done)
+
     async def _async_update_data(self):
         """Update data via library with improved error handling."""
         try:
@@ -815,7 +846,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                     all_battery_data=all_battery_data,
                     inventory=inventory,
                 )
-                await self._backfill_history_snapshots(
+                self._schedule_history_backfill(
                     selected_battery_data=selected_battery_data,
                     inventory=inventory,
                 )
