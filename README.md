@@ -43,6 +43,16 @@ single vendor.
 Copy `custom_components/bytewatt` into your Home Assistant
 `custom_components/` directory, restart, then add the integration.
 
+## Repo Sync
+
+This repo keeps the Home Assistant sync flow intentionally small:
+
+- `scripts/ha_git_pull.sh` pulls the repo and refreshes the HA deployment copy
+- `scripts/ha_git_push.sh` stages the full repo tree and pushes it back to GitHub
+
+Those two scripts are the only ones you need. The older wrapper scripts were
+removed.
+
 ## Backends
 
 The repo currently includes support for the ByteWatt / Neovolt API. The source
