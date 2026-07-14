@@ -15,7 +15,7 @@ from homeassistant.util import dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
 
-HISTORY_DIR_NAME = "bytewatt-history"
+HISTORY_DIR_NAME = "home-energy-manager-history"
 HISTORY_FILE_NAME = "history.json"
 
 

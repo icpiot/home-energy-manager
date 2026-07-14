@@ -80,33 +80,33 @@ Notes:
 
 Copy the working file from `examples/www/` to your Home Assistant `www` folder:
 
-- `/config/www/community/bytewatt-card/bytewatt-policy-card.js`
-- `/config/www/community/bytewatt-card/bytewatt-report-card.js`
+- `/config/www/community/home-energy-manager-card/bytewatt-policy-card.js`
+- `/config/www/community/home-energy-manager-card/bytewatt-report-card.js`
 
 Then add it as a dashboard resource using a fixed filename and a cache-buster:
 
 ```yaml
-url: /local/community/bytewatt-card/bytewatt-policy-card.js?v=049
+url: /local/community/home-energy-manager-card/bytewatt-policy-card.js?v=049
 type: module
 ```
 
 Reporting card:
 
 ```yaml
-url: /local/community/bytewatt-card/bytewatt-report-card.js?v=167
+url: /local/community/home-energy-manager-card/bytewatt-report-card.js?v=167
 type: module
 ```
 
 Debug card:
 
 ```yaml
-url: /local/community/bytewatt-card/bytewatt-debug-card.js?v=004
+url: /local/community/home-energy-manager-card/bytewatt-debug-card.js?v=004
 type: module
 ```
 
 If you are using the repo-managed HA pull script from `scripts/ha_git_pull.sh`,
-it should also deploy `custom_components/bytewatt` at the same time so the card
-and backend stay aligned.
+it should also deploy `custom_components/bytewatt` at the same time so the
+card and backend stay aligned.
 
 ## Resource Counter
 
@@ -120,21 +120,21 @@ To force Home Assistant and the browser to load a fresh custom-card build:
 Example next iteration:
 
 ```yaml
-url: /local/community/bytewatt-card/bytewatt-policy-card.js?v=049
+url: /local/community/home-energy-manager-card/bytewatt-policy-card.js?v=049
 type: module
 ```
 
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/bytewatt-card/bytewatt-report-card.js?v=167
+url: /local/community/home-energy-manager-card/bytewatt-report-card.js?v=167
 type: module
 ```
 
 Debug card next iteration:
 
 ```yaml
-url: /local/community/bytewatt-card/bytewatt-debug-card.js?v=004
+url: /local/community/home-energy-manager-card/bytewatt-debug-card.js?v=004
 type: module
 ```
 

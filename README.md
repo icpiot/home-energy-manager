@@ -53,6 +53,16 @@ This repo keeps the Home Assistant sync flow intentionally small:
 Those two scripts are the only ones you need. The older wrapper scripts were
 removed.
 
+## Asset Paths
+
+The deployed Home Assistant asset folders use project-neutral names:
+
+- `/config/www/home-energy-manager-history`
+- `/config/www/community/home-energy-manager-card`
+
+The integration package path remains `custom_components/bytewatt` for Home
+Assistant compatibility.
+
 ## Backends
 
 The repo currently includes support for the ByteWatt / Neovolt API. The source

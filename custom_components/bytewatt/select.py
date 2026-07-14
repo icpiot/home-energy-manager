@@ -200,7 +200,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             backfill_years = DEFAULT_HISTORY_BACKFILL_YEARS
         history_hint = {
             "enabled": True,
-            "base_url": f"/local/bytewatt-history/{self._config_entry.entry_id}/",
+            "base_url": f"/local/home-energy-manager-history/{self._config_entry.entry_id}/",
             "current_scope": (
                 selected_scope.sys_sn
                 if selected_scope is not None and not selected_scope.aggregate

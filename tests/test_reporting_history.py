@@ -56,14 +56,14 @@ def test_mark_missing_date_keeps_existing_valid_record(tmp_path):
         reason="no_reporting_data",
     )
 
-    payload = json.loads((tmp_path / "www" / "bytewatt-history" / "entry-1" / "history.json").read_text(encoding="utf-8"))
+    payload = json.loads((tmp_path / "www" / "home-energy-manager-history" / "entry-1" / "history.json").read_text(encoding="utf-8"))
     scope = payload["scopes"]["all"]
     assert "2026-07-08" in scope["records"]
     assert "2026-07-08" not in scope.get("missing_dates", {})
 
 
 def test_mark_missing_date_removes_blank_record(tmp_path):
-    history_dir = tmp_path / "www" / "bytewatt-history" / "entry-1"
+    history_dir = tmp_path / "www" / "home-energy-manager-history" / "entry-1"
     history_dir.mkdir(parents=True, exist_ok=True)
     history_file = history_dir / "history.json"
     history_file.write_text(

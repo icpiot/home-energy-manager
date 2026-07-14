@@ -370,7 +370,7 @@ class ByteWattDebugCard extends HTMLElement {
     const base = explicitBase
       ? explicitBase.replace(/\/+$/, "")
       : entryId
-        ? `/local/bytewatt-history/${entryId}`
+        ? `/local/home-energy-manager-history/${entryId}`
         : "";
     if (!base) return "";
     return `${base}/history.json`;

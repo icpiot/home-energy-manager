@@ -10,7 +10,7 @@ REPO_URL="github.com/icpiot/home-energy-manager.git"
 REPO_DIR="/config/repos/home-energy-manager"
 SOURCE_CARD_DIR="$REPO_DIR/examples/www"
 SOURCE_COMPONENT_DIR="$REPO_DIR/custom_components/bytewatt"
-DEPLOY_CARD_DIR="/config/www/community/bytewatt-card"
+DEPLOY_CARD_DIR="/config/www/community/home-energy-manager-card"
 DEPLOY_COMPONENT_DIR="/config/custom_components/bytewatt"
 BRANCH="${HOME_ENERGY_MANAGER_GIT_BRANCH:-${BYTEWATT_GIT_BRANCH:-main}}"
 
