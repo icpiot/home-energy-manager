@@ -118,6 +118,8 @@ class ByteWattGridChargeSwitch(_BatterySwitchBase):
 
 
 class ByteWattUpsReserveEnableSwitch(_BatterySwitchBase):
+    """Keep the battery above the discharge cutoff during grid-connected use."""
+
     def __init__(self, coordinator, config_entry, manager) -> None:
         super().__init__(
             coordinator, config_entry, manager,

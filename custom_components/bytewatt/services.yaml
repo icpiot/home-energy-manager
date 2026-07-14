@@ -93,7 +93,12 @@ ensure_report_history:
 
 set_discharge_time:
   name: Set Discharge End Time
-  description: Set the end time for battery discharge.
+  description: >-
+    Set the discharge window end time. When discharge control is enabled,
+    the battery can discharge only inside the configured window. Outside that
+    window, the battery may charge but will not discharge. If the inverter
+    supports 15-minute scheduling, the chosen time is applied at that
+    granularity; otherwise it remains on the legacy 1-hour interval.
   fields:
     end_discharge:
       name: End Discharge Time
@@ -112,7 +117,12 @@ set_discharge_time:
 
 set_discharge_start_time:
   name: Set Discharge Start Time
-  description: Set the start time for battery discharge.
+  description: >-
+    Set the discharge window start time. When discharge control is enabled,
+    the battery can discharge only inside the configured window. If solar
+    power is available, it will supply the loads first and the battery will
+    only assist when solar is insufficient. Outside the window, discharge is
+    blocked and charging is allowed.
   fields:
     start_discharge:
       name: Start Discharge Time
@@ -131,7 +141,11 @@ set_discharge_start_time:
 
 set_charge_start_time:
   name: Set Charge Start Time
-  description: Set the start time for battery charging.
+  description: >-
+    Set the charge window start time. When charge control is enabled, the
+    battery is forced to charge inside the configured window and will not
+    discharge. Solar energy is used first, and grid power is drawn only if
+    solar is not enough to meet the charge target.
   fields:
     start_charge:
       name: Start Charge Time
@@ -150,7 +164,12 @@ set_charge_start_time:
 
 set_charge_end_time:
   name: Set Charge End Time
-  description: Set the end time for battery charging.
+  description: >-
+    Set the charge window end time. When charge control is enabled, the
+    battery is forced to charge only until this time, then returns to normal
+    self-consumption mode outside the window. If the inverter supports
+    15-minute scheduling, the chosen time is applied at that granularity;
+    otherwise it remains on the legacy 1-hour interval.
   fields:
     end_charge:
       name: End Charge Time
@@ -169,7 +188,10 @@ set_charge_end_time:
 
 set_minimum_soc:
   name: Set Minimum SOC
-  description: Set the minimum battery state of charge percentage.
+  description: >-
+    Set the battery discharge cutoff state of charge. The battery stops
+    discharging when it reaches this SOC, while normal charge controls remain
+    available. This is the main protection setting for preserving reserve.
   fields:
     minimum_soc:
       name: Minimum SOC
@@ -192,7 +214,9 @@ set_minimum_soc:
 
 set_charge_cap:
   name: Set Charge Cap
-  description: Set the maximum battery charge cap percentage.
+  description: >-
+    Set the maximum battery charge SOC. The battery will prioritize charging
+    up to this cap when charge control or force-charge behavior is active.
   fields:
     charge_cap:
       name: Charge Cap
@@ -215,7 +239,12 @@ set_charge_cap:
 
 update_battery_settings:
   name: Update Battery Settings
-  description: Update multiple battery settings in one call.
+  description: >-
+    Update multiple battery settings in one call. Daily charge and discharge
+    windows may overlap, but charging takes priority when both are active.
+    Within the same control type, the earlier start time wins. Some inverter
+    models support 15-minute intervals; others stay on 1-hour intervals until
+    firmware adds finer scheduling.
   fields:
     start_discharge:
       name: Start Discharge Time

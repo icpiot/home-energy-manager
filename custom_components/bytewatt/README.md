@@ -15,6 +15,14 @@ time.
 - staged settings with submit/discard control
 - battery and grid-feed control services
 
+## Control Notes
+
+- discharge windows only allow battery discharge during the configured period
+- charge windows force charging during the configured period and return to self-consumption mode outside it
+- overlapping daily charge and discharge windows are allowed, and charging takes priority
+- the minimum SOC setting is the battery discharge cutoff reserve
+- UPS reserve keeps the battery above the cutoff after off-grid recovery when the system is grid-connected
+
 ## Troubleshooting
 
 If the integration stops updating:

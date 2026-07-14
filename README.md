@@ -107,6 +107,14 @@ be added later without rebuilding the project from scratch.
 
 The integration exposes services for battery and maintenance workflows.
 
+Battery control behavior:
+
+- discharge windows block battery export outside the configured period
+- charge windows force charging inside the configured period and return to self-consumption mode outside it
+- overlapping daily charge and discharge windows are allowed, with charging taking priority
+- the minimum SOC control is the discharge cutoff reserve
+- UPS reserve keeps the battery above the cutoff when grid-connected after off-grid recovery
+
 - `bytewatt.set_minimum_soc`
 - `bytewatt.set_charge_cap`
 - `bytewatt.set_discharge_start_time`

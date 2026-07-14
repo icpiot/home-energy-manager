@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "049";
+const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "050";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
@@ -190,6 +190,29 @@ class ByteWattPolicyCard extends HTMLElement {
         .label {
           font-size: 0.95rem;
           font-weight: 700;
+        }
+        .field-title-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-width: 0;
+        }
+        .field-help {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          border: 1px solid rgba(146, 193, 255, 0.45);
+          color: rgba(200, 228, 255, 0.98);
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 1;
+          cursor: help;
+          flex: 0 0 auto;
+          background: rgba(33, 57, 88, 0.95);
+          box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14) inset;
         }
         .body {
           display: grid;
@@ -1190,7 +1213,7 @@ class ByteWattPolicyCard extends HTMLElement {
       `
         <div class="eyebrow">Immediate</div>
         <div class="stack">
-          <div class="field-title">SOC (%)</div>
+          ${this._titleWithHelp("SOC (%)", "Set the charge cap SOC. The battery will prioritize charging up to this level when charge control or force-charge behavior is active.")}
           ${this._numberInput("force-charge-limit", this._immediateDraftValue("force-charge-limit", this._entityNumberValue(this._config.charge_cap, 100)), "%")}
         </div>
         ${this._renderImmediateAction(
@@ -1206,14 +1229,31 @@ class ByteWattPolicyCard extends HTMLElement {
       `
         <div class="eyebrow">Policy</div>
         ${pending ? `<div class="pending-banner">Pending changes not committed</div>` : ""}
-        ${this._toggleCell("Charge policy", this._config.charge_switch, "charge")}
+        ${this._toggleCell(
+          "Charge policy",
+          this._config.charge_switch,
+          "charge",
+          "When enabled, the battery is forced to charge inside the configured window and will not discharge. Solar is used first, and grid power supplements charging only when solar is insufficient."
+        )}
         ${
           enabled
             ? `
               <div class="policy-grid charge-policy-grid">
                 ${this._selectCell("Execution Cycle", this._config.execution_cycle, "charge", cycle.options)}
-                ${this._numberCell("SOC (%)", this._config.charge_cap, "charge", "%")}
-                ${this._numberCell("POWER (W)", this._config.charge_power, "charge", "W")}
+                ${this._numberCell(
+                  "SOC (%)",
+                  this._config.charge_cap,
+                  "charge",
+                  "%",
+                  "Set the charge cap SOC. The battery will prioritize charging up to this level when charge control or force-charge behavior is active."
+                )}
+                ${this._numberCell(
+                  "POWER (W)",
+                  this._config.charge_power,
+                  "charge",
+                  "W",
+                  "Set the charging power limit for the active charge window."
+                )}
               </div>
             `
             : `<div class="muted">Charge policy is off. Enable it to show schedule settings.</div>`
@@ -1291,14 +1331,31 @@ class ByteWattPolicyCard extends HTMLElement {
       `
         <div class="eyebrow">Policy</div>
         ${pending ? `<div class="pending-banner">Pending changes not committed</div>` : ""}
-        ${this._toggleCell("Discharge policy", this._config.discharge_switch, "discharge")}
+        ${this._toggleCell(
+          "Discharge policy",
+          this._config.discharge_switch,
+          "discharge",
+          "When enabled, the battery can discharge only inside the configured window. Outside that period, discharge is blocked and charging is allowed."
+        )}
         ${
           enabled
             ? `
               <div class="policy-grid discharge-policy-grid">
                 ${this._selectCell("Execution Cycle", this._config.execution_cycle, "discharge", cycle.options)}
-                ${this._numberCell("SOC (%)", this._config.discharge_cutoff, "discharge", "%")}
-                ${this._numberCell("POWER (W)", this._config.discharge_power, "discharge", "W")}
+                ${this._numberCell(
+                  "SOC (%)",
+                  this._config.discharge_cutoff,
+                  "discharge",
+                  "%",
+                  "Set the battery discharge cutoff state of charge. The battery stops discharging when it reaches this SOC."
+                )}
+                ${this._numberCell(
+                  "POWER (W)",
+                  this._config.discharge_power,
+                  "discharge",
+                  "W",
+                  "Set the discharge power limit for the active discharge window."
+                )}
               </div>
             `
             : `<div class="muted">Discharge policy is off. Enable it to show schedule settings.</div>`
@@ -1425,13 +1482,30 @@ class ByteWattPolicyCard extends HTMLElement {
       `
         <div class="eyebrow">Policy</div>
         ${pending ? `<div class="pending-banner">Pending changes not committed</div>` : ""}
-        ${this._toggleCell("Off-grid SOC Control", this._config.offgrid_switch, "offgrid")}
+        ${this._toggleCell(
+          "Off-grid SOC Control",
+          this._config.offgrid_switch,
+          "offgrid",
+          "When enabled, the battery maintains the off-grid reserve behavior and prioritizes charging back to the cutoff SOC after returning to grid-connected operation."
+        )}
         ${
           enabled
             ? `
               <div class="policy-grid offgrid-policy-grid">
-                ${this._numberCell("Wake-up SOC (%)", this._config.offgrid_wakeup_soc, "offgrid", "%")}
-                ${this._numberCell("Cut-off SOC (%)", this._config.offgrid_cutoff_soc, "offgrid", "%")}
+                ${this._numberCell(
+                  "Wake-up SOC (%)",
+                  this._config.offgrid_wakeup_soc,
+                  "offgrid",
+                  "%",
+                  "Battery SOC level that allows the system to resume normal operation after off-grid use."
+                )}
+                ${this._numberCell(
+                  "Cut-off SOC (%)",
+                  this._config.offgrid_cutoff_soc,
+                  "offgrid",
+                  "%",
+                  "Battery discharge cutoff SOC used to protect reserve capacity."
+                )}
               </div>
             `
             : `<div class="muted">Off-grid SOC Control is off.</div>`
@@ -1658,7 +1732,7 @@ class ByteWattPolicyCard extends HTMLElement {
     `;
   }
 
-  _toggleCell(label, entityId, section) {
+  _toggleCell(label, entityId, section, helpText = "") {
     const checked = this._draftValue(
       section,
       entityId,
@@ -1666,18 +1740,18 @@ class ByteWattPolicyCard extends HTMLElement {
     );
     return `
       <div class="policy-cell switch">
-        <div class="field-title">${label}</div>
+        ${this._titleWithHelp(label, helpText)}
         <input type="checkbox" data-policy-toggle="${entityId}" data-section="${section}" ${checked ? "checked" : ""} />
       </div>
     `;
   }
 
-  _selectCell(label, entityId, section, options) {
+  _selectCell(label, entityId, section, options, helpText = "") {
     const state = this._stateObj(entityId);
     const current = this._draftValue(section, entityId, state?.state || "");
     return `
       <div class="policy-cell select-cell">
-        <div class="field-title">${label}</div>
+        ${this._titleWithHelp(label, helpText)}
         <select data-policy-select="${entityId}" data-section="${section}">
           ${(options || [])
             .map(
@@ -1692,7 +1766,7 @@ class ByteWattPolicyCard extends HTMLElement {
     `;
   }
 
-  _numberCell(label, entityId, section, unit) {
+  _numberCell(label, entityId, section, unit, helpText = "") {
     const state = this._stateObj(entityId);
     const value = this._draftValue(
       section,
@@ -1704,7 +1778,7 @@ class ByteWattPolicyCard extends HTMLElement {
     const valueClass = note ? "policy-value inline-note" : "policy-value";
     return `
       <div class="policy-cell number-cell ${unitClass}">
-        <div class="field-title">${label}</div>
+        ${this._titleWithHelp(label, helpText)}
         <div class="${valueClass}">
           <input type="number" data-policy-number="${entityId}" data-section="${section}" value="${this._escapeHtml(value ?? "")}" />
           ${note}
@@ -1741,7 +1815,7 @@ class ByteWattPolicyCard extends HTMLElement {
                 : this._numberInput(field.key, field.value, field.unit, Boolean(field.disabled));
               return `
               <div class="slot-field ${this._escapeHtml(field.unit === "W" ? "power" : "soc")}">
-                <div class="field-title compact">${this._escapeHtml(field.label)}</div>
+                ${this._titleWithHelp(field.label, field.helpText, true)}
                 ${inputBlock}
               </div>
             `;
@@ -1752,7 +1826,7 @@ class ByteWattPolicyCard extends HTMLElement {
     `;
   }
 
-  _slotField(label, key, value, type) {
+  _slotField(label, key, value, type, helpText = "") {
     const inputValue =
       type === "time" ? this._normalizeTimeValue(value) : this._normalizeNumberState(value);
     const fieldClass =
@@ -1766,17 +1840,30 @@ class ByteWattPolicyCard extends HTMLElement {
       : `<input type="${type}" data-slot-field="${key}" value="${this._escapeHtml(inputValue)}" />`;
     return `
       <div class="slot-field ${fieldClass}">
-        <div class="field-title compact">${label}</div>
+        ${this._titleWithHelp(label, helpText, true)}
         ${inputBlock}
       </div>
     `;
   }
 
-  _slotReadonlyField(label, value, fieldClass = "generic") {
+  _slotReadonlyField(label, value, fieldClass = "generic", helpText = "") {
     return `
       <div class="slot-field ${fieldClass}">
-        <div class="field-title compact">${label}</div>
+        ${this._titleWithHelp(label, helpText, true)}
         <input type="text" value="${this._escapeHtml(value)}" readonly disabled />
+      </div>
+    `;
+  }
+
+  _titleWithHelp(label, helpText = "", compact = false) {
+    const safeLabel = this._escapeHtml(label);
+    if (!helpText) {
+      return `<div class="field-title ${compact ? "compact" : ""}">${safeLabel}</div>`;
+    }
+    return `
+      <div class="field-title ${compact ? "compact" : ""} field-title-row">
+        <span>${safeLabel}</span>
+        <span class="field-help" title="${this._escapeHtml(helpText)}" aria-label="${this._escapeHtml(helpText)}">i</span>
       </div>
     `;
   }
