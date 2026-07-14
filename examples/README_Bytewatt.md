@@ -10,7 +10,9 @@ This folder contains two UI artifacts linked to the current branch work:
   A custom card scaffold that mirrors the Byte-Watt mobile app layout more
   closely while keeping unsupported controls visibly marked as not enabled.
 - `www/bytewatt-report-card.js`
-  A separate reporting card for power-flow, daily summaries, and chart data.
+  A thin loader that imports the current reporting build.
+- `www/bytewatt-report-card.008.js`
+  The current reporting card build for power-flow, daily summaries, and chart data.
 - `www/bytewatt-debug-card.js`
   A focused inspector card for raw entity state, archive metadata, and probe actions.
 
@@ -82,6 +84,7 @@ Copy the working file from `examples/www/` to your Home Assistant `www` folder:
 
 - `/config/www/community/home-energy-manager-card/bytewatt-policy-card.js`
 - `/config/www/community/home-energy-manager-card/bytewatt-report-card.js`
+- `/config/www/community/home-energy-manager-card/bytewatt-report-card.008.js`
 
 Then add it as a dashboard resource using a fixed filename and a cache-buster:
 

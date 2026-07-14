@@ -103,6 +103,10 @@ deploy_repo_to_ha() {
     echo "ERROR: Missing source file: $SOURCE_CARD_DIR/bytewatt-report-card.js"
     exit 1
   fi
+  if [ ! -f "$SOURCE_CARD_DIR/bytewatt-report-card.008.js" ]; then
+    echo "ERROR: Missing source file: $SOURCE_CARD_DIR/bytewatt-report-card.008.js"
+    exit 1
+  fi
 
   if [ ! -f "$SOURCE_CARD_DIR/bytewatt-debug-card.js" ]; then
     echo "ERROR: Missing source file: $SOURCE_CARD_DIR/bytewatt-debug-card.js"
@@ -139,6 +143,7 @@ deploy_repo_to_ha() {
 
   cp -f "$SOURCE_CARD_DIR/bytewatt-policy-card.js" "$DEPLOY_CARD_DIR/bytewatt-policy-card.js"
   cp -f "$SOURCE_CARD_DIR/bytewatt-report-card.js" "$DEPLOY_CARD_DIR/bytewatt-report-card.js"
+  cp -f "$SOURCE_CARD_DIR/bytewatt-report-card.008.js" "$DEPLOY_CARD_DIR/bytewatt-report-card.008.js"
   cp -f "$SOURCE_CARD_DIR/bytewatt-debug-card.js" "$DEPLOY_CARD_DIR/bytewatt-debug-card.js"
   cp -a "$SOURCE_COMPONENT_DIR/." "$DEPLOY_COMPONENT_DIR/"
 
@@ -158,6 +163,7 @@ deploy_repo_to_ha() {
   echo "Deployed files:"
   echo "  $SOURCE_CARD_DIR/bytewatt-policy-card.js -> $DEPLOY_CARD_DIR/bytewatt-policy-card.js"
   echo "  $SOURCE_CARD_DIR/bytewatt-report-card.js -> $DEPLOY_CARD_DIR/bytewatt-report-card.js"
+  echo "  $SOURCE_CARD_DIR/bytewatt-report-card.008.js -> $DEPLOY_CARD_DIR/bytewatt-report-card.008.js"
   echo "  $SOURCE_CARD_DIR/bytewatt-debug-card.js -> $DEPLOY_CARD_DIR/bytewatt-debug-card.js"
   echo "  $SOURCE_COMPONENT_DIR -> $DEPLOY_COMPONENT_DIR"
   echo "Report build (deploy after): $DEPLOY_REPORT_AFTER"

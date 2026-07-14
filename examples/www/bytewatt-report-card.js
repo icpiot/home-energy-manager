@@ -1,1 +1,1 @@
-@C:\Users\ieko\Documents\HA\repos\neovoltBattery_HomeAssistantPlugin\examples\www\bytewatt-report-card.js
+import "./bytewatt-report-card.008.js?v=295";
