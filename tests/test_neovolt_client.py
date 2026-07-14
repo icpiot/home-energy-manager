@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import sys
 
 import pytest
 
@@ -21,6 +22,7 @@ def _load_module(rel_path: str, name: str):
     path = os.path.abspath(os.path.join(here, "..", "custom_components", "bytewatt", rel_path))
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -28,8 +30,14 @@ def _load_module(rel_path: str, name: str):
 # neovolt_client imports homeassistant.helpers.aiohttp_client at module load;
 # skip cleanly when HA isn't installed (bare sandbox).
 try:
-    neovolt_auth = _load_module("api/neovolt_auth.py", "bytewatt_neovolt_auth")
-    neovolt_client = _load_module("api/neovolt_client.py", "bytewatt_neovolt_client")
+    neovolt_auth = _load_module(
+        "api/neovolt_auth.py",
+        "custom_components.bytewatt.api.neovolt_auth",
+    )
+    neovolt_client = _load_module(
+        "api/neovolt_client.py",
+        "custom_components.bytewatt.api.neovolt_client",
+    )
 except ModuleNotFoundError as exc:
     pytest.skip(f"Module not installed in this environment: {exc.name}", allow_module_level=True)
 

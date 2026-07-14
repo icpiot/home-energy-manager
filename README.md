@@ -53,6 +53,17 @@ This repo keeps the Home Assistant sync flow intentionally small:
 Those two scripts are the only ones you need. The older wrapper scripts were
 removed.
 
+## Testing
+
+Use the repo-local PowerShell helper to run the suite from the project root:
+
+```powershell
+.\scripts\run_tests.ps1
+```
+
+The script creates `.venv` if needed, installs `requirements_test.txt`, and
+then runs `pytest`.
+
 ## Asset Paths
 
 The deployed Home Assistant asset folders use project-neutral names:
