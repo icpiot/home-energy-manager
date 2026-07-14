@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "050";
+const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "001";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
