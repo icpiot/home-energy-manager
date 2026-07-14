@@ -74,6 +74,18 @@ The deployed Home Assistant asset folders use project-neutral names:
 The integration package path remains `custom_components/bytewatt` for Home
 Assistant compatibility.
 
+## Pricing Foundation
+
+The repo now includes a vendor-neutral pricing model for future cost and
+income features. It supports:
+
+- fixed import and export tariffs
+- time-of-use windows
+- dynamic interval pricing
+- spike export pricing via higher-priority windows
+
+See `examples/pricing/` for the schema notes and sample JSON.
+
 ## Backends
 
 The repo currently includes support for the ByteWatt / Neovolt API. The source

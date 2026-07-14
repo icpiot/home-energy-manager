@@ -1,0 +1,54 @@
+{
+  "entries": [
+    {
+      "flow": "import",
+      "mode": "fixed",
+      "value": 28.5,
+      "starts_at": "2026-07-01T00:00:00+10:00",
+      "ends_at": null,
+      "label": "Standard import rate",
+      "currency": "AUD",
+      "unit": "c/kWh",
+      "source": "Retail tariff",
+      "region": "NSW",
+      "tariff_name": "General Usage",
+      "priority": 0,
+      "metadata": {
+        "billing_cycle": "2026-07"
+      }
+    },
+    {
+      "flow": "export",
+      "mode": "fixed",
+      "value": 6.0,
+      "starts_at": "2026-07-01T00:00:00+10:00",
+      "ends_at": null,
+      "label": "Base feed-in tariff",
+      "currency": "AUD",
+      "unit": "c/kWh",
+      "source": "Retail tariff",
+      "region": "NSW",
+      "tariff_name": "Feed-in",
+      "priority": 0,
+      "metadata": {}
+    },
+    {
+      "flow": "export",
+      "mode": "dynamic",
+      "value": 38.0,
+      "starts_at": "2026-07-14T14:00:00+10:00",
+      "ends_at": "2026-07-14T14:30:00+10:00",
+      "label": "Spike export window",
+      "currency": "AUD",
+      "unit": "c/kWh",
+      "source": "Wholesale market",
+      "region": "NSW",
+      "tariff_name": "Peak event",
+      "priority": 100,
+      "metadata": {
+        "interval_minutes": 30,
+        "event_type": "spike"
+      }
+    }
+  ]
+}
