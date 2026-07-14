@@ -1,5 +1,5 @@
-title: ByteWatt Policy
-path: bytewatt-policy
+title: Home Energy Manager Policy
+path: home-energy-manager-policy
 icon: mdi:battery-cog
 cards:
   - type: vertical-stack

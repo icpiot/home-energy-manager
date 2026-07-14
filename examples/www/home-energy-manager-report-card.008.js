@@ -1,4 +1,4 @@
-const BYTEWATT_REPORT_CARD_BUILD = "008";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "008";
 
 class ByteWattReportCard extends HTMLElement {
   setConfig(config) {
@@ -1287,8 +1287,8 @@ class ByteWattReportCard extends HTMLElement {
         <div class="shell">
           <div class="title-row">
             <div class="title-icon">&#9889;</div>
-            <div class="title">ByteWatt Report</div>
-            <div class="version-badge">v${BYTEWATT_REPORT_CARD_BUILD}</div>
+            <div class="title">Home Energy Manager Report</div>
+                <div class="version-badge">v${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}</div>
           </div>
           ${this._renderSelector()}
           ${
@@ -1352,15 +1352,15 @@ class ByteWattReportCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("bytewatt-report-card")) {
-  customElements.define("bytewatt-report-card", ByteWattReportCard);
+if (!customElements.get("home-energy-manager-report-card")) {
+  customElements.define("home-energy-manager-report-card", ByteWattReportCard);
 }
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "bytewatt-report-card",
-  name: "ByteWatt Report Card",
-  description: `ByteWatt reporting card build ${BYTEWATT_REPORT_CARD_BUILD}.`,
+  type: "home-energy-manager-report-card",
+  name: "Home Energy Manager Report Card",
+  description: `Home Energy Manager reporting card build ${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}.`,
 });
 
-window.bytewattReportCardBuild = BYTEWATT_REPORT_CARD_BUILD;
+window.homeEnergyManagerReportCardBuild = HOME_ENERGY_MANAGER_REPORT_CARD_BUILD;

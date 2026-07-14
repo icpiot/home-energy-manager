@@ -1,2 +1,2 @@
-bytewatt-debug-card.js
-/local/community/home-energy-manager-card/bytewatt-debug-card.js?v=027
+home-energy-manager-debug-card.js
+/local/community/home-energy-manager-card/home-energy-manager-debug-card.js?v=027

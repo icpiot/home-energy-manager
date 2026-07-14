@@ -1,3 +1,3 @@
-bytewatt-policy-card.js
-/local/community/home-energy-manager-card/bytewatt-policy-card.js?v=048
+home-energy-manager-policy-card.js
+/local/community/home-energy-manager-card/home-energy-manager-policy-card.js?v=049
 

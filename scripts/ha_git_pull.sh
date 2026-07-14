@@ -24,7 +24,7 @@ report_build_from_file() {
   fi
 
   local line
-  line="$(grep -m1 'BYTEWATT_REPORT_CARD_BUILD' "$file" 2>/dev/null || true)"
+  line="$(grep -m1 'HOME_ENERGY_MANAGER_REPORT_CARD_BUILD' "$file" 2>/dev/null || true)"
   if [ -n "$line" ]; then
     echo "$line" | sed -E 's/.*"([0-9]+)".*/\1/'
     return
@@ -47,7 +47,7 @@ report_build_from_marker_file() {
     return
   fi
 
-  line="$(grep -m1 'bytewatt-report-card.js?v=' "$file" 2>/dev/null || true)"
+  line="$(grep -m1 'home-energy-manager-report-card.js?v=' "$file" 2>/dev/null || true)"
   if [ -n "$line" ]; then
     echo "$line" | sed -E 's/.*[?]v=([0-9]+).*/\1/'
     return
@@ -94,22 +94,22 @@ deploy_repo_to_ha() {
   echo ""
   echo "Deploying Home Energy Manager integration and cards into Home Assistant..."
 
-  if [ ! -f "$SOURCE_CARD_DIR/bytewatt-policy-card.js" ]; then
-    echo "ERROR: Missing source file: $SOURCE_CARD_DIR/bytewatt-policy-card.js"
+  if [ ! -f "$SOURCE_CARD_DIR/home-energy-manager-policy-card.js" ]; then
+    echo "ERROR: Missing source file: $SOURCE_CARD_DIR/home-energy-manager-policy-card.js"
     exit 1
   fi
 
-  if [ ! -f "$SOURCE_CARD_DIR/bytewatt-report-card.js" ]; then
-    echo "ERROR: Missing source file: $SOURCE_CARD_DIR/bytewatt-report-card.js"
+  if [ ! -f "$SOURCE_CARD_DIR/home-energy-manager-report-card.js" ]; then
+    echo "ERROR: Missing source file: $SOURCE_CARD_DIR/home-energy-manager-report-card.js"
     exit 1
   fi
-  if [ ! -f "$SOURCE_CARD_DIR/bytewatt-report-card.008.js" ]; then
-    echo "ERROR: Missing source file: $SOURCE_CARD_DIR/bytewatt-report-card.008.js"
+  if [ ! -f "$SOURCE_CARD_DIR/home-energy-manager-report-card.008.js" ]; then
+    echo "ERROR: Missing source file: $SOURCE_CARD_DIR/home-energy-manager-report-card.008.js"
     exit 1
   fi
 
-  if [ ! -f "$SOURCE_CARD_DIR/bytewatt-debug-card.js" ]; then
-    echo "ERROR: Missing source file: $SOURCE_CARD_DIR/bytewatt-debug-card.js"
+  if [ ! -f "$SOURCE_CARD_DIR/home-energy-manager-debug-card.js" ]; then
+    echo "ERROR: Missing source file: $SOURCE_CARD_DIR/home-energy-manager-debug-card.js"
     exit 1
   fi
 
@@ -123,14 +123,14 @@ deploy_repo_to_ha() {
 
   SOURCE_REPORT_BUILD="$(report_build_from_marker_file "$SOURCE_CARD_DIR/LATEST_REPORT_BUILD.txt")"
   if [ "$SOURCE_REPORT_BUILD" = "error" ] || [ "$SOURCE_REPORT_BUILD" = "missing" ]; then
-    SOURCE_REPORT_BUILD="$(report_build_from_file "$SOURCE_CARD_DIR/bytewatt-report-card.js")"
+    SOURCE_REPORT_BUILD="$(report_build_from_file "$SOURCE_CARD_DIR/home-energy-manager-report-card.js")"
   fi
-  SOURCE_DEBUG_BUILD="$(debug_build_from_file "$SOURCE_CARD_DIR/bytewatt-debug-card.js")"
+  SOURCE_DEBUG_BUILD="$(debug_build_from_file "$SOURCE_CARD_DIR/home-energy-manager-debug-card.js")"
   DEPLOY_REPORT_BEFORE="$(report_build_from_marker_file "$REPO_DIR/examples/www/LATEST_REPORT_BUILD.txt")"
   if [ "$DEPLOY_REPORT_BEFORE" = "error" ] || [ "$DEPLOY_REPORT_BEFORE" = "missing" ]; then
-    DEPLOY_REPORT_BEFORE="$(report_build_from_file "$DEPLOY_CARD_DIR/bytewatt-report-card.js")"
+    DEPLOY_REPORT_BEFORE="$(report_build_from_file "$DEPLOY_CARD_DIR/home-energy-manager-report-card.js")"
   fi
-  DEPLOY_DEBUG_BEFORE="$(debug_build_from_file "$DEPLOY_CARD_DIR/bytewatt-debug-card.js")"
+  DEPLOY_DEBUG_BEFORE="$(debug_build_from_file "$DEPLOY_CARD_DIR/home-energy-manager-debug-card.js")"
   SOURCE_COMPONENT_VERSION="$(integration_version_from_manifest "$SOURCE_COMPONENT_DIR/manifest.json")"
   DEPLOY_COMPONENT_VERSION_BEFORE="$(integration_version_from_manifest "$DEPLOY_COMPONENT_DIR/manifest.json")"
 
@@ -141,17 +141,17 @@ deploy_repo_to_ha() {
   echo "Integration version (source): $SOURCE_COMPONENT_VERSION"
   echo "Integration version (deploy before): $DEPLOY_COMPONENT_VERSION_BEFORE"
 
-  cp -f "$SOURCE_CARD_DIR/bytewatt-policy-card.js" "$DEPLOY_CARD_DIR/bytewatt-policy-card.js"
-  cp -f "$SOURCE_CARD_DIR/bytewatt-report-card.js" "$DEPLOY_CARD_DIR/bytewatt-report-card.js"
-  cp -f "$SOURCE_CARD_DIR/bytewatt-report-card.008.js" "$DEPLOY_CARD_DIR/bytewatt-report-card.008.js"
-  cp -f "$SOURCE_CARD_DIR/bytewatt-debug-card.js" "$DEPLOY_CARD_DIR/bytewatt-debug-card.js"
+  cp -f "$SOURCE_CARD_DIR/home-energy-manager-policy-card.js" "$DEPLOY_CARD_DIR/home-energy-manager-policy-card.js"
+  cp -f "$SOURCE_CARD_DIR/home-energy-manager-report-card.js" "$DEPLOY_CARD_DIR/home-energy-manager-report-card.js"
+  cp -f "$SOURCE_CARD_DIR/home-energy-manager-report-card.008.js" "$DEPLOY_CARD_DIR/home-energy-manager-report-card.008.js"
+  cp -f "$SOURCE_CARD_DIR/home-energy-manager-debug-card.js" "$DEPLOY_CARD_DIR/home-energy-manager-debug-card.js"
   cp -a "$SOURCE_COMPONENT_DIR/." "$DEPLOY_COMPONENT_DIR/"
 
   DEPLOY_REPORT_AFTER="$(report_build_from_marker_file "$REPO_DIR/examples/www/LATEST_REPORT_BUILD.txt")"
   if [ "$DEPLOY_REPORT_AFTER" = "error" ] || [ "$DEPLOY_REPORT_AFTER" = "missing" ]; then
-    DEPLOY_REPORT_AFTER="$(report_build_from_file "$DEPLOY_CARD_DIR/bytewatt-report-card.js")"
+    DEPLOY_REPORT_AFTER="$(report_build_from_file "$DEPLOY_CARD_DIR/home-energy-manager-report-card.js")"
   fi
-  DEPLOY_DEBUG_AFTER="$(debug_build_from_file "$DEPLOY_CARD_DIR/bytewatt-debug-card.js")"
+  DEPLOY_DEBUG_AFTER="$(debug_build_from_file "$DEPLOY_CARD_DIR/home-energy-manager-debug-card.js")"
   DEPLOY_COMPONENT_VERSION_AFTER="$(integration_version_from_manifest "$DEPLOY_COMPONENT_DIR/manifest.json")"
 
   if [ "$SOURCE_REPORT_BUILD" = "error" ] || [ "$SOURCE_REPORT_BUILD" = "missing" ] || [ "$DEPLOY_REPORT_BEFORE" = "error" ] || [ "$DEPLOY_REPORT_BEFORE" = "missing" ] || [ "$DEPLOY_REPORT_AFTER" = "error" ] || [ "$DEPLOY_REPORT_AFTER" = "missing" ]; then
@@ -161,10 +161,10 @@ deploy_repo_to_ha() {
 
   echo ""
   echo "Deployed files:"
-  echo "  $SOURCE_CARD_DIR/bytewatt-policy-card.js -> $DEPLOY_CARD_DIR/bytewatt-policy-card.js"
-  echo "  $SOURCE_CARD_DIR/bytewatt-report-card.js -> $DEPLOY_CARD_DIR/bytewatt-report-card.js"
-  echo "  $SOURCE_CARD_DIR/bytewatt-report-card.008.js -> $DEPLOY_CARD_DIR/bytewatt-report-card.008.js"
-  echo "  $SOURCE_CARD_DIR/bytewatt-debug-card.js -> $DEPLOY_CARD_DIR/bytewatt-debug-card.js"
+  echo "  $SOURCE_CARD_DIR/home-energy-manager-policy-card.js -> $DEPLOY_CARD_DIR/home-energy-manager-policy-card.js"
+  echo "  $SOURCE_CARD_DIR/home-energy-manager-report-card.js -> $DEPLOY_CARD_DIR/home-energy-manager-report-card.js"
+  echo "  $SOURCE_CARD_DIR/home-energy-manager-report-card.008.js -> $DEPLOY_CARD_DIR/home-energy-manager-report-card.008.js"
+  echo "  $SOURCE_CARD_DIR/home-energy-manager-debug-card.js -> $DEPLOY_CARD_DIR/home-energy-manager-debug-card.js"
   echo "  $SOURCE_COMPONENT_DIR -> $DEPLOY_COMPONENT_DIR"
   echo "Report build (deploy after): $DEPLOY_REPORT_AFTER"
   echo "Debug build (deploy after): $DEPLOY_DEBUG_AFTER"

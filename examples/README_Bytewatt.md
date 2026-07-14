@@ -1,4 +1,4 @@
-# ByteWatt UI Examples
+# Home Energy Manager UI Examples
 
 This folder contains two UI artifacts linked to the current branch work:
 
@@ -6,14 +6,14 @@ This folder contains two UI artifacts linked to the current branch work:
   Immediate-use Lovelace YAML using built-in cards.
 - `lovelace/bytewatt_report_card.yaml`
   Minimal view config for the custom reporting card.
-- `www/bytewatt-policy-card.js`
+- `www/home-energy-manager-policy-card.js`
   A custom card scaffold that mirrors the Byte-Watt mobile app layout more
   closely while keeping unsupported controls visibly marked as not enabled.
-- `www/bytewatt-report-card.js`
+- `www/home-energy-manager-report-card.js`
   A thin loader that imports the current reporting build.
-- `www/bytewatt-report-card.008.js`
+- `www/home-energy-manager-report-card.008.js`
   The current reporting card build for power-flow, daily summaries, and chart data.
-- `www/bytewatt-debug-card.js`
+- `www/home-energy-manager-debug-card.js`
   A focused inspector card for raw entity state, archive metadata, and probe actions.
 
 ## Why Both Exist
@@ -82,28 +82,28 @@ Notes:
 
 Copy the working file from `examples/www/` to your Home Assistant `www` folder:
 
-- `/config/www/community/home-energy-manager-card/bytewatt-policy-card.js`
-- `/config/www/community/home-energy-manager-card/bytewatt-report-card.js`
-- `/config/www/community/home-energy-manager-card/bytewatt-report-card.008.js`
+- `/config/www/community/home-energy-manager-card/home-energy-manager-policy-card.js`
+- `/config/www/community/home-energy-manager-card/home-energy-manager-report-card.js`
+- `/config/www/community/home-energy-manager-card/home-energy-manager-report-card.008.js`
 
 Then add it as a dashboard resource using a fixed filename and a cache-buster:
 
 ```yaml
-url: /local/community/home-energy-manager-card/bytewatt-policy-card.js?v=049
+url: /local/community/home-energy-manager-card/home-energy-manager-policy-card.js?v=049
 type: module
 ```
 
 Reporting card:
 
 ```yaml
-url: /local/community/home-energy-manager-card/bytewatt-report-card.js?v=167
+url: /local/community/home-energy-manager-card/home-energy-manager-report-card.js?v=295
 type: module
 ```
 
 Debug card:
 
 ```yaml
-url: /local/community/home-energy-manager-card/bytewatt-debug-card.js?v=004
+url: /local/community/home-energy-manager-card/home-energy-manager-debug-card.js?v=027
 type: module
 ```
 
@@ -115,7 +115,7 @@ card and backend stay aligned.
 
 To force Home Assistant and the browser to load a fresh custom-card build:
 
-1. Keep the resource filename fixed as `bytewatt-policy-card.js`
+1. Keep the resource filename fixed as `home-energy-manager-policy-card.js`
 2. Increment the internal build number in the JS file
 3. Increment only the Lovelace `?v=` value to the same number
 4. Keep numbered archive copies in `examples/www/` for rollback/reference
@@ -123,21 +123,21 @@ To force Home Assistant and the browser to load a fresh custom-card build:
 Example next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager-card/bytewatt-policy-card.js?v=049
+url: /local/community/home-energy-manager-card/home-energy-manager-policy-card.js?v=049
 type: module
 ```
 
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager-card/bytewatt-report-card.js?v=167
+url: /local/community/home-energy-manager-card/home-energy-manager-report-card.js?v=295
 type: module
 ```
 
 Debug card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager-card/bytewatt-debug-card.js?v=004
+url: /local/community/home-energy-manager-card/home-energy-manager-debug-card.js?v=027
 type: module
 ```
 

@@ -1,4 +1,4 @@
-const BYTEWATT_DEBUG_CARD_BUILD = "027";
+const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "027";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
@@ -6,7 +6,7 @@ class ByteWattDebugCard extends HTMLElement {
     this._config = {
       entity_prefix: prefix,
       settings_target: config?.settings_target || `select.${prefix}_settings_target`,
-      title: config?.title || "ByteWatt Debug",
+      title: config?.title || "Home Energy Manager Debug",
       ...config,
     };
     this._debugStorageKey = `bytewatt-debug:${this._config.entity_prefix}:${this._config.settings_target}`;
@@ -1458,7 +1458,7 @@ class ByteWattDebugCard extends HTMLElement {
             <div class="title">
               <span>BW</span>
               <span>${this._escape(this._config.title)}</span>
-              <span class="badge">v${BYTEWATT_DEBUG_CARD_BUILD}</span>
+          <span class="badge">v${HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD}</span>
             </div>
             <div class="button-row header-actions">
               <button class="button" type="button" id="probe-button">Probe archive</button>
@@ -1668,13 +1668,13 @@ class ByteWattDebugCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("bytewatt-debug-card")) {
-  customElements.define("bytewatt-debug-card", ByteWattDebugCard);
+if (!customElements.get("home-energy-manager-debug-card")) {
+  customElements.define("home-energy-manager-debug-card", ByteWattDebugCard);
 }
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "bytewatt-debug-card",
-  name: "ByteWatt Debug Card",
-  description: `ByteWatt debug card build ${BYTEWATT_DEBUG_CARD_BUILD}.`,
+  type: "home-energy-manager-debug-card",
+  name: "Home Energy Manager Debug Card",
+  description: `Home Energy Manager debug card build ${HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD}.`,
 });

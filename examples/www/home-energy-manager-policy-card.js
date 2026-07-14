@@ -1,4 +1,4 @@
-const BYTEWATT_POLICY_CARD_BUILD = "049";
+const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "049";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
@@ -1004,7 +1004,7 @@ class ByteWattPolicyCard extends HTMLElement {
               <div class="title-icon">${cardIcon}</div>
               <div class="title-wrap">
                 <div class="title">${cardTitle}</div>
-                <div class="version-badge">v${BYTEWATT_POLICY_CARD_BUILD}</div>
+                <div class="version-badge">v${HOME_ENERGY_MANAGER_POLICY_CARD_BUILD}</div>
                 <button class="cache-button" type="button" data-clear-cache>Clear Cache</button>
               </div>
             </div>
@@ -3082,16 +3082,16 @@ class ByteWattPolicyCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("bytewatt-policy-card")) {
-  customElements.define("bytewatt-policy-card", ByteWattPolicyCard);
+if (!customElements.get("home-energy-manager-policy-card")) {
+  customElements.define("home-energy-manager-policy-card", ByteWattPolicyCard);
 }
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "bytewatt-policy-card",
-  name: "ByteWatt Policy Card",
-  description: `ByteWatt policy card build ${BYTEWATT_POLICY_CARD_BUILD}.`,
+  type: "home-energy-manager-policy-card",
+  name: "Home Energy Manager Policy Card",
+  description: `Home Energy Manager policy card build ${HOME_ENERGY_MANAGER_POLICY_CARD_BUILD}.`,
 });
 
-window.bytewattPolicyCardBuild = BYTEWATT_POLICY_CARD_BUILD;
+window.homeEnergyManagerPolicyCardBuild = HOME_ENERGY_MANAGER_POLICY_CARD_BUILD;
 
