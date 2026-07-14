@@ -5,7 +5,7 @@ cd /config || exit 1
 TOKEN_FILE="/config/.github_pat"
 LOG_DIR="/config/www/ha-git"
 LOG="$LOG_DIR/home_energy_manager_git_last.txt"
-SCRIPT_BUILD="2026-07-14.01"
+SCRIPT_BUILD="2026-07-14.02"
 REPO_URL="github.com/icpiot/home-energy-manager.git"
 REPO_DIR="/config/repos/home-energy-manager"
 BRANCH="${HOME_ENERGY_MANAGER_GIT_BRANCH:-${BYTEWATT_GIT_BRANCH:-main}}"
@@ -74,25 +74,9 @@ mkdir -p "$LOG_DIR"
   echo "Changes found:"
   git -C "$REPO_DIR" status --short
   echo ""
-  echo "Staging repo-managed Home Energy Manager files..."
+  echo "Staging the full repository tree..."
 
-  git -C "$REPO_DIR" add \
-    README.md \
-    info.md \
-    RECOVERY_SYSTEM.md \
-    hacs.json \
-    pytest.ini \
-    requirements_test.txt \
-    scripts/ \
-    custom_components/bytewatt/ \
-    examples/www/bytewatt-policy-card.js \
-    examples/www/bytewatt-report-card.js \
-    examples/www/bytewatt-debug-card.js \
-    examples/www/LATEST_BUILD.txt \
-    examples/www/LATEST_REPORT_BUILD.txt \
-    examples/www/LATEST_DEBUG_BUILD.txt \
-    tests/ \
-    2>/dev/null
+  git -C "$REPO_DIR" add -A
 
   echo ""
   echo "Staged changes:"
@@ -100,11 +84,11 @@ mkdir -p "$LOG_DIR"
   echo ""
 
   if [ -z "$(git -C "$REPO_DIR" diff --cached --name-only)" ]; then
-    echo "No approved files were staged. Push cancelled."
+    echo "No changes were staged. Push cancelled."
     exit 1
   fi
 
-  MSG="Home Energy Manager repo-managed update $(date '+%Y-%m-%d %H:%M:%S %Z')"
+  MSG="Home Energy Manager repo sync $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
   echo "Committing: $MSG"
   git -C "$REPO_DIR" commit -m "$MSG" || exit 1
