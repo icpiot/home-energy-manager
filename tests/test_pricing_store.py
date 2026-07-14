@@ -5,7 +5,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from custom_components.bytewatt.pricing import PriceRecord
-from custom_components.bytewatt.pricing_store import PriceHistoryStore
+from custom_components.bytewatt.pricing_store import (
+    PriceHistoryStore,
+    load_pricing_history_file,
+    write_pricing_history_file,
+)
 
 
 class _FakeConfig:
@@ -61,3 +65,31 @@ def test_pricing_store_uses_safe_scope_names(tmp_path):
     asyncio.run(store.async_store_record(scope_key="../evil scope", label="All systems", record=record))
 
     assert (tmp_path / "www" / "home-energy-manager-pricing" / "entry-1" / "pricing.json").exists()
+
+
+def test_pricing_history_file_helpers_round_trip(tmp_path):
+    path = tmp_path / "pricing.json"
+    payload = {
+        "version": 1,
+        "updated": "2026-07-14T00:00:00+00:00",
+        "scopes": {
+            "all": {
+                "label": "All systems",
+                "updated": "2026-07-14T00:00:00+00:00",
+                "records": [
+                    PriceRecord(flow="export", mode="fixed", value=7.5).to_dict(),
+                ],
+            }
+        },
+    }
+
+    write_pricing_history_file(path, payload)
+    loaded = load_pricing_history_file(path)
+
+    assert loaded == payload
+
+
+def test_pricing_history_file_helpers_handle_missing_file(tmp_path):
+    path = tmp_path / "missing.json"
+
+    assert load_pricing_history_file(path) == {}

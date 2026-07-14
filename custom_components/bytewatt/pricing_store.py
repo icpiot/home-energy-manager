@@ -24,6 +24,23 @@ def _safe_filename(value: str) -> str:
     return value or "all"
 
 
+def load_pricing_history_file(path: Path) -> dict[str, Any]:
+    """Load a raw pricing history JSON file."""
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Unable to read pricing history file %s: %s", path, err)
+        return {}
+
+
+def write_pricing_history_file(path: Path, payload: dict[str, Any]) -> None:
+    """Write a raw pricing history JSON file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
 class PriceHistoryStore:
     """Persist pricing records per scope.
 
@@ -93,19 +110,13 @@ class PriceHistoryStore:
         records.append(record.to_dict())
         history["version"] = 1
         history["updated"] = dt_util.utcnow().isoformat()
-        self.history_file.write_text(
-            json.dumps(history, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        self._save_sync(history)
 
     def _load_sync(self) -> dict[str, Any]:
-        if not self.history_file.exists():
-            return {}
-        try:
-            return json.loads(self.history_file.read_text(encoding="utf-8"))
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning("Unable to read existing pricing history file: %s", err)
-            return {}
+        return load_pricing_history_file(self.history_file)
+
+    def _save_sync(self, history: dict[str, Any]) -> None:
+        write_pricing_history_file(self.history_file, history)
 
     def _history_sync(self, scope_key: str) -> PriceHistory:
         history = self._load_sync()
