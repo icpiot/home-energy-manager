@@ -624,8 +624,6 @@ class NeovoltClient:
                                     carbon_kg = today_data.get("carbonNum")
                                     if carbon_kg is not None:
                                         battery_data["CO2_Reduction_Tons"] = round(carbon_kg / 1000, 2)
-                                    battery_data["Today_Income"] = today_data.get("todayIncome")
-                                    battery_data["Total_Income"] = today_data.get("totalIncome")
                             elif today_result.get("code") == 6069:
                                 _LOGGER.warning("Session expired (code 6069) during today's stats fetch")
                                 if _retry_count < MAX_RELOGIN_RETRIES and await self.async_login():
@@ -803,8 +801,6 @@ class NeovoltClient:
                             carbon_kg = today_data.get("carbonNum")
                             if carbon_kg is not None:
                                 battery_data["CO2_Reduction_Tons"] = round(carbon_kg / 1000, 2)
-                            battery_data["Today_Income"] = today_data.get("todayIncome")
-                            battery_data["Total_Income"] = today_data.get("totalIncome")
                     else:
                         _LOGGER.debug(
                             "Daily summary unavailable for %s (%s): HTTP %s",

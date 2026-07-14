@@ -254,8 +254,6 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
         grid_battery_charge = self._sum_snapshot_value(snapshots, "Grid_Based_Battery_Charge")
         trees_planted = self._sum_snapshot_value(snapshots, "Trees_Planted")
         co2_reduction = self._sum_snapshot_value(snapshots, "CO2_Reduction_Tons")
-        today_income = self._sum_snapshot_value(snapshots, "Today_Income")
-        total_income = self._sum_snapshot_value(snapshots, "Total_Income")
 
         soc_values: List[float] = []
         power_sources: List[str] = []
@@ -307,8 +305,6 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
             "Self_Sufficiency": self_sufficiency,
             "Trees_Planted": trees_planted,
             "CO2_Reduction_Tons": co2_reduction,
-            "Today_Income": today_income,
-            "Total_Income": total_income,
             "PV_Power_House": pv_power_house,
             "PV_Charging_Battery": pv_charging_battery,
             "Grid_Based_Battery_Charge": grid_battery_charge,
