@@ -69,7 +69,7 @@ then runs `pytest`.
 The deployed Home Assistant asset folders use project-neutral names:
 
 - `/config/www/home-energy-manager-history`
-- `/config/www/community/home-energy-manager-card`
+- `/config/www/community/home-energy-manager`
 
 The integration package path remains `custom_components/bytewatt` for Home
 Assistant compatibility.
