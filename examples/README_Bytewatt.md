@@ -85,6 +85,7 @@ Copy the working file from `examples/www/` to your Home Assistant `www` folder:
 - `/config/www/community/home-energy-manager/home-energy-manager-policy-card.js`
 - `/config/www/community/home-energy-manager/home-energy-manager-report-card.js`
 - `/config/www/community/home-energy-manager/home-energy-manager-report-card.008.js`
+- `/config/www/ha-git/home_energy_manager_git_log.html`
 
 Then add it as a dashboard resource using a fixed filename and a cache-buster:
 
@@ -105,6 +106,14 @@ Debug card:
 ```yaml
 url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=027
 type: module
+```
+
+Log viewer:
+
+```yaml
+type: iframe
+url: /local/ha-git/home_energy_manager_git_log.html?v=001
+aspect_ratio: 180%
 ```
 
 If you are using the repo-managed HA pull script from `scripts/ha_git_pull.sh`,
@@ -143,7 +152,7 @@ type: module
 
 Current build stamp in this repo:
 
-- Policy card: `049`
+- Policy card: `001`
 - Reporting card: `167`
 - Debug card: `004`
 

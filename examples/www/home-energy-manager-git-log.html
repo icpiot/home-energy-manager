@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Energy Manager Git Log</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1722;
+      --panel: #17263a;
+      --panel-2: #101926;
+      --text: #eaf4ff;
+      --muted: #8fb0d6;
+      --accent: #5db7ff;
+      --border: rgba(127, 173, 227, 0.22);
+    }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: linear-gradient(180deg, var(--bg), var(--panel-2));
+      color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      padding: 14px;
+      box-sizing: border-box;
+    }
+    .wrap {
+      display: grid;
+      gap: 12px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(23, 38, 58, 0.96), rgba(16, 25, 38, 0.98));
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+    .body {
+      padding: 14px 16px 16px;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 12.5px/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      color: #f3f8ff;
+    }
+    .status {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .error {
+      color: #ffb1b1;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    button {
+      appearance: none;
+      border: 1px solid rgba(108, 180, 255, 0.34);
+      border-radius: 999px;
+      background: rgba(46, 87, 134, 0.35);
+      color: var(--text);
+      padding: 7px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:hover {
+      background: rgba(57, 102, 160, 0.46);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <div>
+          <div class="title">Home Energy Manager Git Log</div>
+          <div class="meta" id="meta">Loading...</div>
+        </div>
+        <div class="toolbar">
+          <button id="refresh">Refresh now</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="status" id="status">Fetching latest log...</div>
+        <pre id="log"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
+    const REFRESH_MS = 5000;
+    const meta = document.getElementById("meta");
+    const statusEl = document.getElementById("status");
+    const logEl = document.getElementById("log");
+    const refreshBtn = document.getElementById("refresh");
+
+    async function loadLog() {
+      statusEl.textContent = "Fetching latest log...";
+      statusEl.classList.remove("error");
+      try {
+        const response = await fetch(`${LOG_URL}?_=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const text = await response.text();
+        logEl.textContent = text || "(log is empty)";
+        meta.textContent = `Updated ${new Date().toLocaleString()}`;
+        statusEl.textContent = "Auto-refreshing every 5 seconds.";
+      } catch (err) {
+        logEl.textContent = "";
+        meta.textContent = `Updated ${new Date().toLocaleString()}`;
+        statusEl.textContent = `Failed to load log: ${err.message}`;
+        statusEl.classList.add("error");
+      }
+    }
+
+    refreshBtn.addEventListener("click", loadLog);
+    loadLog();
+    setInterval(loadLog, REFRESH_MS);
+  </script>
+</body>
+</html>

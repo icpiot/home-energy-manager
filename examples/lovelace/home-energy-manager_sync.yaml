@@ -1,0 +1,19 @@
+type: vertical-stack
+cards:
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: Home Energy Pull
+        icon: mdi:cloud-download-outline
+        tap_action:
+          action: call-service
+          service: shell_command.git_pull_config
+      - type: button
+        name: Home Energy Push
+        icon: mdi:cloud-upload-outline
+        tap_action:
+          action: call-service
+          service: shell_command.git_push_config
+  - type: iframe
+    url: /local/ha-git/home_energy_manager_git_log.html?v=001
+    aspect_ratio: 180%

@@ -5,13 +5,15 @@ cd /config || exit 1
 TOKEN_FILE="/config/.github_pat"
 LOG_DIR="/config/www/ha-git"
 LOG="$LOG_DIR/home_energy_manager_git_last.txt"
-SCRIPT_BUILD="2026-07-14.01"
+SCRIPT_BUILD="2026-07-14.02"
 REPO_URL="github.com/icpiot/home-energy-manager.git"
 REPO_DIR="/config/repos/home-energy-manager"
 SOURCE_CARD_DIR="$REPO_DIR/examples/www"
 SOURCE_COMPONENT_DIR="$REPO_DIR/custom_components/bytewatt"
+SOURCE_LOG_VIEWER="$REPO_DIR/examples/www/home-energy-manager-git-log.html"
 DEPLOY_CARD_DIR="/config/www/community/home-energy-manager"
 DEPLOY_COMPONENT_DIR="/config/custom_components/bytewatt"
+DEPLOY_LOG_DIR="/config/www/ha-git"
 BRANCH="${HOME_ENERGY_MANAGER_GIT_BRANCH:-${BYTEWATT_GIT_BRANCH:-main}}"
 
 mkdir -p "$LOG_DIR"
@@ -113,6 +115,11 @@ deploy_repo_to_ha() {
     exit 1
   fi
 
+  if [ ! -f "$SOURCE_LOG_VIEWER" ]; then
+    echo "ERROR: Missing source file: $SOURCE_LOG_VIEWER"
+    exit 1
+  fi
+
   if [ ! -f "$SOURCE_COMPONENT_DIR/manifest.json" ]; then
     echo "ERROR: Missing integration manifest: $SOURCE_COMPONENT_DIR/manifest.json"
     exit 1
@@ -120,6 +127,7 @@ deploy_repo_to_ha() {
 
   mkdir -p "$DEPLOY_CARD_DIR"
   mkdir -p "$DEPLOY_COMPONENT_DIR"
+  mkdir -p "$DEPLOY_LOG_DIR"
 
   SOURCE_REPORT_BUILD="$(report_build_from_marker_file "$SOURCE_CARD_DIR/LATEST_REPORT_BUILD.txt")"
   if [ "$SOURCE_REPORT_BUILD" = "error" ] || [ "$SOURCE_REPORT_BUILD" = "missing" ]; then
@@ -145,6 +153,7 @@ deploy_repo_to_ha() {
   cp -f "$SOURCE_CARD_DIR/home-energy-manager-report-card.js" "$DEPLOY_CARD_DIR/home-energy-manager-report-card.js"
   cp -f "$SOURCE_CARD_DIR/home-energy-manager-report-card.008.js" "$DEPLOY_CARD_DIR/home-energy-manager-report-card.008.js"
   cp -f "$SOURCE_CARD_DIR/home-energy-manager-debug-card.js" "$DEPLOY_CARD_DIR/home-energy-manager-debug-card.js"
+  cp -f "$SOURCE_LOG_VIEWER" "$DEPLOY_LOG_DIR/home_energy_manager_git_log.html"
   cp -a "$SOURCE_COMPONENT_DIR/." "$DEPLOY_COMPONENT_DIR/"
 
   DEPLOY_REPORT_AFTER="$(report_build_from_marker_file "$REPO_DIR/examples/www/LATEST_REPORT_BUILD.txt")"
@@ -165,6 +174,7 @@ deploy_repo_to_ha() {
   echo "  $SOURCE_CARD_DIR/home-energy-manager-report-card.js -> $DEPLOY_CARD_DIR/home-energy-manager-report-card.js"
   echo "  $SOURCE_CARD_DIR/home-energy-manager-report-card.008.js -> $DEPLOY_CARD_DIR/home-energy-manager-report-card.008.js"
   echo "  $SOURCE_CARD_DIR/home-energy-manager-debug-card.js -> $DEPLOY_CARD_DIR/home-energy-manager-debug-card.js"
+  echo "  $SOURCE_LOG_VIEWER -> $DEPLOY_LOG_DIR/home_energy_manager_git_log.html"
   echo "  $SOURCE_COMPONENT_DIR -> $DEPLOY_COMPONENT_DIR"
   echo "Report build (deploy after): $DEPLOY_REPORT_AFTER"
   echo "Debug build (deploy after): $DEPLOY_DEBUG_AFTER"
