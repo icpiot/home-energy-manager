@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "007";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "008";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -104,7 +104,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _managedEntities() {
-    return this._states().filter((entity) => /home_energy_manager|bytewatt/i.test(entity.entity_id));
+    return this._states().filter((entity) => /\.home_energy_manager(?:_|$)/i.test(entity.entity_id));
   }
 
   _entityCountByDomain(domain) {
@@ -123,10 +123,30 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return this._managedEntities()
       .slice(0, limit)
       .map((entity) => {
-        const state = entity.state ?? "unknown";
-        return `<li><span>${entity.entity_id}</span><strong>${state}</strong></li>`;
+        return `<li><span>${entity.entity_id}</span><strong>${this._formatEntityState(entity)}</strong></li>`;
       })
       .join("");
+  }
+
+  _entityByKey(key, domain = "sensor") {
+    const baseEntityId = `${domain}.home_energy_manager_${key}`;
+    return this._hass?.states?.[baseEntityId]
+      || this._managedEntities().find((entity) => (
+        entity.entity_id === baseEntityId || entity.entity_id.startsWith(`${baseEntityId}_`)
+      ));
+  }
+
+  _formatEntityState(entity, fallback = "Unavailable") {
+    if (!entity || entity.state === "unknown" || entity.state === "unavailable") {
+      return fallback;
+    }
+
+    const unit = entity.attributes?.unit_of_measurement;
+    return unit ? `${entity.state} ${unit}` : entity.state;
+  }
+
+  _formattedState(key, domain = "sensor", fallback = "Unavailable") {
+    return this._formatEntityState(this._entityByKey(key, domain), fallback);
   }
 
   _firstManagedState(pattern, fallback = "Unavailable") {
@@ -154,10 +174,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _overviewPage() {
     const sampleList = this._entitySample(6) || "<li><span>No matching entities yet</span><strong>idle</strong></li>";
     const overviewTiles = [
-      { label: "Battery", value: this._firstManagedState(/battery_percentage|soc/i), note: "Current charge" },
-      { label: "Solar", value: this._firstManagedState(/pv_power$/i), note: "Live PV power" },
-      { label: "Grid", value: this._firstManagedState(/grid_import_today|grid_power_consumption/i), note: "Import / flow" },
-      { label: "Load", value: this._firstManagedState(/house_consumption/i), note: "Home demand" },
+      { label: "Battery", value: this._formattedState("battery_percentage"), note: "Current charge" },
+      { label: "Solar", value: this._formattedState("pv_power"), note: "Live PV power" },
+      { label: "Grid", value: this._formattedState("grid_consumption"), note: "Live grid flow" },
+      { label: "Load", value: this._formattedState("house_consumption"), note: "Home demand" },
     ];
     return `
       <section class="overview">
@@ -673,7 +693,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <article>
             <h2>Managed</h2>
             <p>${managedCount}</p>
-            <small>Entities matching home_energy_manager or bytewatt.</small>
+            <small>Entities provided by Home Energy Manager.</small>
           </article>
           <article>
             <h2>Sensors</h2>
