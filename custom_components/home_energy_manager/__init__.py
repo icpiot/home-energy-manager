@@ -8,10 +8,8 @@ from typing import Any, Optional
 import voluptuous as vol
 
 from homeassistant.components.frontend import (
-    add_extra_js_url,
     async_register_built_in_panel,
     async_remove_panel,
-    remove_extra_js_url,
 )
 from homeassistant.components.persistent_notification import (
     async_create as notify_create,
@@ -92,6 +90,14 @@ PANEL_CONFIG = {
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
     "theme": "midnight",
 }
+PANEL_CUSTOM_CONFIG = {
+    "_panel_custom": {
+        "name": PANEL_COMPONENT_NAME,
+        "module_url": PANEL_MODULE_URL,
+        "embed_iframe": False,
+        "trust_external": False,
+    }
+}
 
 # Services are domain-level; registered once via hass.services.has_service() guard.
 
@@ -111,14 +117,13 @@ def _register_frontend_panel(hass: HomeAssistant) -> None:
     if domain_data.get("frontend_panel_registered"):
         return
 
-    add_extra_js_url(hass, PANEL_MODULE_URL)
     async_register_built_in_panel(
         hass,
-        PANEL_COMPONENT_NAME,
+        component_name="custom",
         sidebar_title="Home Energy Manager",
         sidebar_icon="mdi:solar-power-variant",
         frontend_url_path=PANEL_FRONTEND_URL_PATH,
-        config=PANEL_CONFIG,
+        config={**PANEL_CONFIG, **PANEL_CUSTOM_CONFIG},
         show_in_sidebar=True,
         update=True,
     )
@@ -134,7 +139,6 @@ def _unregister_frontend_panel(hass: HomeAssistant) -> None:
         return
 
     async_remove_panel(hass, PANEL_FRONTEND_URL_PATH, warn_if_unknown=False)
-    remove_extra_js_url(hass, PANEL_MODULE_URL)
     domain_data.pop("frontend_panel_registered", None)
 
 
