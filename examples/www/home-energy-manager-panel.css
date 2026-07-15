@@ -339,6 +339,50 @@
   margin-top: 4px;
 }
 
+.history {
+  display: grid;
+  gap: 14px;
+  max-width: 1380px;
+  margin: 0 auto 18px;
+}
+
+.history__hero {
+  display: grid;
+  gap: 16px;
+}
+
+.history__tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.history-tile {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 100%),
+    var(--hem-panel-surface);
+  border: 1px solid var(--hem-panel-border);
+  border-radius: 20px;
+  padding: 18px;
+  display: grid;
+  gap: 6px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+.history-tile span {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  color: var(--hem-panel-accent);
+}
+
+.history-tile strong {
+  font-size: 1.5rem;
+}
+
+.history__grid {
+  margin-top: 4px;
+}
+
 .grid--two {
   grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
 }
@@ -405,7 +449,8 @@
   .cards,
   .overview__tiles,
   .battery__tiles,
-  .solar__tiles {
+  .solar__tiles,
+  .history__tiles {
     grid-template-columns: 1fr;
   }
 

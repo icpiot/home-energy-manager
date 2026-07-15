@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "005";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "006";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -394,31 +394,71 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Debug build", value: this._firstState(/debug_build|latest_debug_build/i, "Unavailable") },
       { label: "Last update", value: this._firstState(/last_update|last_updated/i) },
     ];
+    const historySummary = [
+      { label: "Report build", value: this._firstState(/report_build|latest_report_build/i, "v006") },
+      { label: "Data freshness", value: this._firstState(/last_update|last_updated/i) },
+      { label: "Log viewer", value: this._firstState(/git_log|report_build/i, "Ready") },
+      { label: "Trend store", value: this._firstState(/history|report_history/i, "Available") },
+    ];
     return `
-      <section class="grid grid--two">
-        <article class="panel-card panel-card--wide">
+      <section class="history">
+        <article class="panel-card panel-card--wide history__hero">
           <div class="panel-card__header">
             <h2>History</h2>
             <span>Timeline</span>
           </div>
           <p>
-            This will show usage, policy changes, and daily trends. For now it provides a
-            light placeholder so the menu feels complete.
+            This is where usage trends, state changes, and future reporting views will live.
+            It gives us a dedicated place for history without making Lovelace the primary UI.
           </p>
-          <ul class="key-list key-list--compact">
-            ${this._valueList(historyItems)}
-          </ul>
-        </article>
-        <article class="panel-card">
-          <div class="panel-card__header">
-            <h2>History Notes</h2>
-            <span>Planned</span>
+          <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
+            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
           </div>
-          <p>
-            We can later add charts, event logs, and links into any saved history store
-            without forcing Lovelace to be the primary UI.
-          </p>
         </article>
+
+        <section class="history__tiles">
+          ${historySummary.map((item) => `
+            <article class="history-tile">
+              <span>${item.label}</span>
+              <strong>${item.value}</strong>
+            </article>
+          `).join("")}
+        </section>
+
+        <section class="grid history__grid">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>History Snapshot</h2>
+              <span>Timeline</span>
+            </div>
+            <p>
+              The history tab will eventually grow into a proper timeline for reports, events,
+              and daily operation summaries.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(historyItems)}
+            </ul>
+          </article>
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>History Notes</h2>
+              <span>Planned</span>
+            </div>
+            <p>
+              This can become the place for report generation, usage summaries, and links into
+              the saved history store.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList([
+                { label: "Trend depth", value: "Daily / weekly / monthly" },
+                { label: "Source", value: "Home Assistant states" },
+                { label: "History page", value: this._pageLabel() },
+              ])}
+            </ul>
+          </article>
+        </section>
       </section>
     `;
   }
