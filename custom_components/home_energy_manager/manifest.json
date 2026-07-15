@@ -1,6 +1,6 @@
 {
-  "domain": "bytewatt",
-  "name": "Byte-Watt Battery Monitor",
+  "domain": "home_energy_manager",
+  "name": "Home Energy Manager",
   "codeowners": ["@candreacchio"],
   "config_flow": true,
   "dependencies": [],

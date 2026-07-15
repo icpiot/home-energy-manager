@@ -2,21 +2,24 @@
 
 cd /config || exit 1
 
-TOKEN_FILE="/config/.github_pat"
-LOG_DIR="/config/www/ha-git"
-LOG="$LOG_DIR/home_energy_manager_git_last.txt"
-SCRIPT_BUILD="2026-07-14.02"
-REPO_URL="github.com/icpiot/home-energy-manager.git"
-REPO_DIR="/config/repos/home-energy-manager"
-BRANCH="${HOME_ENERGY_MANAGER_GIT_BRANCH:-${BYTEWATT_GIT_BRANCH:-main}}"
+PROJECT_NAME="${PROJECT_NAME:-Home Energy Manager}"
+PROJECT_SLUG="${PROJECT_SLUG:-home_energy_manager}"
+TOKEN_FILE="${TOKEN_FILE:-/config/.github_pat}"
+LOG_DIR="${LOG_DIR:-/config/www/ha-git}"
+LOG="${LOG:-$LOG_DIR/${PROJECT_SLUG}_git_last.txt}"
+SCRIPT_BUILD="${SCRIPT_BUILD:-2026-07-15.02}"
+REPO_URL="${REPO_URL:-github.com/icpiot/home-energy-manager.git}"
+REPO_DIR="${REPO_DIR:-/config/repos/home-energy-manager}"
+BRANCH="${GIT_BRANCH:-main}"
 
 mkdir -p "$LOG_DIR"
 
 {
   echo "=============================="
-  echo "Home Energy Manager Git Push"
+  echo "$PROJECT_NAME Git Push"
   echo "Started: $(date '+%Y-%m-%d %H:%M:%S %Z')"
   echo "Repo: $REPO_DIR"
+  echo "Branch: $BRANCH"
   echo "Script Build: $SCRIPT_BUILD"
   echo "Auth: HTTPS token file"
   echo "Mode: current branch"
@@ -42,8 +45,6 @@ mkdir -p "$LOG_DIR"
 
   AUTH_REMOTE="https://icpiot:${TOKEN}@${REPO_URL}"
 
-  echo "Branch: $BRANCH"
-  echo ""
   echo "Fetching remote branch..."
   git -C "$REPO_DIR" fetch "$AUTH_REMOTE" "$BRANCH" || exit 1
 
@@ -88,7 +89,7 @@ mkdir -p "$LOG_DIR"
     exit 1
   fi
 
-  MSG="Home Energy Manager repo sync $(date '+%Y-%m-%d %H:%M:%S %Z')"
+  MSG="$PROJECT_NAME repo sync $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
   echo "Committing: $MSG"
   git -C "$REPO_DIR" commit -m "$MSG" || exit 1

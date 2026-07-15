@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manual test for the Byte-Watt battery data endpoint.
+"""Manual test for the provider battery data endpoint.
 
 Usage:
     python3 scripts/manual_battery_data_check.py <username> <password> [station_id]
@@ -20,7 +20,7 @@ import requests
 # Make the integration importable when running this script directly.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from custom_components.bytewatt.api.neovolt_auth import (  # noqa: E402
+from custom_components.home_energy_manager.api.neovolt_auth import (  # noqa: E402
     EncryptionError,
     encrypt_password,
 )

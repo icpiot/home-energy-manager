@@ -1,141 +1,216 @@
-# Home Energy Manager
+# Home Energy Manager Integration for Home Assistant
 
-Home Energy Manager is a Home Assistant integration for solar, battery, and
-grid workflows with a focus on:
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 
-- real-time energy monitoring
-- battery scheduling and control
-- solar and load history
-- cost-aware automations
-- battery wear cost modeling
-- forecasting and planning
-- staged settings with submit/discard control
-- automatic recovery for flaky API connections
+Monitor and control battery, solar, and energy data from Home Assistant.
 
-The current implementation ships with the ByteWatt / Neovolt backend as the
-first supported adapter, but the project is intended to grow beyond that
-single vendor.
+The long-term goal is a Frigate-style sidebar panel for daily operation, with
+cards kept as optional building blocks rather than the primary UI.
 
-## Current Status
-
-- Public GitHub repo: `icpiot/home-energy-manager`
-- Default branch: `main`
-- License: MIT
-
-## What’s Included
-
-- Home Assistant custom integration
-- staged settings workflow
-- recovery and diagnostics helpers
-- example Lovelace cards and resource files
-- unit tests and validation workflow
-
-## Installation
-
-### HACS
-
-1. Install [HACS](https://hacs.xyz/) if you have not already.
-2. Add this repository as a custom integration repository in HACS.
-3. Install the integration and restart Home Assistant.
-
-### Manual
-
-Copy `custom_components/bytewatt` into your Home Assistant
-`custom_components/` directory, restart, then add the integration.
-
-## Repo Sync
-
-This repo keeps the Home Assistant sync flow intentionally small:
-
-- `scripts/ha_git_pull.sh` pulls the repo and refreshes the HA deployment copy
-- `scripts/ha_git_push.sh` stages the full repo tree and pushes it back to GitHub
-
-Those two scripts are the only ones you need. The older wrapper scripts were
-removed.
-
-## Testing
-
-Use the repo-local PowerShell helper to run the suite from the project root:
-
-```powershell
-.\scripts\run_tests.ps1
-```
-
-The script creates `.venv` if needed, installs `requirements_test.txt`, and
-then runs `pytest`.
-
-## Asset Paths
-
-The deployed Home Assistant asset folders use project-neutral names:
-
-- `/config/www/home-energy-manager-history`
-- `/config/www/community/home-energy-manager`
-
-The integration package path remains `custom_components/bytewatt` for Home
-Assistant compatibility.
-
-## Pricing Foundation
-
-The repo now includes a vendor-neutral pricing model for future cost and
-income features. It supports:
-
-- fixed import and export tariffs
-- time-of-use windows
-- dynamic interval pricing
-- spike export pricing via higher-priority windows
-
-See `examples/pricing/` for the schema notes and sample JSON.
-
-## Backends
-
-The repo currently includes support for the ByteWatt / Neovolt API. The source
-code and abstractions are being shaped so other solar and battery systems can
-be added later without rebuilding the project from scratch.
+Requires Home Assistant **2024.11.0** or later.
 
 ## Features
 
-- real-time monitoring for solar, battery, and grid power
-- daily and cumulative energy statistics
-- battery charge/discharge scheduling
-- grid feed-in controls
-- host inverter selection for multi-inverter accounts
-- staged settings with submit/discard buttons
-- heartbeat monitoring, circuit breaker, and auto-reconnect
-- optional Lovelace card assets in `examples/`
+- **Real-time monitoring** — SOC, grid / house / PV / battery power flows
+- **Cumulative + today's energy** — solar generation, feed-in, grid import, charge / discharge
+- **Battery control** — charge / discharge time windows, minimum SOC, charge cap,
+  per-slot charge & discharge power, grid charging on/off, discharge time control on/off
+- **Grid Feed-in Control** — enable/disable, cutoff SOC, Time Period 1 start/end/power
+- **Staged-edit workflow** — UI changes accumulate in a *pending* store and are
+  pushed to the inverter in one shot via the **Submit Settings** button (mirrors
+  the portal's Save button and avoids the API's rate-limit failures on rapid
+  sequential writes). A **Discard Pending Settings** button drops them.
+- **Multi-inverter support** — pick which inverter is the Host during setup, change
+  it later via Configure (no need to delete and re-add).
+- **Automatic recovery** — heartbeat monitoring, circuit breaker, auto-reconnect.
+
+## Installation
+
+### HACS (recommended)
+
+1. Install [HACS](https://hacs.xyz/) if you haven't already.
+2. HACS → Integrations → ⋮ → Custom repositories → add this repo URL → Category: Integration.
+3. Install **Home Energy Manager** and restart Home Assistant.
+4. Settings → Devices & Services → Add Integration → search for **Home Energy Manager**.
+
+### Sidebar panel
+
+Add the example `panel_custom` block from
+`examples/panel/home-energy-manager-panel_custom.yaml`
+to your Home Assistant YAML configuration. It registers a left-sidebar panel at
+`/home-energy-manager` and loads the JavaScript module from:
+
+`/local/community/home-energy-manager/home-energy-manager-panel.js?v=001`
+
+The panel ships with built-in theme presets:
+
+- `midnight`
+- `sunrise`
+- `neon`
+
+The Home Assistant deploy scripts are manifest-driven:
+[`scripts/ha_deploy.manifest`](C:\Dev\repos\home-energy-manager\scripts\ha_deploy.manifest)
+controls which repo paths are copied into HA, so the same script shape can be
+reused for other projects by swapping the manifest and environment variables.
+
+### Manual
+
+Copy `custom_components/home_energy_manager` into your Home Assistant `custom_components/`
+directory, restart, then add the integration as above.
+
+## Setup
+
+You'll be asked for:
+
+- **Username** (your provider portal email)
+- **Password**
+- **Scan interval** — 30 s minimum (default 60 s)
+
+If the account has more than one inverter, a second step asks you to pick the
+**Host inverter**. Single-inverter accounts skip that step automatically.
+
+To change which inverter is the Host later: Settings → Devices & Services →
+Home Energy Manager → ⋮ → Reconfigure.
+
+## Entities
+
+| Platform | Entities |
+|---|---|
+| `sensor` | 30+ sensors covering real-time power, today's energy, cumulative totals, environmental stats |
+| `switch` | Grid Charging Battery, Battery Discharge Time Control, Grid Feed-in Function |
+| `number` | Minimum SOC, Battery Charge Cap, Battery Charge Power, Battery Discharge Power, Grid Feed-in Cutoff SOC, Grid Feed-in Time1 Power |
+| `time`   | Charge Start/End, Discharge Start/End, Grid Feed-in Time1 Start/End |
+| `button` | **Submit Settings**, **Discard Pending Settings** |
+
+### Submit/Discard workflow
+
+Changing a switch / number / time entity **does not** immediately write to the
+inverter. The change is held locally and shown on the entity. Press
+**Submit Settings** to push everything pending in one transaction. Press
+**Discard Pending Settings** to drop staged changes and revert entities to the
+inverter's current state.
+
+On a successful submit, a persistent notification confirms. On a failure, the
+notification explains which batch failed and why, and the pending changes are
+**preserved** so you can fix the issue and press Submit again.
 
 ## Services
 
-The integration exposes services for battery and maintenance workflows.
+The legacy "set this one thing" services still work — they stage the change
+and submit immediately (no Submit button press needed for services):
 
-Battery control behavior:
+- `home_energy_manager.set_minimum_soc` — set minimum battery SOC (1–100 %)
+- `home_energy_manager.set_charge_cap` — set charge cap (1–100 %)
+- `home_energy_manager.set_discharge_start_time` / `set_discharge_time` — discharge window
+- `home_energy_manager.set_charge_start_time` / `set_charge_end_time` — charge window
+- `home_energy_manager.update_battery_settings` — set any combination in one call
 
-- discharge windows block battery export outside the configured period
-- charge windows force charging inside the configured period and return to self-consumption mode outside it
-- overlapping daily charge and discharge windows are allowed, with charging taking priority
-- the minimum SOC control is the discharge cutoff reserve
-- UPS reserve keeps the battery above the cutoff when grid-connected after off-grid recovery
+Grid Feed-in:
 
-- `bytewatt.set_minimum_soc`
-- `bytewatt.set_charge_cap`
-- `bytewatt.set_discharge_start_time`
-- `bytewatt.set_discharge_time`
-- `bytewatt.set_charge_start_time`
-- `bytewatt.set_charge_end_time`
-- `bytewatt.update_battery_settings`
-- `bytewatt.set_grid_feedin_enabled`
-- `bytewatt.set_grid_feedin_cutoff_soc`
-- `bytewatt.update_grid_feedin_slot`
-- `bytewatt.force_reconnect`
-- `bytewatt.health_check`
-- `bytewatt.toggle_diagnostics`
+- `home_energy_manager.set_grid_feedin_enabled` — toggle Grid Feed-in Function on/off
+- `home_energy_manager.set_grid_feedin_cutoff_soc` — set discharging cutoff SOC (0–100 %)
+- `home_energy_manager.update_grid_feedin_slot` — set start/end/power for slot 1–6
+
+Maintenance:
+
+- `home_energy_manager.force_reconnect` — drop the session and re-authenticate
+- `home_energy_manager.health_check` — run network + auth + API diagnostics
+- `home_energy_manager.toggle_diagnostics` — verbose API logging on/off
+
+All services accept an optional `entry_id` field. If you have a single
+Byte-Watt account configured you can omit it; with multiple accounts it's
+required (the call will tell you which entry_ids exist).
+
+## Example automations
+
+```yaml
+automation:
+  - alias: "Peak — discharge"
+    trigger:
+      platform: state
+      entity_id: sensor.electricity_price_tier
+      to: 'peak'
+    action:
+      service: home_energy_manager.update_battery_settings
+      data:
+        start_discharge: "17:00"
+        end_discharge: "22:00"
+        minimum_soc: 20
+
+  - alias: "Off-peak — charge"
+    trigger:
+      platform: state
+      entity_id: sensor.electricity_price_tier
+      to: 'off_peak'
+    action:
+      service: home_energy_manager.update_battery_settings
+      data:
+        start_charge: "01:00"
+        end_charge: "05:00"
+
+  - alias: "Daytime — enable grid feed-in"
+    trigger:
+      platform: time
+      at: "09:00:00"
+    action:
+      service: home_energy_manager.set_grid_feedin_enabled
+      data:
+        feedin_enabled: true
+```
+
+## Configuration options
+
+After install, Settings → Devices & Services → Byte-Watt → Configure:
+
+- **Scan interval** (seconds) — minimum 30, default 60. Changes apply
+  immediately (the integration reloads on options changes).
+
+## Troubleshooting
+
+- **A repair issue says "Host inverter not configured"** — you have more than
+  one inverter on the account and no Host has been selected. Reconfigure
+  (Settings → Devices & Services → Byte-Watt → ⋮ → Reconfigure) and pick one.
+- **Submit button shows partial failure** — the notification names which
+  batch failed (battery or grid feed-in) and the error reason. Your unsaved
+  changes are kept; fix and Submit again.
+- **Entity shows "unavailable"** — the integration hasn't yet fetched the
+  relevant settings from the API. Usually transient; check logs if it persists.
+- **Cumulative totals briefly drop at midnight** — known timezone quirk of the
+  API; the integration mitigates it by querying through tomorrow's date.
+
+### Real-time field mapping
+
+| API field | Sensor |
+|---|---|
+| `pgrid` | Grid Consumption (W) |
+| `pload` | House Consumption (W) |
+| `pbat` | Battery Power (W) |
+| `ppv` | PV Power (W) |
+| `soc` | Battery Percentage (%) |
+| `epvT` | Total Solar Generation (kWh) |
+| `eout` | Total Feed In (kWh) |
+| `echarge` | Total Battery Charge (kWh) |
+| `edischarge` | Total Battery Discharge (kWh) |
+| `epv2load` | PV Power to House (kWh) |
+| `epvcharge` | PV Charging Battery (kWh) |
+| `eload` | Total House Consumption (kWh) |
+| `egridCharge` | Grid Based Battery Charge (kWh) |
+| `einput` | Grid Power Consumption (kWh) |
+
+Enable debug logging in `configuration.yaml` to see all fields the API returns:
+
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.home_energy_manager: debug
+```
 
 ## Support
 
-Open an issue in the GitHub repository:
-[icpiot/home-energy-manager](https://github.com/icpiot/home-energy-manager)
+Open an issue at https://github.com/candreacchio/neovoltBattery_HomeAssistantPlugin/issues.
 
 ## Credits
 
-This project builds on earlier ByteWatt / Neovolt integration work released
-under the MIT license and extends it into a broader home energy management
-project.
+Originally built with the Home Assistant community and Claude AI. Subsequent
+contributors are credited in the commit history.

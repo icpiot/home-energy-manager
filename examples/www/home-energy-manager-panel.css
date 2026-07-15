@@ -1,0 +1,214 @@
+:host {
+  display: block;
+}
+
+.panel {
+  min-height: 100vh;
+  padding: 24px;
+  color: var(--hem-panel-text, #eef4ff);
+  background:
+    radial-gradient(circle at top left, rgba(98, 146, 255, 0.22), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(255, 167, 38, 0.18), transparent 28%),
+    linear-gradient(180deg, #0a1220 0%, #0f1a2d 100%);
+  font-family: "Segoe UI", "Trebuchet MS", system-ui, sans-serif;
+}
+
+.shell {
+  --hem-panel-surface: rgba(11, 20, 34, 0.88);
+  --hem-panel-surface-strong: rgba(17, 30, 50, 0.94);
+  --hem-panel-border: rgba(153, 190, 255, 0.18);
+  --hem-panel-muted: rgba(234, 240, 255, 0.7);
+  --hem-panel-accent: #6fb2ff;
+  --hem-panel-accent-strong: #2d82ff;
+}
+
+.shell.theme-sunrise {
+  --hem-panel-surface: rgba(43, 23, 18, 0.9);
+  --hem-panel-surface-strong: rgba(63, 33, 21, 0.96);
+  --hem-panel-border: rgba(255, 203, 164, 0.2);
+  --hem-panel-muted: rgba(255, 240, 230, 0.74);
+  --hem-panel-accent: #ff9f43;
+  --hem-panel-accent-strong: #ff6f3c;
+}
+
+.shell.theme-neon {
+  --hem-panel-surface: rgba(8, 16, 24, 0.94);
+  --hem-panel-surface-strong: rgba(10, 24, 30, 0.98);
+  --hem-panel-border: rgba(0, 255, 200, 0.18);
+  --hem-panel-muted: rgba(214, 255, 246, 0.74);
+  --hem-panel-accent: #26f7c9;
+  --hem-panel-accent-strong: #00bcd4;
+}
+
+.hero,
+.status,
+.cards,
+.grid {
+  max-width: 1380px;
+  margin: 0 auto 18px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.hero__badge {
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--hem-panel-surface-strong);
+  border: 1px solid var(--hem-panel-border);
+  color: var(--hem-panel-accent);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero__copy h1,
+.panel-card h2 {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+}
+
+.hero__copy p,
+.panel-card p,
+.status__meta,
+.panel-card small {
+  color: var(--hem-panel-muted);
+}
+
+.theme-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.theme-pill {
+  border: 1px solid var(--hem-panel-border);
+  background: var(--hem-panel-surface);
+  color: var(--hem-panel-text);
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.theme-pill.is-active {
+  border-color: var(--hem-panel-accent);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.status {
+  display: grid;
+  gap: 10px;
+}
+
+.status__banner {
+  background: var(--hem-panel-surface);
+  border: 1px solid var(--hem-panel-border);
+  border-radius: 16px;
+  padding: 12px 16px;
+  font-weight: 700;
+}
+
+.status__meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.95rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.cards article,
+.panel-card {
+  background: var(--hem-panel-surface);
+  border: 1px solid var(--hem-panel-border);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+.cards h2 {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hem-panel-accent);
+}
+
+.cards p {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: 14px;
+}
+
+.panel-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.panel-card__header span {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hem-panel-muted);
+}
+
+.entity-list {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.entity-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--hem-panel-surface-strong);
+}
+
+.entity-list li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1080px) {
+  .hero,
+  .grid,
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    justify-items: start;
+  }
+
+  .theme-picker {
+    justify-content: flex-start;
+  }
+}

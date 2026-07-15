@@ -6,9 +6,8 @@ voluptuous + homeassistant).
 """
 from __future__ import annotations
 
-import importlib.util
+import importlib
 import os
-import sys
 
 import pytest
 
@@ -17,26 +16,14 @@ pytest.importorskip("Crypto.Cipher")
 pytest.importorskip("aiohttp")
 
 
-def _load_module(rel_path: str, name: str):
-    here = os.path.dirname(__file__)
-    path = os.path.abspath(os.path.join(here, "..", "custom_components", "bytewatt", rel_path))
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-# neovolt_client imports homeassistant.helpers.aiohttp_client at module load;
+# neovolt_client imports homeassistant.helpers.aiohttp_client at module load —
 # skip cleanly when HA isn't installed (bare sandbox).
 try:
-    neovolt_auth = _load_module(
-        "api/neovolt_auth.py",
-        "custom_components.bytewatt.api.neovolt_auth",
+    neovolt_auth = importlib.import_module(
+        "custom_components.home_energy_manager.api.neovolt_auth"
     )
-    neovolt_client = _load_module(
-        "api/neovolt_client.py",
-        "custom_components.bytewatt.api.neovolt_client",
+    neovolt_client = importlib.import_module(
+        "custom_components.home_energy_manager.api.neovolt_client"
     )
 except ModuleNotFoundError as exc:
     pytest.skip(f"Module not installed in this environment: {exc.name}", allow_module_level=True)
@@ -44,7 +31,6 @@ except ModuleNotFoundError as exc:
 EncryptionError = neovolt_auth.EncryptionError
 encrypt_password = neovolt_auth.encrypt_password
 ByteWattAPIError = neovolt_client.ByteWattAPIError
-ByteWattAuthError = neovolt_client.ByteWattAuthError
 _stat_value = neovolt_client._stat_value
 _decode_json_object = neovolt_client._decode_json_object
 
@@ -59,7 +45,7 @@ def test_stat_value_coalesces_missing_key_to_zero():
 
 
 def test_stat_value_coalesces_explicit_none_to_zero():
-    """The fragile arithmetic path used to crash on None; never again."""
+    """The fragile arithmetic path used to crash on None — never again."""
     assert _stat_value({"epvtoday": None}, "epvtoday") == 0
 
 
@@ -73,15 +59,16 @@ def test_battery_discharged_today_calculation_survives_partial_data():
         "einput": 5,
         "echarge": 2,
     }
-    pv_today = _stat_value(stats_data, "epvtoday")
-    consumed = _stat_value(stats_data, "ehomeload")
-    feed_in = _stat_value(stats_data, "efeedIn")
+    pv_today    = _stat_value(stats_data, "epvtoday")
+    consumed    = _stat_value(stats_data, "ehomeload")
+    feed_in     = _stat_value(stats_data, "efeedIn")
     grid_import = _stat_value(stats_data, "einput")
-    charged = _stat_value(stats_data, "echarge")
+    charged     = _stat_value(stats_data, "echarge")
+    # Should not raise.
     total_gained = pv_today + grid_import
-    total_used = consumed + feed_in + charged
+    total_used   = consumed + feed_in + charged
     discharged = total_used - total_gained
-    assert discharged == 2 - 15
+    assert discharged == 2 - 15  # 0+0+2 - (10+5)
 
 
 def test_encryption_known_vector():
@@ -97,14 +84,13 @@ def test_encryption_error_is_runtime_error_subclass():
 
 
 def test_bytewatt_api_error_is_exception_subclass():
-    """The coordinator catches Exception broadly; ByteWattAPIError must match."""
+    """The coordinator catches Exception broadly — ByteWattAPIError must match."""
     assert issubclass(ByteWattAPIError, Exception)
 
 
-def test_bytewatt_auth_error_is_api_error_subclass():
-    """Auth failures should be distinguishable without bypassing API error handling."""
-    assert issubclass(ByteWattAuthError, ByteWattAPIError)
-
+# ---------------------------------------------------------------------------
+# _decode_json_object — must reject non-object JSON before .get() crashes
+# ---------------------------------------------------------------------------
 
 class _FakeResponse:
     """Minimal stand-in for aiohttp.ClientResponse."""
@@ -127,7 +113,7 @@ async def test_decode_returns_dict_for_object():
 
 @pytest.mark.asyncio
 async def test_decode_returns_none_for_array():
-    """Body is valid JSON but a list; `.get("code")` would crash later."""
+    """Body is valid JSON but a list — `.get('code')` would crash later."""
     result = await _decode_json_object(_FakeResponse(["error", "details"]), "ctx")
     assert result is None
 

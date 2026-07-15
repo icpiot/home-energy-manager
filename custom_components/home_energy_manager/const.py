@@ -1,11 +1,12 @@
-"""Constants for the Byte-Watt integration."""
+"""Constants for the Home Energy Manager integration."""
 
-DOMAIN = "bytewatt"
+DOMAIN = "home_energy_manager"
 
 # Configuration
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_SCAN_INTERVAL = "scan_interval"
+CONF_HISTORY_BACKFILL_YEARS = "history_backfill_years"
 CONF_RECOVERY_ENABLED = "recovery_enabled"
 CONF_HEARTBEAT_INTERVAL = "heartbeat_interval"
 CONF_MAX_DATA_AGE = "max_data_age"
@@ -13,10 +14,10 @@ CONF_STALE_CHECKS_THRESHOLD = "stale_checks_threshold"
 CONF_NOTIFY_ON_RECOVERY = "notify_on_recovery"
 CONF_DIAGNOSTICS_MODE = "diagnostics_mode"
 CONF_AUTO_RECONNECT_TIME = "auto_reconnect_time"
-CONF_HISTORY_BACKFILL_YEARS = "history_backfill_years"
 
 # Defaults
 DEFAULT_SCAN_INTERVAL = 60  # 1 minute
+DEFAULT_HISTORY_BACKFILL_YEARS = 1
 MIN_SCAN_INTERVAL = 30  # 30 seconds
 DEFAULT_RECOVERY_ENABLED = True
 DEFAULT_HEARTBEAT_INTERVAL = 120  # 2 minutes
@@ -25,9 +26,6 @@ DEFAULT_STALE_CHECKS_THRESHOLD = 3
 DEFAULT_NOTIFY_ON_RECOVERY = True
 DEFAULT_DIAGNOSTICS_MODE = False
 DEFAULT_AUTO_RECONNECT_TIME = "03:30:00"  # 3:30 AM
-DEFAULT_HISTORY_BACKFILL_YEARS = 1
-MIN_HISTORY_BACKFILL_YEARS = 1
-MAX_HISTORY_BACKFILL_YEARS = 20
 
 # Services
 SERVICE_SET_DISCHARGE_TIME = "set_discharge_time"  # Legacy service
@@ -39,9 +37,7 @@ SERVICE_SET_CHARGE_CAP = "set_charge_cap"
 SERVICE_UPDATE_BATTERY_SETTINGS = "update_battery_settings"
 SERVICE_FORCE_RECONNECT = "force_reconnect"  # Force client reconnection for troubleshooting
 SERVICE_HEALTH_CHECK = "health_check"  # Check connection health and return diagnostics
-SERVICE_REFRESH_NOW = "refresh_now"  # Refresh live data immediately
 SERVICE_TOGGLE_DIAGNOSTICS = "toggle_diagnostics"  # Toggle diagnostic logging
-SERVICE_ENSURE_REPORT_HISTORY = "ensure_report_history"  # Backfill history rows for a selected range
 
 # Service attributes
 ATTR_END_DISCHARGE = "end_discharge"
@@ -51,10 +47,6 @@ ATTR_END_CHARGE = "end_charge"
 ATTR_MINIMUM_SOC = "minimum_soc"
 ATTR_CHARGE_CAP = "charge_cap"
 ATTR_ENTRY_ID = "entry_id"
-ATTR_SCOPE_KEY = "scope_key"
-ATTR_START_DATE = "start_date"
-ATTR_END_DATE = "end_date"
-ATTR_FORCE = "force"
 
 # Sensor types
 SENSOR_SOC = "soc"
@@ -97,15 +89,6 @@ HTTPS_PORT = 443
 SERVICE_SET_GRID_FEEDIN_ENABLED = "set_grid_feedin_enabled"
 SERVICE_SET_GRID_FEEDIN_CUTOFF_SOC = "set_grid_feedin_cutoff_soc"
 SERVICE_UPDATE_GRID_FEEDIN_SLOT = "update_grid_feedin_slot"
-SERVICE_DELETE_GRID_FEEDIN_SLOT = "delete_grid_feedin_slot"
-SERVICE_UPDATE_BATTERY_SLOT = "update_battery_slot"
-SERVICE_DELETE_BATTERY_SLOT = "delete_battery_slot"
-SERVICE_START_FORCE_CHARGE = "start_force_charge"
-SERVICE_STOP_FORCE_CHARGE = "stop_force_charge"
-SERVICE_START_DISCHARGE_NOW = "start_discharge_now"
-SERVICE_STOP_DISCHARGE_NOW = "stop_discharge_now"
-SERVICE_START_FEEDIN_NOW = "start_feedin_now"
-SERVICE_STOP_FEEDIN_NOW = "stop_feedin_now"
 
 ATTR_FEEDIN_ENABLED = "feedin_enabled"
 ATTR_FEEDIN_CUTOFF_SOC = "feedin_cutoff_soc"
@@ -113,11 +96,6 @@ ATTR_FEEDIN_SLOT = "slot"
 ATTR_FEEDIN_START = "start_time"
 ATTR_FEEDIN_END = "end_time"
 ATTR_FEEDIN_POWER = "power_watts"
-ATTR_POLICY_KIND = "policy_kind"
-ATTR_SLOT = "slot"
-ATTR_SLOT_SOC = "soc"
-ATTR_SLOT_WEEKS = "weeks"
-ATTR_DURATION_MINUTES = "duration_minutes"
 
 # Host inverter selection
 CONF_HOST_SYSTEM_ID = "host_system_id"
@@ -136,8 +114,6 @@ FEEDIN_MAX_SLOTS = 6
 # the inverters Byte-Watt targets. Used for both service-call validation
 # and entity slider max.
 FEEDIN_MAX_POWER_W = 20000
-BATTERY_DAILY_MAX_SLOTS = 6
-BATTERY_WEEKLY_MAX_SLOTS = 28
 
 
 def signal_pending_changed(entry_id: str) -> str:

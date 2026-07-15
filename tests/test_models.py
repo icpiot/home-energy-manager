@@ -3,7 +3,7 @@ between getCycleStrategy / setCycleStrategy field names.
 
 These tests only need ``models.py`` itself (stdlib-only at the module
 level), so they load it directly via importlib instead of going through
-``custom_components.bytewatt`` — the package's ``__init__.py`` would
+``custom_components.home_energy_manager`` — the package's ``__init__.py`` would
 otherwise pull in homeassistant/voluptuous, which we don't want for
 pure-model tests.
 """
@@ -19,9 +19,9 @@ def _load_models_module():
     """Load models.py directly without triggering the package's __init__."""
     here = os.path.dirname(__file__)
     path = os.path.abspath(os.path.join(
-        here, "..", "custom_components", "bytewatt", "models.py",
+        here, "..", "custom_components", "home_energy_manager", "models.py",
     ))
-    spec = importlib.util.spec_from_file_location("bytewatt_models", path)
+    spec = importlib.util.spec_from_file_location("home_energy_manager_models", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -45,11 +45,9 @@ GET_RESPONSE_SAMPLE = {
     "batUseCap": 5,
     "executeCycleType": 0,
     "upsReserve": 1,
-    "upsReserveEnable": 1,
     "loadcutoutEn": 0,
     "cutoffSoc": 0,
     "wakeupSoc": 0,
-    "isSupportOffGridSocControl": True,
     "isSupportDischargeSoc": True,
     "isSupportChargerPower": True,
     "poinv": 10000,
@@ -72,8 +70,6 @@ def test_from_api_response_parses_top_level_fields():
     assert s.grid_charge_cycle == 0
     assert s.ctr_dis_cycle == 0
     assert s.ups_reserve == 1
-    assert s.ups_reserve_enable == 1
-    assert s.is_support_offgrid_soc_control is True
     assert s.is_support_discharge_soc is True
 
 
@@ -129,7 +125,6 @@ def test_to_dict_field_set_matches_har_capture():
     payload = s.to_dict()
     required_keys = {
         "id", "batUseCap", "upsReserve", "executeCycleType",
-        "upsReserveEnable",
         "loadcutoutEn", "wakeupSoc", "cutoffSoc",
         "gridChargeCycle", "ctrDisCycle",
         "chargeTimeList", "dischargeTimeList",

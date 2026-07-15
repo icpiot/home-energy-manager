@@ -4,8 +4,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from custom_components.bytewatt.pricing import PriceRecord
-from custom_components.bytewatt.pricing_store import (
+from custom_components.home_energy_manager.pricing import PriceRecord
+from custom_components.home_energy_manager.pricing_store import (
     PriceHistoryStore,
     load_pricing_history_file,
     write_pricing_history_file,

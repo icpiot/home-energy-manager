@@ -95,13 +95,10 @@ class _BatteryTimeBase(CoordinatorEntity, TimeEntity):
         return _parse_time(value) if value else None
 
     async def async_set_value(self, value: time) -> None:
-        result = await self._manager.submit_battery_one_shot(
-            {self._field: _fmt_time(value)}
-        )
-        if not result.battery_ok:
-            detail = result.battery_error or "see logs for details"
-            raise HomeAssistantError(f"Battery settings update failed: {detail}")
-        await self.coordinator.async_request_refresh()
+        try:
+            self._manager.stage_battery(self._field, _fmt_time(value))
+        except SettingsValidationError as ex:
+            raise HomeAssistantError(str(ex)) from ex
         self.async_write_ha_state()
 
 

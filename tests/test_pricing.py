@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from custom_components.bytewatt.pricing import PriceHistory, PriceRecord
+from custom_components.home_energy_manager.pricing import PriceHistory, PriceRecord
 
 
 def test_price_record_round_trip_preserves_fields():

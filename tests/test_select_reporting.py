@@ -1,4 +1,4 @@
-from custom_components.bytewatt.select import _reporting_payload
+from custom_components.home_energy_manager.select import _reporting_payload
 
 
 def test_reporting_payload_keeps_daily_chart_series():

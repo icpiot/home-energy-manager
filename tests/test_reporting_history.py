@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from custom_components.bytewatt.reporting import ByteWattReportHistory
+from custom_components.home_energy_manager.reporting import ByteWattReportHistory
 
 
 class _FakeConfig:

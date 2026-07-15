@@ -16,7 +16,6 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import issue_registry as ir
-from homeassistant.helpers import entity_registry as er
 
 from .bytewatt_client import ByteWattClient
 from .coordinator import ByteWattDataUpdateCoordinator
@@ -32,7 +31,6 @@ from .const import (
     CONF_NOTIFY_ON_RECOVERY,
     CONF_DIAGNOSTICS_MODE,
     CONF_AUTO_RECONNECT_TIME,
-    CONF_HISTORY_BACKFILL_YEARS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_RECOVERY_ENABLED,
     DEFAULT_HEARTBEAT_INTERVAL,
@@ -41,7 +39,6 @@ from .const import (
     DEFAULT_NOTIFY_ON_RECOVERY,
     DEFAULT_DIAGNOSTICS_MODE,
     DEFAULT_AUTO_RECONNECT_TIME,
-    DEFAULT_HISTORY_BACKFILL_YEARS,
     SERVICE_SET_DISCHARGE_TIME,
     SERVICE_SET_DISCHARGE_START_TIME,
     SERVICE_SET_CHARGE_START_TIME,
@@ -51,9 +48,7 @@ from .const import (
     SERVICE_UPDATE_BATTERY_SETTINGS,
     SERVICE_FORCE_RECONNECT,
     SERVICE_HEALTH_CHECK,
-    SERVICE_REFRESH_NOW,
     SERVICE_TOGGLE_DIAGNOSTICS,
-    SERVICE_ENSURE_REPORT_HISTORY,
     ATTR_END_DISCHARGE,
     ATTR_START_DISCHARGE,
     ATTR_START_CHARGE,
@@ -63,48 +58,27 @@ from .const import (
     SERVICE_SET_GRID_FEEDIN_ENABLED,
     SERVICE_SET_GRID_FEEDIN_CUTOFF_SOC,
     SERVICE_UPDATE_GRID_FEEDIN_SLOT,
-    SERVICE_DELETE_GRID_FEEDIN_SLOT,
-    SERVICE_UPDATE_BATTERY_SLOT,
-    SERVICE_DELETE_BATTERY_SLOT,
-    SERVICE_START_FORCE_CHARGE,
-    SERVICE_STOP_FORCE_CHARGE,
-    SERVICE_START_DISCHARGE_NOW,
-    SERVICE_STOP_DISCHARGE_NOW,
-    SERVICE_START_FEEDIN_NOW,
-    SERVICE_STOP_FEEDIN_NOW,
     ATTR_FEEDIN_ENABLED,
     ATTR_FEEDIN_CUTOFF_SOC,
     ATTR_FEEDIN_SLOT,
     ATTR_FEEDIN_START,
     ATTR_FEEDIN_END,
     ATTR_FEEDIN_POWER,
-    ATTR_POLICY_KIND,
-    ATTR_SLOT,
-    ATTR_SLOT_SOC,
-    ATTR_SLOT_WEEKS,
-    ATTR_DURATION_MINUTES,
     ATTR_ENTRY_ID,
-    ATTR_FORCE,
-    ATTR_SCOPE_KEY,
-    ATTR_START_DATE,
-    ATTR_END_DATE,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
     CURRENT_ENTRY_VERSION,
     FEEDIN_MAX_SLOTS,
     FEEDIN_MAX_POWER_W,
-    BATTERY_DAILY_MAX_SLOTS,
-    BATTERY_WEEKLY_MAX_SLOTS,
-    SENSOR_TOTAL_BATTERY_DISCHARGE,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
+PLATFORMS = ["sensor", "number", "time", "switch", "button"]
 
-# Services are domain-level; registration is idempotent so reloads can add new services.
+# Services are domain-level; registered once via hass.services.has_service() guard.
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +111,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         CONF_NOTIFY_ON_RECOVERY:      options.get(CONF_NOTIFY_ON_RECOVERY, DEFAULT_NOTIFY_ON_RECOVERY),
         CONF_DIAGNOSTICS_MODE:        options.get(CONF_DIAGNOSTICS_MODE, DEFAULT_DIAGNOSTICS_MODE),
         CONF_AUTO_RECONNECT_TIME:     options.get(CONF_AUTO_RECONNECT_TIME, DEFAULT_AUTO_RECONNECT_TIME),
-        CONF_HISTORY_BACKFILL_YEARS:  options.get(CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS),
     }
 
     client = ByteWattClient(
@@ -158,9 +131,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "client": client,
         "coordinator": coordinator,
         "manager": manager,
-        "inverters": [],
-        "aggregate_scope": client.aggregate_scope(),
-        "settings_scope": client.selected_settings_scope(),
     }
 
     # If host is now configured, clear any leftover repair issue from prior runs.
@@ -171,17 +141,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _check_host_inverter_repair_issue(hass, entry, client)
 
     await coordinator.async_config_entry_first_refresh()
-
-    try:
-        inverters = await client.fetch_inverter_inventory()
-    except Exception as ex:  # noqa: BLE001
-        _LOGGER.debug("Could not refresh ByteWatt inverter inventory after setup: %s", ex)
-        inverters = []
-    hass.data[DOMAIN][entry.entry_id]["inverters"] = inverters
-    if host_system_id:
-        matched = next((inv for inv in inverters if inv.system_id == host_system_id), None)
-        if matched is not None:
-            hass.data[DOMAIN][entry.entry_id]["settings_scope"] = matched.to_settings_scope()
 
     if recovery_options[CONF_RECOVERY_ENABLED]:
         await coordinator.start_heartbeat()
@@ -194,10 +153,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             recovery_options[CONF_MAX_DATA_AGE],
         )
 
-    _register_services(hass)
+    if not hass.services.has_service(DOMAIN, SERVICE_FORCE_RECONNECT):
+        _register_services(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    await _cleanup_legacy_entity_ids(hass, entry)
 
     # Reload the entry whenever the user changes options (currently just
     # scan_interval). Without this, edits via the Configure dialog would
@@ -205,44 +164,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     return True
-
-
-async def _cleanup_legacy_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Rename known legacy entity IDs to the cleaner current form.
-
-    Older Byte-Watt builds could leave the total battery discharge sensor with
-    an entity_id derived from the device name and account username, even
-    though the unique_id already points at the stable modern sensor object.
-    Keep the cleanup narrow so we don't unexpectedly rename unrelated entities.
-    """
-    entity_registry = er.async_get(hass)
-    unique_id = f"{entry.entry_id}_{SENSOR_TOTAL_BATTERY_DISCHARGE}"
-    current_entity_id = entity_registry.async_get_entity_id("sensor", DOMAIN, unique_id)
-    desired_entity_id = "sensor.total_battery_discharge"
-
-    if not current_entity_id or current_entity_id == desired_entity_id:
-        return
-
-    existing = entity_registry.async_get(desired_entity_id)
-    if existing is not None:
-        _LOGGER.debug(
-            "Skipping Byte-Watt legacy entity rename because %s already exists",
-            desired_entity_id,
-        )
-        return
-
-    if "total_battery_discharge" not in current_entity_id:
-        return
-
-    _LOGGER.info(
-        "Renaming legacy Byte-Watt entity %s -> %s",
-        current_entity_id,
-        desired_entity_id,
-    )
-    entity_registry.async_update_entity(
-        current_entity_id,
-        new_entity_id=desired_entity_id,
-    )
 
 
 def _stop_heartbeat_factory(coordinator):
@@ -327,11 +248,11 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             try:
                 logged_in = await client.initialize()
                 if logged_in:
-                    inverters = await client.fetch_inverter_inventory()
+                    inverters = await client.fetch_inverter_list()
                     inverter_count = len(inverters)
                     if inverter_count == 1:
-                        new_data[CONF_HOST_SYSTEM_ID] = inverters[0].system_id
-                        new_data[CONF_HOST_SYS_SN] = inverters[0].sys_sn
+                        new_data[CONF_HOST_SYSTEM_ID] = inverters[0].get("systemId", "")
+                        new_data[CONF_HOST_SYS_SN] = inverters[0].get("sysSn", "")
                         _LOGGER.info(
                             "Auto-selected single inverter %s as Host",
                             new_data[CONF_HOST_SYS_SN],
@@ -418,7 +339,7 @@ def _check_host_inverter_repair_issue(
         try:
             if not await client.initialize():
                 return
-            inverters = await client.fetch_inverter_inventory()
+            inverters = await client.fetch_inverter_list()
             # >= 1 because async_setup_entry only called this when
             # host_system_id is empty — any inverter at all is enough to
             # justify prompting the user to pick one.
@@ -460,11 +381,6 @@ def _manager_for(hass: HomeAssistant, call: ServiceCall) -> SettingsManager:
     return hass.data[DOMAIN][entry_id]["manager"]
 
 
-def _coordinator_for(hass: HomeAssistant, call: ServiceCall):
-    entry_id = _resolve_entry_id(hass, call)
-    return hass.data[DOMAIN][entry_id]["coordinator"]
-
-
 async def _submit_battery_service(
     hass: HomeAssistant, call: ServiceCall, **fields: Any
 ) -> bool:
@@ -486,16 +402,6 @@ async def _submit_battery_service(
 
 def _register_services(hass: HomeAssistant) -> None:
     """Register all domain-level services."""
-
-    def _register(service_name: str, handler, *, schema) -> None:
-        if hass.services.has_service(DOMAIN, service_name):
-            return
-        hass.services.async_register(
-            DOMAIN,
-            service_name,
-            handler,
-            schema=schema,
-        )
 
     # ---------- Battery: single-field convenience services ----------
 
@@ -552,7 +458,6 @@ def _register_services(hass: HomeAssistant) -> None:
         if not result.feedin_ok:
             detail = result.feedin_error or "see logs for details"
             raise HomeAssistantError(f"Grid feed-in enable update failed: {detail}")
-        await _coordinator_for(hass, call).async_request_refresh()
 
     async def handle_set_grid_feedin_cutoff_soc(call: ServiceCall) -> None:
         manager = _manager_for(hass, call)
@@ -564,7 +469,6 @@ def _register_services(hass: HomeAssistant) -> None:
         if not result.feedin_ok:
             detail = result.feedin_error or "see logs for details"
             raise HomeAssistantError(f"Grid feed-in cutoff SOC update failed: {detail}")
-        await _coordinator_for(hass, call).async_request_refresh()
 
     async def handle_update_grid_feedin_slot(call: ServiceCall) -> None:
         slot_1based = call.data[ATTR_FEEDIN_SLOT]
@@ -589,96 +493,6 @@ def _register_services(hass: HomeAssistant) -> None:
         if not result.feedin_ok:
             detail = result.feedin_error or "see logs for details"
             raise HomeAssistantError(f"Grid feed-in slot update failed: {detail}")
-        await _coordinator_for(hass, call).async_request_refresh()
-
-    async def handle_delete_grid_feedin_slot(call: ServiceCall) -> None:
-        manager = _manager_for(hass, call)
-        try:
-            await manager.delete_feedin_slot(call.data[ATTR_SLOT])
-        except SettingsValidationError as ex:
-            raise HomeAssistantError(str(ex)) from ex
-        await _coordinator_for(hass, call).async_request_refresh()
-
-    async def handle_update_battery_slot(call: ServiceCall) -> None:
-        manager = _manager_for(hass, call)
-        try:
-            await manager.update_battery_slot(
-                call.data[ATTR_POLICY_KIND],
-                call.data[ATTR_SLOT],
-                start=call.data.get(ATTR_FEEDIN_START),
-                end=call.data.get(ATTR_FEEDIN_END),
-                soc=call.data.get(ATTR_SLOT_SOC),
-                power=call.data.get(ATTR_FEEDIN_POWER),
-                weeks=call.data.get(ATTR_SLOT_WEEKS),
-            )
-        except SettingsValidationError as ex:
-            raise HomeAssistantError(str(ex)) from ex
-        await _coordinator_for(hass, call).async_request_refresh()
-
-    async def handle_delete_battery_slot(call: ServiceCall) -> None:
-        manager = _manager_for(hass, call)
-        try:
-            await manager.delete_battery_slot(
-                call.data[ATTR_POLICY_KIND], call.data[ATTR_SLOT]
-            )
-        except SettingsValidationError as ex:
-            raise HomeAssistantError(str(ex)) from ex
-        await _coordinator_for(hass, call).async_request_refresh()
-
-    async def handle_start_force_charge(call: ServiceCall) -> None:
-        manager = _manager_for(hass, call)
-        try:
-            await manager.force_charge_start(call.data[ATTR_CHARGE_CAP])
-        except SettingsValidationError as ex:
-            raise HomeAssistantError(str(ex)) from ex
-        await _coordinator_for(hass, call).async_request_refresh()
-
-    async def handle_stop_force_charge(call: ServiceCall) -> None:
-        manager = _manager_for(hass, call)
-        try:
-            await manager.force_charge_stop()
-        except SettingsValidationError as ex:
-            raise HomeAssistantError(str(ex)) from ex
-        await _coordinator_for(hass, call).async_request_refresh()
-
-    async def handle_start_discharge_now(call: ServiceCall) -> None:
-        manager = _manager_for(hass, call)
-        try:
-            await manager.start_discharge_now(
-                duration_minutes=call.data.get(ATTR_DURATION_MINUTES, 60),
-                soc=call.data[ATTR_SLOT_SOC],
-                power=call.data[ATTR_FEEDIN_POWER],
-            )
-        except SettingsValidationError as ex:
-            raise HomeAssistantError(str(ex)) from ex
-        await _coordinator_for(hass, call).async_request_refresh()
-
-    async def handle_stop_discharge_now(call: ServiceCall) -> None:
-        manager = _manager_for(hass, call)
-        try:
-            await manager.stop_discharge_now()
-        except SettingsValidationError as ex:
-            raise HomeAssistantError(str(ex)) from ex
-        await _coordinator_for(hass, call).async_request_refresh()
-
-    async def handle_start_feedin_now(call: ServiceCall) -> None:
-        manager = _manager_for(hass, call)
-        try:
-            await manager.start_feedin_now(
-                duration_minutes=call.data.get(ATTR_DURATION_MINUTES, 60),
-                power=call.data[ATTR_FEEDIN_POWER],
-            )
-        except SettingsValidationError as ex:
-            raise HomeAssistantError(str(ex)) from ex
-        await _coordinator_for(hass, call).async_request_refresh()
-
-    async def handle_stop_feedin_now(call: ServiceCall) -> None:
-        manager = _manager_for(hass, call)
-        try:
-            await manager.stop_feedin_now()
-        except SettingsValidationError as ex:
-            raise HomeAssistantError(str(ex)) from ex
-        await _coordinator_for(hass, call).async_request_refresh()
 
     # ---------- Maintenance ----------
 
@@ -733,20 +547,6 @@ def _register_services(hass: HomeAssistant) -> None:
         except (AttributeError, TypeError) as ex:
             _LOGGER.error("Could not create health check notification: %s", ex)
 
-    async def handle_refresh_now(call: ServiceCall) -> None:
-        target_entry = call.data.get(ATTR_ENTRY_ID)
-        refreshed = 0
-        for entry_id, entry_data in hass.data[DOMAIN].items():
-            if target_entry and entry_id != target_entry:
-                continue
-            coordinator = entry_data.get("coordinator")
-            if not coordinator:
-                continue
-            await coordinator.async_request_refresh()
-            refreshed += 1
-        if not refreshed:
-            _LOGGER.debug("No ByteWatt integrations found to refresh")
-
     async def handle_toggle_diagnostics(call: ServiceCall) -> None:
         enable = call.data.get("enable")
         target_entry = call.data.get(ATTR_ENTRY_ID)
@@ -771,73 +571,39 @@ def _register_services(hass: HomeAssistant) -> None:
         else:
             _LOGGER.error("No ByteWatt integrations found to toggle diagnostics")
 
-    async def handle_ensure_report_history(call: ServiceCall) -> None:
-        _LOGGER.info(
-            "ByteWatt ensure_report_history called for scope=%s start=%s end=%s entry_id=%s force=%s",
-            call.data.get(ATTR_SCOPE_KEY, "all"),
-            call.data.get(ATTR_START_DATE),
-            call.data.get(ATTR_END_DATE),
-            call.data.get(ATTR_ENTRY_ID),
-            call.data.get(ATTR_FORCE, False),
-        )
-        coordinator = _coordinator_for(hass, call)
-        result = await coordinator.async_ensure_history_range(
-            scope_key=call.data.get(ATTR_SCOPE_KEY, "all"),
-            start_date=call.data[ATTR_START_DATE],
-            end_date=call.data[ATTR_END_DATE],
-            force=bool(call.data.get(ATTR_FORCE, False)),
-        )
-        _LOGGER.info(
-            "ByteWatt history ensured for %s (%s to %s): %s/%s available, %s downloaded",
-            result["scope_key"],
-            result["start_date"],
-            result["end_date"],
-            result["available"],
-            result["requested"],
-            result["downloaded"],
-        )
-
     # ---------- Schemas ----------
 
     _time_schema = vol.All(cv.string)
     _soc_schema = vol.All(vol.Coerce(int), vol.Range(min=1, max=100))
     _feedin_power_schema = vol.All(vol.Coerce(int), vol.Range(min=0, max=FEEDIN_MAX_POWER_W))
-    _battery_power_schema = vol.All(vol.Coerce(int), vol.Range(min=0, max=50000))
     _entry_id_opt = {vol.Optional(ATTR_ENTRY_ID): cv.string}
 
-    _register(
-        SERVICE_SET_DISCHARGE_TIME,
-        handle_set_discharge_time,
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_DISCHARGE_TIME, handle_set_discharge_time,
         schema=vol.Schema({vol.Required(ATTR_END_DISCHARGE): _time_schema, **_entry_id_opt}),
     )
-    _register(
-        SERVICE_SET_DISCHARGE_START_TIME,
-        handle_set_discharge_start_time,
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_DISCHARGE_START_TIME, handle_set_discharge_start_time,
         schema=vol.Schema({vol.Required(ATTR_START_DISCHARGE): _time_schema, **_entry_id_opt}),
     )
-    _register(
-        SERVICE_SET_CHARGE_START_TIME,
-        handle_set_charge_start_time,
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_CHARGE_START_TIME, handle_set_charge_start_time,
         schema=vol.Schema({vol.Required(ATTR_START_CHARGE): _time_schema, **_entry_id_opt}),
     )
-    _register(
-        SERVICE_SET_CHARGE_END_TIME,
-        handle_set_charge_end_time,
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_CHARGE_END_TIME, handle_set_charge_end_time,
         schema=vol.Schema({vol.Required(ATTR_END_CHARGE): _time_schema, **_entry_id_opt}),
     )
-    _register(
-        SERVICE_SET_MINIMUM_SOC,
-        handle_set_minimum_soc,
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_MINIMUM_SOC, handle_set_minimum_soc,
         schema=vol.Schema({vol.Required(ATTR_MINIMUM_SOC): _soc_schema, **_entry_id_opt}),
     )
-    _register(
-        SERVICE_SET_CHARGE_CAP,
-        handle_set_charge_cap,
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_CHARGE_CAP, handle_set_charge_cap,
         schema=vol.Schema({vol.Required(ATTR_CHARGE_CAP): _soc_schema, **_entry_id_opt}),
     )
-    _register(
-        SERVICE_UPDATE_BATTERY_SETTINGS,
-        handle_update_battery_settings,
+    hass.services.async_register(
+        DOMAIN, SERVICE_UPDATE_BATTERY_SETTINGS, handle_update_battery_settings,
         schema=vol.Schema({
             vol.Optional(ATTR_START_DISCHARGE): _time_schema,
             vol.Optional(ATTR_END_DISCHARGE): _time_schema,
@@ -848,22 +614,19 @@ def _register_services(hass: HomeAssistant) -> None:
             **_entry_id_opt,
         }),
     )
-    _register(
-        SERVICE_SET_GRID_FEEDIN_ENABLED,
-        handle_set_grid_feedin_enabled,
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_GRID_FEEDIN_ENABLED, handle_set_grid_feedin_enabled,
         schema=vol.Schema({vol.Required(ATTR_FEEDIN_ENABLED): cv.boolean, **_entry_id_opt}),
     )
-    _register(
-        SERVICE_SET_GRID_FEEDIN_CUTOFF_SOC,
-        handle_set_grid_feedin_cutoff_soc,
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_GRID_FEEDIN_CUTOFF_SOC, handle_set_grid_feedin_cutoff_soc,
         schema=vol.Schema({
             vol.Required(ATTR_FEEDIN_CUTOFF_SOC): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
             **_entry_id_opt,
         }),
     )
-    _register(
-        SERVICE_UPDATE_GRID_FEEDIN_SLOT,
-        handle_update_grid_feedin_slot,
+    hass.services.async_register(
+        DOMAIN, SERVICE_UPDATE_GRID_FEEDIN_SLOT, handle_update_grid_feedin_slot,
         schema=vol.Schema({
             vol.Required(ATTR_FEEDIN_SLOT): vol.All(vol.Coerce(int), vol.Range(min=1, max=FEEDIN_MAX_SLOTS)),
             vol.Optional(ATTR_FEEDIN_START): _time_schema,
@@ -872,104 +635,15 @@ def _register_services(hass: HomeAssistant) -> None:
             **_entry_id_opt,
         }),
     )
-    _register(
-        SERVICE_DELETE_GRID_FEEDIN_SLOT,
-        handle_delete_grid_feedin_slot,
-        schema=vol.Schema({
-            vol.Required(ATTR_SLOT): vol.All(vol.Coerce(int), vol.Range(min=1, max=FEEDIN_MAX_SLOTS)),
-            **_entry_id_opt,
-        }),
-    )
-    _register(
-        SERVICE_UPDATE_BATTERY_SLOT,
-        handle_update_battery_slot,
-        schema=vol.Schema({
-            vol.Required(ATTR_POLICY_KIND): vol.In(["charge", "discharge"]),
-            vol.Required(ATTR_SLOT): vol.All(vol.Coerce(int), vol.Range(min=1, max=BATTERY_WEEKLY_MAX_SLOTS)),
-            vol.Optional(ATTR_FEEDIN_START): _time_schema,
-            vol.Optional(ATTR_FEEDIN_END): _time_schema,
-            vol.Optional(ATTR_SLOT_SOC): _soc_schema,
-            vol.Optional(ATTR_FEEDIN_POWER): _battery_power_schema,
-            vol.Optional(ATTR_SLOT_WEEKS): [vol.All(vol.Coerce(int), vol.Range(min=1, max=7))],
-            **_entry_id_opt,
-        }),
-    )
-    _register(
-        SERVICE_DELETE_BATTERY_SLOT,
-        handle_delete_battery_slot,
-        schema=vol.Schema({
-            vol.Required(ATTR_POLICY_KIND): vol.In(["charge", "discharge"]),
-            vol.Required(ATTR_SLOT): vol.All(vol.Coerce(int), vol.Range(min=1, max=BATTERY_WEEKLY_MAX_SLOTS)),
-            **_entry_id_opt,
-        }),
-    )
-    _register(
-        SERVICE_START_FORCE_CHARGE,
-        handle_start_force_charge,
-        schema=vol.Schema({vol.Required(ATTR_CHARGE_CAP): _soc_schema, **_entry_id_opt}),
-    )
-    _register(
-        SERVICE_STOP_FORCE_CHARGE,
-        handle_stop_force_charge,
+    hass.services.async_register(
+        DOMAIN, SERVICE_FORCE_RECONNECT, handle_force_reconnect,
         schema=vol.Schema(_entry_id_opt),
     )
-    _register(
-        SERVICE_START_DISCHARGE_NOW,
-        handle_start_discharge_now,
-        schema=vol.Schema({
-            vol.Required(ATTR_SLOT_SOC): _soc_schema,
-            vol.Required(ATTR_FEEDIN_POWER): _battery_power_schema,
-            vol.Optional(ATTR_DURATION_MINUTES, default=60): vol.All(vol.Coerce(int), vol.Range(min=1, max=1439)),
-            **_entry_id_opt,
-        }),
-    )
-    _register(
-        SERVICE_STOP_DISCHARGE_NOW,
-        handle_stop_discharge_now,
+    hass.services.async_register(
+        DOMAIN, SERVICE_HEALTH_CHECK, handle_health_check,
         schema=vol.Schema(_entry_id_opt),
     )
-    _register(
-        SERVICE_START_FEEDIN_NOW,
-        handle_start_feedin_now,
-        schema=vol.Schema({
-            vol.Required(ATTR_FEEDIN_POWER): _feedin_power_schema,
-            vol.Optional(ATTR_DURATION_MINUTES, default=60): vol.All(vol.Coerce(int), vol.Range(min=1, max=1439)),
-            **_entry_id_opt,
-        }),
-    )
-    _register(
-        SERVICE_STOP_FEEDIN_NOW,
-        handle_stop_feedin_now,
-        schema=vol.Schema(_entry_id_opt),
-    )
-    _register(
-        SERVICE_FORCE_RECONNECT,
-        handle_force_reconnect,
-        schema=vol.Schema(_entry_id_opt),
-    )
-    _register(
-        SERVICE_HEALTH_CHECK,
-        handle_health_check,
-        schema=vol.Schema(_entry_id_opt),
-    )
-    _register(
-        SERVICE_REFRESH_NOW,
-        handle_refresh_now,
-        schema=vol.Schema(_entry_id_opt),
-    )
-    _register(
-        SERVICE_TOGGLE_DIAGNOSTICS,
-        handle_toggle_diagnostics,
+    hass.services.async_register(
+        DOMAIN, SERVICE_TOGGLE_DIAGNOSTICS, handle_toggle_diagnostics,
         schema=vol.Schema({vol.Optional("enable"): cv.boolean, **_entry_id_opt}),
-    )
-    _register(
-        SERVICE_ENSURE_REPORT_HISTORY,
-        handle_ensure_report_history,
-        schema=vol.Schema({
-            vol.Required(ATTR_START_DATE): cv.string,
-            vol.Required(ATTR_END_DATE): cv.string,
-            vol.Optional(ATTR_SCOPE_KEY, default="all"): cv.string,
-            vol.Optional(ATTR_FORCE, default=False): cv.boolean,
-            **_entry_id_opt,
-        }),
     )

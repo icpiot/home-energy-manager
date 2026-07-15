@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Byte-Watt Login",
+        "title": "Home Energy Manager Login",
         "data": {
           "username": "Username",
           "password": "Password",
@@ -22,33 +22,24 @@
         "data": {
           "host_system_id": "Host inverter"
         }
-      },
-      "reauth_confirm": {
-        "title": "Reconnect Byte-Watt",
-        "description": "Authentication for {username} failed. Enter the updated Byte-Watt password to reconnect without removing the integration.",
-        "data": {
-          "password": "Password"
-        }
       }
     },
     "error": {
       "auth": "Invalid credentials. Please check your username and password."
     },
     "abort": {
-      "already_configured": "This Byte-Watt account is already configured.",
+      "already_configured": "This Home Energy Manager account is already configured.",
       "auth": "Authentication failed. Update credentials and try again.",
       "no_inverters": "No inverters were found on this account.",
-      "reconfigure_successful": "Host inverter selection updated.",
-      "reauth_successful": "Byte-Watt credentials updated."
+      "reconfigure_successful": "Host inverter selection updated."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Byte-Watt Options",
+        "title": "Home Energy Manager Options",
         "data": {
-          "scan_interval": "Scan interval (seconds)",
-          "history_backfill_years": "History backfill horizon (years)"
+          "scan_interval": "Scan interval (seconds)"
         }
       }
     }
@@ -56,7 +47,7 @@
   "issues": {
     "host_inverter_required": {
       "title": "Host inverter not configured",
-      "description": "This Byte-Watt account has more than one inverter and no Host inverter has been selected. Grid Feed-in controls will not work until a Host is picked. Open Settings → Devices & Services, find the Byte-Watt entry, click the three-dot menu and choose Reconfigure."
+      "description": "This Home Energy Manager account has more than one inverter and no Host inverter has been selected. Grid Feed-in controls will not work until a Host is picked. Open Settings → Devices & Services, find the Home Energy Manager entry, click the three-dot menu and choose Reconfigure."
     }
   }
 }
