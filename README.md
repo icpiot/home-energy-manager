@@ -32,13 +32,14 @@ Requires Home Assistant **2024.11.0** or later.
 2. HACS → Integrations → ⋮ → Custom repositories → add this repo URL → Category: Integration.
 3. Install **Home Energy Manager** and restart Home Assistant.
 4. Settings → Devices & Services → Add Integration → search for **Home Energy Manager**.
+5. Enter your credentials and complete the provider/setup flow. The sidebar panel is added automatically after the integration loads.
 
 ### Sidebar panel
 
-Add the example `panel_custom` block from
-`examples/panel/home-energy-manager-panel_custom.yaml`
-to your Home Assistant YAML configuration. It registers a left-sidebar panel at
-`/home-energy-manager` and loads the JavaScript module from:
+The sidebar panel is registered automatically by the integration after setup.
+No `panel_custom.yaml` entry is required.
+
+The panel is served from:
 
 `/local/community/home-energy-manager/home-energy-manager-panel.js?v=001`
 

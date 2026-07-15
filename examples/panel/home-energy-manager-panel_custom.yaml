@@ -1,3 +1,5 @@
+# Legacy manual panel example. The integration now registers the sidebar panel
+# automatically, so this file is for reference only.
 - name: home-energy-manager-panel
   sidebar_title: Home Energy Manager
   sidebar_icon: mdi:solar-power-variant

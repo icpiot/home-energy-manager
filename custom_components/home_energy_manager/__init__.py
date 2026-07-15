@@ -7,6 +7,12 @@ from typing import Any, Optional
 
 import voluptuous as vol
 
+from homeassistant.components.frontend import (
+    add_extra_js_url,
+    async_register_built_in_panel,
+    async_remove_panel,
+    remove_extra_js_url,
+)
 from homeassistant.components.persistent_notification import (
     async_create as notify_create,
 )
@@ -78,6 +84,15 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = ["sensor", "number", "time", "switch", "button"]
 
+PANEL_COMPONENT_NAME = "home-energy-manager-panel"
+PANEL_FRONTEND_URL_PATH = "home-energy-manager"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=001"
+PANEL_CONFIG = {
+    "title": "Home Energy Manager",
+    "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
+    "theme": "midnight",
+}
+
 # Services are domain-level; registered once via hass.services.has_service() guard.
 
 
@@ -88,6 +103,39 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button"]
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.data.setdefault(DOMAIN, {})
     return True
+
+
+def _register_frontend_panel(hass: HomeAssistant) -> None:
+    """Register the built-in sidebar panel and load its module."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get("frontend_panel_registered"):
+        return
+
+    add_extra_js_url(hass, PANEL_MODULE_URL)
+    async_register_built_in_panel(
+        hass,
+        PANEL_COMPONENT_NAME,
+        sidebar_title="Home Energy Manager",
+        sidebar_icon="mdi:solar-power-variant",
+        frontend_url_path=PANEL_FRONTEND_URL_PATH,
+        config=PANEL_CONFIG,
+        show_in_sidebar=True,
+        update=True,
+    )
+    domain_data["frontend_panel_registered"] = True
+
+
+def _unregister_frontend_panel(hass: HomeAssistant) -> None:
+    """Remove the sidebar panel and module when no entries remain."""
+    domain_data = hass.data.get(DOMAIN, {})
+    if not domain_data.get("frontend_panel_registered"):
+        return
+    if any(isinstance(value, dict) and value.get("coordinator") for value in domain_data.values()):
+        return
+
+    async_remove_panel(hass, PANEL_FRONTEND_URL_PATH, warn_if_unknown=False)
+    remove_extra_js_url(hass, PANEL_MODULE_URL)
+    domain_data.pop("frontend_panel_registered", None)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -163,6 +211,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # silently have no effect on the running coordinator.
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
+    _register_frontend_panel(hass)
+
     return True
 
 
@@ -216,6 +266,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
+        _unregister_frontend_panel(hass)
     return unload_ok
 
 
