@@ -1,6 +1,9 @@
 """Constants for the Home Energy Manager integration."""
 
 DOMAIN = "home_energy_manager"
+CONF_PROVIDER = "provider"
+PROVIDER_BYTEWATT = "bytewatt"
+PROVIDER_OTHER = "other"
 DEVICE_NAME = "Home Energy Manager"
 DEVICE_MANUFACTURER = "Home Energy Manager"
 DEVICE_MODEL = "Battery Management System"

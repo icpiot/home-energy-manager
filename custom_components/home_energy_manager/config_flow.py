@@ -17,6 +17,7 @@ from homeassistant.helpers.selector import (
 
 from .bytewatt_client import ByteWattClient
 from .const import (
+    CONF_PROVIDER,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
     CONF_PASSWORD,
@@ -26,6 +27,8 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     MIN_SCAN_INTERVAL,
+    PROVIDER_BYTEWATT,
+    PROVIDER_OTHER,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,6 +64,13 @@ def _build_inverter_options(inverters: list[dict[str, Any]]) -> list[SelectOptio
     return options
 
 
+def _provider_options() -> list[SelectOptionDict]:
+    return [
+        SelectOptionDict(value=PROVIDER_BYTEWATT, label="ByteWatt"),
+        SelectOptionDict(value=PROVIDER_OTHER, label="Other (future)"),
+    ]
+
+
 class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Home Energy Manager."""
 
@@ -73,12 +83,52 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._reconfigure_entry: config_entries.ConfigEntry | None = None
 
     async def async_step_user(self, user_input=None):
+        if user_input is not None:
+            return await self.async_step_provider(user_input)
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema({
+                vol.Required(CONF_PROVIDER): SelectSelector(
+                    SelectSelectorConfig(
+                        options=_provider_options(),
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            errors={},
+        )
+
+    async def async_step_provider(self, user_input=None):
+        if user_input is None:
+            return self.async_abort(reason="provider_missing")
+
+        provider = user_input[CONF_PROVIDER]
+        self._user_input = {CONF_PROVIDER: provider}
+
+        if provider == PROVIDER_OTHER:
+            return self.async_abort(reason="provider_coming_soon")
+
+        return self.async_show_form(
+            step_id="provider_login",
+            data_schema=vol.Schema({
+                vol.Required(CONF_USERNAME): str,
+                vol.Required(CONF_PASSWORD): str,
+                vol.Optional(
+                    CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
+                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
+            }),
+            errors={},
+        )
+
+    async def async_step_provider_login(self, user_input=None):
         errors = {}
         if user_input is not None:
             # Prevent the same account being configured twice — the
             # username uniquely identifies a Home Energy Manager account.
             await self.async_set_unique_id(user_input[CONF_USERNAME].lower())
             self._abort_if_unique_id_configured()
+
+            self._user_input.update(user_input)
 
             client = ByteWattClient(
                 self.hass, user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
@@ -88,7 +138,6 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "auth"
             else:
                 self._client = client
-                self._user_input = user_input
                 self._inverters = await client.fetch_inverter_list()
                 if len(self._inverters) > 1:
                     return await self.async_step_select_inverter()
@@ -107,7 +156,7 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self._create_entry()
 
         return self.async_show_form(
-            step_id="user",
+            step_id="provider_login",
             data_schema=vol.Schema({
                 vol.Required(CONF_USERNAME): str,
                 vol.Required(CONF_PASSWORD): str,
