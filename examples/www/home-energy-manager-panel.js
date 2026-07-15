@@ -1,4 +1,7 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "011";
+import "./home-energy-manager-policy-card.js?v=001";
+import "./home-energy-manager-report-card.js?v=295";
+
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "012";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -9,6 +12,8 @@ const HOME_ENERGY_MANAGER_PANEL_THEMES = [
 ];
 const HOME_ENERGY_MANAGER_PANEL_PAGES = [
   { value: "overview", label: "Overview", icon: "◉" },
+  { value: "policy", label: "Policy", icon: "▥" },
+  { value: "report", label: "Report", icon: "▤" },
   { value: "battery", label: "Battery", icon: "▣" },
   { value: "solar", label: "Solar", icon: "☀" },
   { value: "history", label: "History", icon: "↺" },
@@ -231,6 +236,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
             workflows. The panel will stay focused on the most useful actions first.
           </p>
           <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="policy">Policy</button>
+            <button type="button" class="panel-nav__item" data-page="report">Report</button>
             <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
             <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
             <button type="button" class="panel-nav__item" data-page="history">History</button>
@@ -366,6 +373,89 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 { label: "Policy page", value: this._pageLabel() },
               ])}
             </ul>
+          </article>
+        </section>
+      </section>
+    `;
+  }
+
+  _policyPage() {
+    return `
+      <section class="policy">
+        <article class="panel-card panel-card--wide policy__hero">
+          <div class="panel-card__header">
+            <h2>Policy</h2>
+            <span>Charge and feed-in control</span>
+          </div>
+          <p>
+            This page embeds the live policy editors so battery charge and feed-in rules stay
+            inside the Home Energy Manager panel instead of separate Lovelace cards.
+          </p>
+          <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="report">Report</button>
+            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
+          </div>
+        </article>
+
+        <section class="policy__stack">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Battery Policy</h2>
+              <span>Primary control</span>
+            </div>
+            <p>
+              Charge and discharge windows, reserve limits, and SOC controls are managed here.
+            </p>
+            <div class="panel-card__embedded" data-embedded="battery-policy"></div>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Feed-in Policy</h2>
+              <span>Export control</span>
+            </div>
+            <p>
+              Feed-in limits and export behavior are embedded alongside the battery policy so
+              both control surfaces stay in one place.
+            </p>
+            <div class="panel-card__embedded" data-embedded="feedin-policy"></div>
+          </article>
+        </section>
+      </section>
+    `;
+  }
+
+  _reportPage() {
+    return `
+      <section class="report">
+        <article class="panel-card panel-card--wide report__hero">
+          <div class="panel-card__header">
+            <h2>Report</h2>
+            <span>Power diagram and exports</span>
+          </div>
+          <p>
+            The report view embeds the normalized reporting card so the panel can show live
+            history, charts, and exportable summaries in the sidebar app.
+          </p>
+          <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="policy">Policy</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
+          </div>
+        </article>
+
+        <section class="report__stack">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Reporting Card</h2>
+              <span>Embedded</span>
+            </div>
+            <p>
+              The report card is mounted directly into the panel so it can reuse the same
+              entity selection and live data as the other pages.
+            </p>
+            <div class="panel-card__embedded" data-embedded="report"></div>
           </article>
         </section>
       </section>
@@ -650,6 +740,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _pageContent() {
     switch (this._page) {
+      case "policy":
+        return this._policyPage();
+      case "report":
+        return this._reportPage();
       case "battery":
         return this._batteryPage();
       case "solar":
@@ -664,6 +758,58 @@ class HomeEnergyManagerPanel extends HTMLElement {
       default:
         return this._overviewPage();
     }
+  }
+
+  _mountEmbeddedCards() {
+    const prefix = this._config?.entity_prefix || "house_bytewatt_battery_system";
+    const settingsTarget = this._config?.settings_target || `select.${prefix}_settings_target`;
+    const mounts = [
+      {
+        selector: '[data-embedded="battery-policy"]',
+        tag: "home-energy-manager-policy-card",
+        config: {
+          ...this._config,
+          entity_prefix: prefix,
+          settings_target: settingsTarget,
+          variant: "battery_policy",
+        },
+      },
+      {
+        selector: '[data-embedded="feedin-policy"]',
+        tag: "home-energy-manager-policy-card",
+        config: {
+          ...this._config,
+          entity_prefix: prefix,
+          settings_target: settingsTarget,
+          variant: "feedin_policy",
+        },
+      },
+      {
+        selector: '[data-embedded="report"]',
+        tag: "home-energy-manager-report-card",
+        config: {
+          ...this._config,
+          entity_prefix: prefix,
+          settings_target: settingsTarget,
+        },
+      },
+    ];
+
+    mounts.forEach(({ selector, tag, config }) => {
+      const host = this.shadowRoot.querySelector(selector);
+      if (!host) {
+        return;
+      }
+      host.textContent = "";
+      const element = document.createElement(tag);
+      if (typeof element.setConfig === "function") {
+        element.setConfig(config);
+      }
+      if (this._hass) {
+        element.hass = this._hass;
+      }
+      host.appendChild(element);
+    });
   }
 
   _render() {
@@ -758,6 +904,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         ${this._pageContent()}
       </section>
     `;
+
+    this._mountEmbeddedCards();
 
     this.shadowRoot.querySelectorAll(".theme-pill").forEach((button) => {
       button.addEventListener("click", () => this._setTheme(button.dataset.theme));

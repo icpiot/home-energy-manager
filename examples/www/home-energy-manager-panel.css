@@ -305,6 +305,26 @@
   margin-top: 4px;
 }
 
+.policy,
+.report {
+  display: grid;
+  gap: 14px;
+  max-width: 1380px;
+  margin: 0 auto 18px;
+}
+
+.policy__hero,
+.report__hero {
+  display: grid;
+  gap: 16px;
+}
+
+.policy__stack,
+.report__stack {
+  display: grid;
+  gap: 14px;
+}
+
 .battery {
   display: grid;
   gap: 14px;
@@ -489,6 +509,16 @@
   min-height: 320px;
 }
 
+.panel-card__embedded {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.panel-card__embedded > * {
+  width: 100%;
+}
+
 .panel-card__header {
   display: flex;
   justify-content: space-between;
@@ -546,6 +576,8 @@
   .grid--two,
   .cards,
   .overview__tiles,
+  .policy,
+  .report,
   .battery__tiles,
   .solar__tiles,
   .history__tiles,
