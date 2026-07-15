@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "004";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "005";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -319,27 +319,71 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Self consumption", value: this._firstState(/self_consumption/i) },
       { label: "Self sufficiency", value: this._firstState(/self_sufficiency/i) },
     ];
+    const solarSummary = [
+      { label: "Solar now", value: this._firstState(/pv_power$/i) },
+      { label: "Grid import", value: this._firstState(/grid_import_today|grid_power_consumption/i) },
+      { label: "Feed in", value: this._firstState(/feed_in_today|total_feed_in/i) },
+      { label: "Forecast", value: this._firstState(/forecast|forecast_generation/i) },
+    ];
     return `
-      <section class="grid grid--two">
-        <article class="panel-card panel-card--wide">
+      <section class="solar">
+        <article class="panel-card panel-card--wide solar__hero">
           <div class="panel-card__header">
-            <h2>Solar Snapshot</h2>
+            <h2>Solar Control</h2>
             <span>Generation layer</span>
           </div>
-          <ul class="key-list key-list--compact">
-            ${this._valueList(solarItems)}
-          </ul>
-        </article>
-        <article class="panel-card">
-          <div class="panel-card__header">
-            <h2>Solar Notes</h2>
-            <span>Planned</span>
-          </div>
           <p>
-            This page will be the natural home for solar forecasting, grid feed-in policies,
-            and future export spike handling.
+            Solar is where we’ll surface live generation, feed-in, and future forecasting so
+            the panel can guide battery and pricing decisions from the same place.
           </p>
+          <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
+          </div>
         </article>
+
+        <section class="solar__tiles">
+          ${solarSummary.map((item) => `
+            <article class="solar-tile">
+              <span>${item.label}</span>
+              <strong>${item.value}</strong>
+            </article>
+          `).join("")}
+        </section>
+
+        <section class="grid solar__grid">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Solar Snapshot</h2>
+              <span>Generation layer</span>
+            </div>
+            <p>
+              This is the current solar view from Home Assistant. As we continue, it can turn
+              into a daily operations page for power flows and solar forecasts.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(solarItems)}
+            </ul>
+          </article>
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Solar Notes</h2>
+              <span>Planned</span>
+            </div>
+            <p>
+              Future additions fit naturally here: export spikes, dynamic pricing awareness,
+              solar forecasting, and feed-in policy hints.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList([
+                { label: "Forecast mode", value: this._firstState(/forecast_mode/i) },
+                { label: "Peak export", value: this._firstState(/spike|export_spike/i) },
+                { label: "Solar page", value: this._pageLabel() },
+              ])}
+            </ul>
+          </article>
+        </section>
       </section>
     `;
   }
