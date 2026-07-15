@@ -14,6 +14,9 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
+    DEVICE_MANUFACTURER,
+    DEVICE_MODEL,
+    DEVICE_NAME,
     DOMAIN,
     SENSOR_SOC,
     SENSOR_GRID_CONSUMPTION,
@@ -21,6 +24,41 @@ from .const import (
     SENSOR_BATTERY_POWER,
     SENSOR_PV,
     SENSOR_LAST_UPDATE,
+    SENSOR_BATTERY_TEMPERATURE,
+    SENSOR_BATTERY_VOLTAGE,
+    SENSOR_BATTERY_CURRENT,
+    SENSOR_BATTERY_CYCLES,
+    SENSOR_BATTERY_STATE_OF_HEALTH,
+    SENSOR_GRID_VOLTAGE,
+    SENSOR_GRID_CURRENT,
+    SENSOR_GRID_FREQUENCY,
+    SENSOR_INVERTER_TEMPERATURE,
+    SENSOR_OPERATING_MODE,
+    SENSOR_FAULT_CODE,
+    SENSOR_ALARM_STATE,
+    SENSOR_POWER_FACTOR,
+    SENSOR_REACTIVE_POWER,
+    SENSOR_BACKUP_OUTPUT_POWER,
+    SENSOR_BACKUP_LOAD_POWER,
+    SENSOR_EPS_OUTPUT_POWER,
+    SENSOR_PV_STRING_1_VOLTAGE,
+    SENSOR_PV_STRING_1_CURRENT,
+    SENSOR_PV_STRING_2_VOLTAGE,
+    SENSOR_PV_STRING_2_CURRENT,
+    SENSOR_PV_INPUT_TOTAL_POWER,
+    SENSOR_BATTERY_USABLE_CAPACITY,
+    SENSOR_BATTERY_REMAINING_CAPACITY,
+    SENSOR_COMMUNICATION_STATUS,
+    SENSOR_SOLAR_FORECAST,
+    SENSOR_FORECAST_GENERATION_TODAY,
+    SENSOR_FORECAST_GENERATION_TOMORROW,
+    SENSOR_TARIFF_CURRENT_PRICE,
+    SENSOR_TARIFF_NEXT_PRICE,
+    SENSOR_DYNAMIC_PRICING_ENABLED,
+    SENSOR_EXPORT_SPIKE_PRICE,
+    SENSOR_BATTERY_WEAR_COST,
+    SENSOR_DAILY_COST_ESTIMATE,
+    SENSOR_DAILY_INCOME_ESTIMATE,
     SENSOR_TOTAL_SOLAR,
     SENSOR_TOTAL_FEED_IN,
     SENSOR_TOTAL_BATTERY_CHARGE,
@@ -314,8 +352,46 @@ async def async_setup_entry(
             "mdi:molecule-co2"
         ),
     ]
-    
-    async_add_entities(soc_sensors + grid_sensors + daily_stats_sensors)
+
+    placeholder_sensors = [
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_TEMPERATURE, "Battery Temperature", "temperature", "battery_temperature", "°C", "mdi:thermometer"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_VOLTAGE, "Battery Voltage", "voltage", "battery_voltage", "V", "mdi:flash"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_CURRENT, "Battery Current", "current", "battery_current", "A", "mdi:current-dc"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_CYCLES, "Battery Cycles", None, "battery_cycles", "cycles", "mdi:cached"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_STATE_OF_HEALTH, "Battery State of Health", None, "battery_state_of_health", "%", "mdi:battery-heart"),
+        ByteWattSensor(coordinator, entry, SENSOR_GRID_VOLTAGE, "Grid Voltage", "voltage", "grid_voltage", "V", "mdi:transmission-tower"),
+        ByteWattSensor(coordinator, entry, SENSOR_GRID_CURRENT, "Grid Current", "current", "grid_current", "A", "mdi:transmission-tower"),
+        ByteWattSensor(coordinator, entry, SENSOR_GRID_FREQUENCY, "Grid Frequency", None, "grid_frequency", "Hz", "mdi:sine-wave"),
+        ByteWattSensor(coordinator, entry, SENSOR_INVERTER_TEMPERATURE, "Inverter Temperature", "temperature", "inverter_temperature", "°C", "mdi:thermometer"),
+        ByteWattSensor(coordinator, entry, SENSOR_OPERATING_MODE, "Operating Mode", None, "operating_mode", "", "mdi:cog"),
+        ByteWattSensor(coordinator, entry, SENSOR_FAULT_CODE, "Fault Code", None, "fault_code", "", "mdi:alert-circle-outline"),
+        ByteWattSensor(coordinator, entry, SENSOR_ALARM_STATE, "Alarm State", None, "alarm_state", "", "mdi:alarm-light-outline"),
+        ByteWattSensor(coordinator, entry, SENSOR_POWER_FACTOR, "Power Factor", None, "power_factor", "", "mdi:percent"),
+        ByteWattSensor(coordinator, entry, SENSOR_REACTIVE_POWER, "Reactive Power", "power", "reactive_power", "var", "mdi:flash"),
+        ByteWattSensor(coordinator, entry, SENSOR_BACKUP_OUTPUT_POWER, "Backup Output Power", "power", "backup_output_power", "W", "mdi:power-socket"),
+        ByteWattSensor(coordinator, entry, SENSOR_BACKUP_LOAD_POWER, "Backup Load Power", "power", "backup_load_power", "W", "mdi:home-lightning-bolt"),
+        ByteWattSensor(coordinator, entry, SENSOR_EPS_OUTPUT_POWER, "EPS Output Power", "power", "eps_output_power", "W", "mdi:power-plug"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_1_VOLTAGE, "PV String 1 Voltage", "voltage", "pv_string_1_voltage", "V", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_1_CURRENT, "PV String 1 Current", "current", "pv_string_1_current", "A", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_2_VOLTAGE, "PV String 2 Voltage", "voltage", "pv_string_2_voltage", "V", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_2_CURRENT, "PV String 2 Current", "current", "pv_string_2_current", "A", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_INPUT_TOTAL_POWER, "PV Input Total Power", "power", "pv_input_total_power", "W", "mdi:solar-power"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_USABLE_CAPACITY, "Battery Usable Capacity", "energy", "battery_usable_capacity", "kWh", "mdi:battery"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_REMAINING_CAPACITY, "Battery Remaining Capacity", "energy", "battery_remaining_capacity", "kWh", "mdi:battery"),
+        ByteWattSensor(coordinator, entry, SENSOR_COMMUNICATION_STATUS, "Communication Status", None, "communication_status", "", "mdi:lan-connect"),
+        ByteWattSensor(coordinator, entry, SENSOR_SOLAR_FORECAST, "Solar Forecast", "energy", "solar_forecast", "kWh", "mdi:weather-sunny"),
+        ByteWattSensor(coordinator, entry, SENSOR_FORECAST_GENERATION_TODAY, "Forecast Generation Today", "energy", "forecast_generation_today", "kWh", "mdi:weather-sunny"),
+        ByteWattSensor(coordinator, entry, SENSOR_FORECAST_GENERATION_TOMORROW, "Forecast Generation Tomorrow", "energy", "forecast_generation_tomorrow", "kWh", "mdi:weather-sunny"),
+        ByteWattSensor(coordinator, entry, SENSOR_TARIFF_CURRENT_PRICE, "Tariff Current Price", None, "tariff_current_price", "", "mdi:cash"),
+        ByteWattSensor(coordinator, entry, SENSOR_TARIFF_NEXT_PRICE, "Tariff Next Price", None, "tariff_next_price", "", "mdi:cash-clock"),
+        ByteWattSensor(coordinator, entry, SENSOR_DYNAMIC_PRICING_ENABLED, "Dynamic Pricing Enabled", None, "dynamic_pricing_enabled", "", "mdi:cash-sync"),
+        ByteWattSensor(coordinator, entry, SENSOR_EXPORT_SPIKE_PRICE, "Export Spike Price", None, "export_spike_price", "", "mdi:cash-plus"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_WEAR_COST, "Battery Wear Cost", None, "battery_wear_cost", "", "mdi:chart-line"),
+        ByteWattSensor(coordinator, entry, SENSOR_DAILY_COST_ESTIMATE, "Daily Cost Estimate", None, "daily_cost_estimate", "", "mdi:currency-usd"),
+        ByteWattSensor(coordinator, entry, SENSOR_DAILY_INCOME_ESTIMATE, "Daily Income Estimate", None, "daily_income_estimate", "", "mdi:currency-usd"),
+    ]
+
+    async_add_entities(soc_sensors + grid_sensors + daily_stats_sensors + placeholder_sensors)
 
 
 class ByteWattSensor(CoordinatorEntity, SensorEntity):
@@ -351,16 +427,11 @@ class ByteWattSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         """Return device info."""
-        # Safely get username from config entry data
-        username = "Unknown"
-        if self._config_entry.data:
-            username = self._config_entry.data.get('username', 'Unknown')
-        
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
-            "name": f"Byte-Watt Battery ({username})",
-            "manufacturer": "Byte-Watt",
-            "model": "Battery Monitor",
+            "name": DEVICE_NAME,
+            "manufacturer": DEVICE_MANUFACTURER,
+            "model": DEVICE_MODEL,
         }
 
     @property
