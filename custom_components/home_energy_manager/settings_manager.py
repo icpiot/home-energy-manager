@@ -150,6 +150,7 @@ BATTERY_VALIDATORS = {
     "discharge_end_time":     _v_time,
     "grid_charging":          _v_bool,
     "discharge_time_control": _v_bool,
+    "ups_reserve":            _v_bool,
     "charge_power":           _v_battery_power,
     "discharge_power":        _v_battery_power,
 }
@@ -292,6 +293,8 @@ class SettingsManager:
             return bool(c.grid_charge_cycle)
         if field == "discharge_time_control":
             return bool(c.ctr_dis_cycle)
+        if field == "ups_reserve":
+            return bool(c.ups_reserve)
         if field == "charge_power":
             return c.charge_slots[0].charge_power if c.charge_slots else default
         if field == "discharge_power":
@@ -699,6 +702,8 @@ class SettingsManager:
             merged.grid_charge_cycle = 1 if pending["grid_charging"] else 0
         if "discharge_time_control" in pending:
             merged.ctr_dis_cycle = 1 if pending["discharge_time_control"] else 0
+        if "ups_reserve" in pending:
+            merged.ups_reserve = 1 if pending["ups_reserve"] else 0
 
         for field_name, slot_attr, slot_list_attr in (
             ("charge_start_time",    "begin_time", "charge_slots"),

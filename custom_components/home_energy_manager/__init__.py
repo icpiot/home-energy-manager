@@ -1,4 +1,4 @@
-"""The Byte-Watt integration."""
+"""Home Energy Manager integration."""
 from __future__ import annotations
 
 import asyncio
@@ -26,6 +26,8 @@ from .coordinator import ByteWattDataUpdateCoordinator
 from .settings_manager import SettingsManager, SettingsValidationError
 from .const import (
     DOMAIN,
+    CONF_PROVIDER,
+    PROVIDER_BYTEWATT,
     CONF_USERNAME,
     CONF_PASSWORD,
     CONF_RECOVERY_ENABLED,
@@ -80,11 +82,11 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-PLATFORMS = ["sensor", "number", "time", "switch", "button"]
+PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=008"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=009"
 PANEL_CONFIG = {
     "title": "Home Energy Manager",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -97,6 +99,9 @@ PANEL_CUSTOM_CONFIG = {
         "embed_iframe": False,
         "trust_external": False,
     }
+}
+PANEL_PROVIDER_LABELS = {
+    PROVIDER_BYTEWATT: "ByteWatt",
 }
 
 # Services are domain-level; registered once via hass.services.has_service() guard.
@@ -111,7 +116,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
-def _register_frontend_panel(hass: HomeAssistant) -> None:
+def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Register the built-in sidebar panel and load its module."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     if domain_data.get("frontend_panel_registered"):
@@ -123,7 +128,14 @@ def _register_frontend_panel(hass: HomeAssistant) -> None:
         sidebar_title="Home Energy Manager",
         sidebar_icon="mdi:solar-power-variant",
         frontend_url_path=PANEL_FRONTEND_URL_PATH,
-        config={**PANEL_CONFIG, **PANEL_CUSTOM_CONFIG},
+        config={
+            **PANEL_CONFIG,
+            "provider": PANEL_PROVIDER_LABELS.get(
+                entry.data.get(CONF_PROVIDER),
+                str(entry.data.get(CONF_PROVIDER, "Configured provider")).title(),
+            ),
+            **PANEL_CUSTOM_CONFIG,
+        },
         show_in_sidebar=True,
         update=True,
     )
@@ -215,7 +227,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # silently have no effect on the running coordinator.
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
-    _register_frontend_panel(hass)
+    _register_frontend_panel(hass, entry)
 
     return True
 

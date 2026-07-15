@@ -132,6 +132,7 @@ def test_bool_validator_coerces():
     assert BATTERY_VALIDATORS["grid_charging"]("grid_charging", 1) is True
     assert BATTERY_VALIDATORS["grid_charging"]("grid_charging", "yes") is True
     assert BATTERY_VALIDATORS["grid_charging"]("grid_charging", "false") is False
+    assert BATTERY_VALIDATORS["ups_reserve"]("ups_reserve", "yes") is True
 
 
 def test_battery_power_validator_range():
@@ -224,6 +225,7 @@ def test_effective_battery_reads_from_cache(manager, populated_cache):
     assert manager.effective_battery("grid_charging") is True
     assert manager.effective_battery("charge_start_time") == "01:00"
     assert manager.effective_battery("discharge_end_time") == "22:00"
+    assert manager.effective_battery("ups_reserve") is False
 
 
 def test_effective_battery_pending_overrides_cache(manager, populated_cache):
@@ -277,6 +279,12 @@ def test_build_battery_payload_applies_slot_times(manager, populated_cache):
     })
     assert merged.charge_slots[0].begin_time == "02:00"
     assert merged.discharge_slots[0].end_time == "23:00"
+
+
+def test_build_battery_payload_applies_ups_reserve(manager, populated_cache):
+    manager._battery_cache = populated_cache
+    merged = manager._build_battery_payload({"ups_reserve": True})
+    assert merged.ups_reserve == 1
 
 
 def test_build_battery_payload_raises_when_no_cache(manager):

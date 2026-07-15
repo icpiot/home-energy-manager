@@ -1,7 +1,7 @@
 {
   "domain": "home_energy_manager",
   "name": "Home Energy Manager",
-  "codeowners": ["@candreacchio"],
+  "codeowners": ["@icpiot"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/icpiot/home-energy-manager",
@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/icpiot/home-energy-manager/issues",
   "min_ha_version": "2024.11.0",
   "requirements": ["pycryptodome>=3.18.0"],
-  "version": "1.1.1"
+  "version": "1.2.0"
 }

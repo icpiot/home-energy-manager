@@ -34,6 +34,7 @@ async def async_setup_entry(
     async_add_entities([
         ByteWattGridChargeSwitch(coordinator, config_entry, manager),
         ByteWattDischargeControlSwitch(coordinator, config_entry, manager),
+        ByteWattUpsReserveSwitch(coordinator, config_entry, manager),
     ])
 
 
@@ -111,4 +112,15 @@ class ByteWattGridChargeSwitch(_BatterySwitchBase):
             unique_id="grid_charging_battery",
             icon="mdi:transmission-tower",
             field="grid_charging",
+        )
+
+
+class ByteWattUpsReserveSwitch(_BatterySwitchBase):
+    def __init__(self, coordinator, config_entry, manager) -> None:
+        super().__init__(
+            coordinator, config_entry, manager,
+            name="UPS Reserve Enable",
+            unique_id="ups_reserve_enable",
+            icon="mdi:battery-lock",
+            field="ups_reserve",
         )

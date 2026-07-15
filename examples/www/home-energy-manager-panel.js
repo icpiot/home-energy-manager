@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "008";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "009";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -38,6 +38,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   set panel(panel) {
     this._panel = panel;
+    this._config = panel?.config || this._config;
+    this._theme = this._loadTheme();
     this._render();
   }
 
@@ -168,7 +170,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _firstState(pattern, fallback = "Unavailable") {
     const entity = this._matchedEntities(pattern)[0];
-    return entity?.state ?? fallback;
+    return this._formatEntityState(entity, fallback);
   }
 
   _overviewPage() {
@@ -250,22 +252,24 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _batteryPage() {
     const batteryItems = [
-      { label: "Battery percentage", value: this._firstState(/battery_percentage|soc/i) },
-      { label: "Battery power", value: this._firstState(/battery_power/i) },
-      { label: "Charge cap", value: this._firstState(/charge_cap|battery_charge_cap/i) },
-      { label: "Minimum SOC", value: this._firstState(/minimum_soc/i) },
-      { label: "Discharge cutoff", value: this._firstState(/cutoff_soc|discharge_cutoff/i) },
-      { label: "UPS reserve", value: this._firstState(/ups_reserve|ups_reserve_enable/i) },
-      { label: "Charge start", value: this._firstState(/charge_start_time/i) },
-      { label: "Charge end", value: this._firstState(/charge_end_time/i) },
-      { label: "Discharge start", value: this._firstState(/discharge_start_time/i) },
-      { label: "Discharge end", value: this._firstState(/discharge_end_time/i) },
+      { label: "Battery percentage", value: this._formattedState("battery_percentage") },
+      { label: "Battery power", value: this._formattedState("battery_power") },
+      { label: "Charged today", value: this._formattedState("battery_charged_today") },
+      { label: "Discharged today", value: this._formattedState("battery_discharged_today") },
+      { label: "Charge cap", value: this._formattedState("battery_charge_cap", "number") },
+      { label: "Minimum SOC", value: this._formattedState("minimum_soc", "number") },
+      { label: "Discharge cutoff", value: this._formattedState("grid_feed_in_discharging_cutoff_soc", "number") },
+      { label: "UPS reserve", value: this._formattedState("ups_reserve_enable", "switch") },
+      { label: "Charge start", value: this._formattedState("charge_start_time", "time") },
+      { label: "Charge end", value: this._formattedState("charge_end_time", "time") },
+      { label: "Discharge start", value: this._formattedState("discharge_start_time", "time") },
+      { label: "Discharge end", value: this._formattedState("discharge_end_time", "time") },
     ];
     const batterySummary = [
-      { label: "Charge mode", value: this._firstState(/charge_mode|grid_charging_battery/i) },
-      { label: "Discharge window", value: this._firstState(/discharge_time_control|ctr_dis/i) },
-      { label: "Grid charging", value: this._firstState(/grid_charging_battery/i) },
-      { label: "Host target", value: this._firstState(/settings_target|host/i) },
+      { label: "Battery", value: this._formattedState("battery_percentage") },
+      { label: "Discharge window", value: this._formattedState("battery_discharge_time_control", "switch") },
+      { label: "Grid charging", value: this._formattedState("grid_charging_battery", "switch") },
+      { label: "Settings target", value: this._formattedState("settings_target", "select") },
     ];
     return `
       <section class="battery">
@@ -311,11 +315,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <article class="panel-card">
             <div class="panel-card__header">
               <h2>Battery Notes</h2>
-              <span>Planned</span>
+              <span>Schedule</span>
             </div>
             <p>
-              This page will become the place for charge / discharge windows, minimum SOC,
-              cut-off SOC, UPS reserve, and future dynamic policy controls.
+              Active provider schedules and reserve settings are shown here. Changes remain
+              staged until they are submitted through the policy controls.
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList([
@@ -332,18 +336,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _solarPage() {
     const solarItems = [
-      { label: "PV power", value: this._firstState(/pv_power$/i) },
-      { label: "PV generated today", value: this._firstState(/pv_generated_today/i) },
-      { label: "Grid import today", value: this._firstState(/grid_import_today/i) },
-      { label: "Feed in today", value: this._firstState(/feed_in_today/i) },
-      { label: "Self consumption", value: this._firstState(/self_consumption/i) },
-      { label: "Self sufficiency", value: this._firstState(/self_sufficiency/i) },
+      { label: "PV power", value: this._formattedState("pv_power") },
+      { label: "PV generated today", value: this._formattedState("pv_generated_today") },
+      { label: "Consumed today", value: this._formattedState("consumed_today") },
+      { label: "Grid import today", value: this._formattedState("grid_import_today") },
+      { label: "Feed in today", value: this._formattedState("feed_in_today") },
+      { label: "Self consumption", value: this._formattedState("self_consumption") },
+      { label: "Self sufficiency", value: this._formattedState("self_sufficiency") },
     ];
     const solarSummary = [
-      { label: "Solar now", value: this._firstState(/pv_power$/i) },
-      { label: "Grid import", value: this._firstState(/grid_import_today|grid_power_consumption/i) },
-      { label: "Feed in", value: this._firstState(/feed_in_today|total_feed_in/i) },
-      { label: "Forecast", value: this._firstState(/forecast|forecast_generation/i) },
+      { label: "Solar now", value: this._formattedState("pv_power") },
+      { label: "Grid now", value: this._formattedState("grid_consumption") },
+      { label: "Feed in today", value: this._formattedState("feed_in_today") },
+      { label: "Forecast today", value: this._formattedState("forecast_generation_today") },
     ];
     return `
       <section class="solar">
@@ -389,16 +394,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <article class="panel-card">
             <div class="panel-card__header">
               <h2>Solar Notes</h2>
-              <span>Planned</span>
+              <span>Provider coverage</span>
             </div>
             <p>
-              Future additions fit naturally here: export spikes, dynamic pricing awareness,
-              solar forecasting, and feed-in policy hints.
+              Forecast and export values appear automatically when the configured provider
+              or a future forecast source supplies them.
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList([
-                { label: "Forecast mode", value: this._firstState(/forecast_mode/i) },
-                { label: "Peak export", value: this._firstState(/spike|export_spike/i) },
+                { label: "Forecast today", value: this._formattedState("forecast_generation_today") },
+                { label: "Forecast tomorrow", value: this._formattedState("forecast_generation_tomorrow") },
+                { label: "Export spike", value: this._formattedState("export_spike_price") },
                 { label: "Solar page", value: this._pageLabel() },
               ])}
             </ul>
@@ -410,15 +416,18 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _historyPage() {
     const historyItems = [
-      { label: "Report build", value: this._firstState(/report_build|latest_report_build/i, "v002") },
-      { label: "Debug build", value: this._firstState(/debug_build|latest_debug_build/i, "Unavailable") },
-      { label: "Last update", value: this._firstState(/last_update|last_updated/i) },
+      { label: "Solar generated today", value: this._formattedState("pv_generated_today") },
+      { label: "Consumed today", value: this._formattedState("consumed_today") },
+      { label: "Grid import today", value: this._formattedState("grid_import_today") },
+      { label: "Feed in today", value: this._formattedState("feed_in_today") },
+      { label: "Battery charged today", value: this._formattedState("battery_charged_today") },
+      { label: "Battery discharged today", value: this._formattedState("battery_discharged_today") },
     ];
     const historySummary = [
-      { label: "Report build", value: this._firstState(/report_build|latest_report_build/i, "v006") },
-      { label: "Data freshness", value: this._firstState(/last_update|last_updated/i) },
-      { label: "Log viewer", value: this._firstState(/git_log|report_build/i, "Ready") },
-      { label: "Trend store", value: this._firstState(/history|report_history/i, "Available") },
+      { label: "Total solar", value: this._formattedState("total_solar_generation") },
+      { label: "Total consumption", value: this._formattedState("total_house_consumption") },
+      { label: "Total feed in", value: this._formattedState("total_feed_in") },
+      { label: "Last update", value: this._formattedState("last_update") },
     ];
     return `
       <section class="history">
@@ -454,8 +463,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Timeline</span>
             </div>
             <p>
-              The history tab will eventually grow into a proper timeline for reports, events,
-              and daily operation summaries.
+              Daily energy totals come from the provider-neutral history model. Longer trend
+              charts will build on the same normalized values.
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList(historyItems)}
@@ -464,11 +473,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <article class="panel-card">
             <div class="panel-card__header">
               <h2>History Notes</h2>
-              <span>Planned</span>
+              <span>Coverage</span>
             </div>
             <p>
-              This can become the place for report generation, usage summaries, and links into
-              the saved history store.
+              Recorder history remains available in Home Assistant while the dedicated report
+              store supplies longer provider-neutral archives.
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList([
@@ -485,18 +494,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _pricingPage() {
     const pricingItems = [
-      { label: "Today cost", value: this._firstState(/today_cost/i) },
-      { label: "Today income", value: this._firstState(/today_income/i) },
-      { label: "Dynamic pricing", value: this._firstState(/dynamic_pricing_enabled/i) },
-      { label: "Wear cost", value: this._firstState(/wear_cost/i) },
-      { label: "Export spike", value: this._firstState(/export_spike_price/i) },
-      { label: "Forecast", value: this._firstState(/solar_forecast/i) },
+      { label: "Daily cost estimate", value: this._formattedState("daily_cost_estimate") },
+      { label: "Daily income estimate", value: this._formattedState("daily_income_estimate") },
+      { label: "Current tariff", value: this._formattedState("tariff_current_price") },
+      { label: "Next tariff", value: this._formattedState("tariff_next_price") },
+      { label: "Dynamic pricing", value: this._formattedState("dynamic_pricing_enabled") },
+      { label: "Battery wear cost", value: this._formattedState("battery_wear_cost") },
+      { label: "Export spike", value: this._formattedState("export_spike_price") },
     ];
     const pricingSummary = [
-      { label: "Today cost", value: this._firstState(/today_cost/i) },
-      { label: "Dynamic", value: this._firstState(/dynamic_pricing_enabled/i) },
-      { label: "Wear cost", value: this._firstState(/wear_cost/i) },
-      { label: "Spike export", value: this._firstState(/export_spike_price/i) },
+      { label: "Current tariff", value: this._formattedState("tariff_current_price") },
+      { label: "Dynamic", value: this._formattedState("dynamic_pricing_enabled") },
+      { label: "Wear cost", value: this._formattedState("battery_wear_cost") },
+      { label: "Spike export", value: this._formattedState("export_spike_price") },
     ];
     return `
       <section class="pricing">
@@ -532,8 +542,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Tariff layer</span>
             </div>
             <p>
-              This page will eventually drive the cost model for daily estimates, charging
-              windows, and solar export decisions.
+              Pricing stays separate from energy history so fixed tariffs, time-of-use rates,
+              and dynamic feeds can all retain date-effective records.
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList(pricingItems)}
@@ -550,8 +560,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList([
-                { label: "Tariff mode", value: this._firstState(/tariff|pricing_mode/i, "Fixed / dynamic") },
-                { label: "Forecast depth", value: this._firstState(/forecast/i, "Future day") },
+                { label: "Current tariff", value: this._formattedState("tariff_current_price") },
+                { label: "Next tariff", value: this._formattedState("tariff_next_price") },
                 { label: "Pricing page", value: this._pageLabel() },
               ])}
             </ul>
@@ -566,7 +576,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Theme", value: this._themeLabel() },
       { label: "Route", value: this._route?.path || this._panel?.url_path || "home-energy-manager" },
       { label: "Screen", value: this._narrow ? "narrow" : "wide" },
-      { label: "Provider", value: this._config.provider || "ByteWatt" },
+      { label: "Provider", value: this._config.provider || "Configured provider" },
     ];
     return `
       <section class="grid grid--two">
