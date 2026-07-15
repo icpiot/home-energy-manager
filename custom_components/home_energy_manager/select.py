@@ -251,8 +251,12 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             history_hint=history_hint,
         )
         reporting_meta = reporting.get("meta") or {}
-        timezone_obj = getattr(coordinator.client, "_timezone", None)
-        timezone_name = getattr(timezone_obj, "key", "") or getattr(coordinator.client, "timezone_code", "") or ""
+        timezone_obj = getattr(self.coordinator.client, "_timezone", None)
+        timezone_name = (
+            getattr(timezone_obj, "key", "")
+            or getattr(self.coordinator.client, "timezone_code", "")
+            or ""
+        )
         reporting_summary = {
             "label": reporting.get("label"),
             "aggregate": reporting.get("aggregate"),
@@ -262,7 +266,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
                 "saved_at": reporting_meta.get("saved_at"),
                 "history": reporting_meta.get("history") or {},
                 "timezone": timezone_name,
-                "timezone_code": getattr(coordinator.client, "timezone_code", "") or "",
+                "timezone_code": getattr(self.coordinator.client, "timezone_code", "") or "",
             },
             "history": reporting_meta.get("history") or {},
             "live": _compact_summary(reporting.get("live"), ["soc", "battery_power", "house_consumption", "grid_power", "pv_power", "power_source"]),

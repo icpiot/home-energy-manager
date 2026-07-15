@@ -46,7 +46,7 @@ def test_integration_forwards_select_platform():
 
 def test_manifest_version_matches_panel_milestone():
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    assert manifest["version"] == "1.2.1"
+    assert manifest["version"] == "1.2.2"
     assert manifest["codeowners"] == ["@icpiot"]
 
 

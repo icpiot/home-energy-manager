@@ -1,4 +1,15 @@
+from pathlib import Path
+
 from custom_components.home_energy_manager.select import _reporting_payload
+
+
+def test_settings_target_timezone_reads_entity_coordinator():
+    """Guard against using an undefined local coordinator during entity setup."""
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "custom_components", "home_energy_manager", "select.py"
+    ).read_text(encoding="utf-8")
+    assert "getattr(coordinator.client" not in source
+    assert "getattr(self.coordinator.client" in source
 
 
 def test_reporting_payload_keeps_daily_chart_series():
