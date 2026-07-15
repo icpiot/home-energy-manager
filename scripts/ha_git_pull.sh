@@ -66,6 +66,15 @@ deploy_repo_to_ha() {
     esac
     copy_deploy_entry "$source_spec" "$dest_path" "$mode"
   done < "$DEPLOY_MANIFEST"
+
+  local panel_config_source="$REPO_DIR/examples/panel/home-energy-manager-panel_custom.yaml"
+  local panel_config_dest="/config/panel_custom.yaml"
+  if [ ! -e "$panel_config_dest" ]; then
+    echo "Bootstrapping missing panel config:"
+    copy_deploy_entry "$panel_config_source" "$panel_config_dest" "file"
+  else
+    echo "Panel config already exists: $panel_config_dest"
+  fi
 }
 
 {
