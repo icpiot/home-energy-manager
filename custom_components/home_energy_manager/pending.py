@@ -13,7 +13,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, signal_pending_changed
+from .const import DEVICE_MANUFACTURER, DEVICE_MODEL, DEVICE_NAME, DOMAIN, signal_pending_changed
 from .settings_manager import SettingsManager
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,9 +55,9 @@ class _PendingButtonBase(CoordinatorEntity, ButtonEntity):
     def device_info(self) -> dict[str, Any]:
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
-            "name": "ByteWatt Battery System",
-            "manufacturer": "ByteWatt",
-            "model": "Battery Management System",
+            "name": DEVICE_NAME,
+            "manufacturer": DEVICE_MANUFACTURER,
+            "model": DEVICE_MODEL,
         }
 
     @property
@@ -119,8 +119,8 @@ class ByteWattSubmitButton(_PendingButtonBase):
 
         any_success = result.battery_ok or result.feedin_ok
         title = (
-            "ByteWatt: settings partially saved" if any_success
-            else "ByteWatt: settings save failed"
+            "Home Energy Manager: settings partially saved" if any_success
+            else "Home Energy Manager: settings save failed"
         )
         notify_create(
             self.hass,
@@ -152,7 +152,7 @@ class ByteWattDiscardButton(_PendingButtonBase):
             self.hass,
             f"Discarded {count} unsaved setting change(s). Entities now reflect "
             f"the inverter's current state.",
-            title="ByteWatt: pending discarded",
+            title="Home Energy Manager: pending discarded",
             notification_id=f"bytewatt_discard_{entry_id}",
         )
         await self.coordinator.async_request_refresh()

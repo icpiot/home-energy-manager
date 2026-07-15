@@ -19,7 +19,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, FEEDIN_MAX_POWER_W
+from .const import DEVICE_MANUFACTURER, DEVICE_MODEL, DEVICE_NAME, DOMAIN, FEEDIN_MAX_POWER_W
 from .coordinator import ByteWattDataUpdateCoordinator
 from .settings_manager import SettingsManager, SettingsValidationError
 
@@ -60,9 +60,9 @@ class _FeedInBase(CoordinatorEntity):
     def device_info(self) -> dict[str, Any]:
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
-            "name": "ByteWatt Battery System",
-            "manufacturer": "ByteWatt",
-            "model": "Battery Management System",
+            "name": DEVICE_NAME,
+            "manufacturer": DEVICE_MANUFACTURER,
+            "model": DEVICE_MODEL,
         }
 
     @property

@@ -12,7 +12,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DEVICE_MANUFACTURER, DEVICE_MODEL, DEVICE_NAME, DOMAIN
 from .coordinator import ByteWattDataUpdateCoordinator
 from .grid_feedin import async_setup_number_entry as _feedin_setup
 from .settings_manager import SettingsManager, SettingsValidationError
@@ -75,9 +75,9 @@ class _BatteryNumberBase(CoordinatorEntity, NumberEntity):
     def device_info(self) -> dict[str, Any]:
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
-            "name": "ByteWatt Battery System",
-            "manufacturer": "ByteWatt",
-            "model": "Battery Management System",
+            "name": DEVICE_NAME,
+            "manufacturer": DEVICE_MANUFACTURER,
+            "model": DEVICE_MODEL,
         }
 
     @property

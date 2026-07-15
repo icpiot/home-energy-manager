@@ -1,6 +1,9 @@
 """Constants for the Home Energy Manager integration."""
 
 DOMAIN = "home_energy_manager"
+DEVICE_NAME = "Home Energy Manager"
+DEVICE_MANUFACTURER = "Home Energy Manager"
+DEVICE_MODEL = "Battery Management System"
 
 # Configuration
 CONF_USERNAME = "username"

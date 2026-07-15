@@ -11,7 +11,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DEVICE_MANUFACTURER, DEVICE_MODEL, DEVICE_NAME, DOMAIN
 from .const import CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
 from .coordinator import ByteWattDataUpdateCoordinator
 from .reporting import build_reporting_payload
@@ -98,9 +98,9 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
     def device_info(self) -> dict[str, Any]:
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
-            "name": "ByteWatt Battery System",
-            "manufacturer": "ByteWatt",
-            "model": "Battery Management System",
+            "name": DEVICE_NAME,
+            "manufacturer": DEVICE_MANUFACTURER,
+            "model": DEVICE_MODEL,
         }
 
     def _inventory(self) -> list[DiscoveredInverter]:
@@ -358,9 +358,9 @@ class ByteWattExecutionCycleSelect(CoordinatorEntity, SelectEntity):
     def device_info(self) -> dict[str, Any]:
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
-            "name": "ByteWatt Battery System",
-            "manufacturer": "ByteWatt",
-            "model": "Battery Management System",
+            "name": DEVICE_NAME,
+            "manufacturer": DEVICE_MANUFACTURER,
+            "model": DEVICE_MODEL,
         }
 
     @property
