@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "002";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "003";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -129,6 +129,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       .join("");
   }
 
+  _firstManagedState(pattern, fallback = "Unavailable") {
+    return this._firstState(pattern, fallback);
+  }
+
   _valueList(items, emptyLabel = "No matching entities yet") {
     const entries = items.length
       ? items
@@ -148,43 +152,78 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _overviewPage() {
-    const sampleList = this._entitySample() || "<li><span>No matching entities yet</span><strong>idle</strong></li>";
+    const sampleList = this._entitySample(6) || "<li><span>No matching entities yet</span><strong>idle</strong></li>";
+    const overviewTiles = [
+      { label: "Battery", value: this._firstManagedState(/battery_percentage|soc/i), note: "Current charge" },
+      { label: "Solar", value: this._firstManagedState(/pv_power$/i), note: "Live PV power" },
+      { label: "Grid", value: this._firstManagedState(/grid_import_today|grid_power_consumption/i), note: "Import / flow" },
+      { label: "Load", value: this._firstManagedState(/house_consumption/i), note: "Home demand" },
+    ];
     return `
-      <section class="grid">
-        <article class="panel-card panel-card--wide">
+      <section class="overview">
+        <article class="panel-card panel-card--wide overview__hero">
           <div class="panel-card__header">
-            <h2>Live Preview</h2>
+            <h2>Energy Command Center</h2>
             <span>Overview</span>
           </div>
           <p>
-            This panel is the front door for daily use. We’ll keep the layout focused on the
-            most useful energy information and control actions while keeping Lovelace optional.
+            This is the daily control surface for battery, solar, grid, and future pricing
+            workflows. The panel will stay focused on the most useful actions first.
           </p>
-          <ul class="entity-list">
-            ${sampleList}
-          </ul>
+          <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
+            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
+            <button type="button" class="panel-nav__item" data-page="pricing">Pricing</button>
+          </div>
         </article>
 
-        <article class="panel-card">
-          <div class="panel-card__header">
-            <h2>Quick Stats</h2>
-            <span>Today</span>
-          </div>
-          <ul class="key-list">
-            ${this._valueList([
-              { label: "Managed entities", value: String(this._managedEntities().length) },
-              { label: "Sensors", value: String(this._entityCountByDomain("sensor")) },
-              { label: "Controls", value: String(
-                this._entityCountByDomain("switch") +
-                this._entityCountByDomain("number") +
-                this._entityCountByDomain("time") +
-                this._entityCountByDomain("button") +
-                this._entityCountByDomain("select")
-              ) },
-              { label: "Active page", value: this._pageLabel() },
-            ])}
-          </ul>
-        </article>
+        <section class="overview__tiles">
+          ${overviewTiles.map((tile) => `
+            <article class="overview-tile">
+              <span>${tile.label}</span>
+              <strong>${tile.value}</strong>
+              <small>${tile.note}</small>
+            </article>
+          `).join("")}
+        </section>
+
+        <section class="grid overview__grid">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Live Entities</h2>
+              <span>Preview</span>
+            </div>
+            <p>
+              These are the entities the panel can already see. As we continue, this area can
+              become the operational dashboard for the most important values.
+            </p>
+            <ul class="entity-list">
+              ${sampleList}
+            </ul>
+          </article>
+
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Quick Stats</h2>
+              <span>Today</span>
+            </div>
+            <ul class="key-list">
+              ${this._valueList([
+                { label: "Managed entities", value: String(this._managedEntities().length) },
+                { label: "Sensors", value: String(this._entityCountByDomain("sensor")) },
+                { label: "Controls", value: String(
+                  this._entityCountByDomain("switch") +
+                  this._entityCountByDomain("number") +
+                  this._entityCountByDomain("time") +
+                  this._entityCountByDomain("button") +
+                  this._entityCountByDomain("select")
+                ) },
+                { label: "Active page", value: this._pageLabel() },
+              ])}
+            </ul>
+          </article>
+        </section>
       </section>
     `;
   }
@@ -464,7 +503,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <article>
             <h2>Managed</h2>
             <p>${managedCount}</p>
-            <small>Entities matching `home_energy_manager` or `bytewatt`.</small>
+            <small>Entities matching home_energy_manager or bytewatt.</small>
           </article>
           <article>
             <h2>Sensors</h2>
@@ -485,7 +524,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll(".theme-pill").forEach((button) => {
       button.addEventListener("click", () => this._setTheme(button.dataset.theme));
     });
-    this.shadowRoot.querySelectorAll(".panel-nav__item").forEach((button) => {
+    this.shadowRoot.querySelectorAll("[data-page]").forEach((button) => {
       button.addEventListener("click", () => this._setPage(button.dataset.page));
     });
   }

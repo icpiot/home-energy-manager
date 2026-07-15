@@ -41,7 +41,7 @@ No `panel_custom.yaml` entry is required.
 
 The panel is served from:
 
-`/local/community/home-energy-manager/home-energy-manager-panel.js?v=002`
+`/local/community/home-energy-manager/home-energy-manager-panel.js?v=003`
 
 The panel ships with built-in theme presets:
 
