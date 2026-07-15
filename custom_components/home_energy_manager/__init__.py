@@ -86,11 +86,15 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=010"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=011"
 PANEL_CONFIG = {
     "title": "Home Energy Manager",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
-    "theme": "midnight",
+    "theme": "cyberpunk",
+    "theme_art_url": "",
+    "theme_art_size": "cover",
+    "theme_art_position": "center center",
+    "theme_art_opacity": "0.18",
 }
 PANEL_CUSTOM_CONFIG = {
     "_panel_custom": {

@@ -1,10 +1,11 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "010";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "011";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
   { value: "midnight", label: "Midnight" },
   { value: "sunrise", label: "Sunrise" },
   { value: "neon", label: "Neon" },
+  { value: "cyberpunk", label: "Cyberpunk" },
 ];
 const HOME_ENERGY_MANAGER_PANEL_PAGES = [
   { value: "overview", label: "Overview", icon: "◉" },
@@ -71,6 +72,36 @@ class HomeEnergyManagerPanel extends HTMLElement {
     } catch (error) {
       return "overview";
     }
+  }
+
+  _cleanCssValue(value, fallback) {
+    const text = String(value ?? fallback ?? "").replace(/[;\r\n]/g, "").trim();
+    return text || fallback;
+  }
+
+  _cssUrl(value) {
+    const text = String(value ?? "").trim();
+    if (!text) {
+      return "none";
+    }
+    if (/^url\(/i.test(text)) {
+      return text;
+    }
+    const escaped = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    return `url("${escaped}")`;
+  }
+
+  _themeStyleVars() {
+    const artUrl = this._config.theme_art_url
+      || this._config.theme_background_art_url
+      || this._config.theme_panel_art_url
+      || "";
+    return [
+      `--hem-panel-art-image: ${this._cssUrl(artUrl)};`,
+      `--hem-panel-art-size: ${this._cleanCssValue(this._config.theme_art_size, "cover")};`,
+      `--hem-panel-art-position: ${this._cleanCssValue(this._config.theme_art_position, "center center")};`,
+      `--hem-panel-art-opacity: ${this._cleanCssValue(this._config.theme_art_opacity, "0.18")};`,
+    ].join(" ");
   }
 
   _saveTheme(theme) {
@@ -656,7 +687,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <link rel="stylesheet" href="/local/community/home-energy-manager/home-energy-manager-panel.css?v=${HOME_ENERGY_MANAGER_PANEL_BUILD}">
-      <section class="panel shell theme-${this._theme}" data-theme="${this._theme}">
+      <section class="panel shell theme-${this._theme}" data-theme="${this._theme}" style="${this._themeStyleVars()}">
         <header class="hero">
           <div class="hero__badge">v${HOME_ENERGY_MANAGER_PANEL_BUILD}</div>
           <div class="hero__copy">

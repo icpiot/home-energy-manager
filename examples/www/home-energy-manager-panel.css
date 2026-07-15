@@ -14,12 +14,45 @@
 }
 
 .shell {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   --hem-panel-surface: rgba(11, 20, 34, 0.88);
   --hem-panel-surface-strong: rgba(17, 30, 50, 0.94);
   --hem-panel-border: rgba(153, 190, 255, 0.18);
   --hem-panel-muted: rgba(234, 240, 255, 0.7);
   --hem-panel-accent: #6fb2ff;
   --hem-panel-accent-strong: #2d82ff;
+  --hem-panel-text: #eef4ff;
+  --hem-panel-art-image: none;
+  --hem-panel-art-size: cover;
+  --hem-panel-art-position: center center;
+  --hem-panel-art-opacity: 0.18;
+}
+
+.shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--hem-panel-art-image);
+  background-repeat: no-repeat;
+  background-size: var(--hem-panel-art-size);
+  background-position: var(--hem-panel-art-position);
+  opacity: var(--hem-panel-art-opacity);
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: screen;
+}
+
+.shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent 28%),
+    linear-gradient(315deg, rgba(255, 255, 255, 0.015), transparent 26%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .shell.theme-sunrise {
@@ -40,6 +73,25 @@
   --hem-panel-accent-strong: #00bcd4;
 }
 
+.shell.theme-cyberpunk {
+  --hem-panel-surface: rgba(7, 14, 26, 0.9);
+  --hem-panel-surface-strong: rgba(10, 18, 34, 0.96);
+  --hem-panel-border: rgba(0, 229, 255, 0.22);
+  --hem-panel-muted: rgba(222, 246, 255, 0.74);
+  --hem-panel-accent: #00e5ff;
+  --hem-panel-accent-strong: #ff4de8;
+  --hem-panel-text: #f4fbff;
+  --hem-panel-art-opacity: 0.22;
+}
+
+.shell.theme-cyberpunk::before {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(0, 229, 255, 0.24), transparent 22%),
+    radial-gradient(circle at 82% 12%, rgba(255, 77, 232, 0.2), transparent 20%),
+    radial-gradient(circle at 50% 100%, rgba(157, 255, 87, 0.12), transparent 28%),
+    var(--hem-panel-art-image);
+}
+
 .hero,
 .status,
 .cards,
@@ -47,6 +99,8 @@
 .panel-nav {
   max-width: 1380px;
   margin: 0 auto 18px;
+  position: relative;
+  z-index: 1;
 }
 
 .hero {
