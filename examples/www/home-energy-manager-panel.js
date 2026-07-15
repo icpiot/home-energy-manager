@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "009";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "010";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -106,7 +106,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _managedEntities() {
-    return this._states().filter((entity) => /\.home_energy_manager(?:_|$)/i.test(entity.entity_id));
+    return this._states().filter((entity) => (
+      /\.[a-z0-9_]*home_energy_manager(?:_|$)/i.test(entity.entity_id)
+    ));
   }
 
   _entityCountByDomain(domain) {
@@ -133,9 +135,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _entityByKey(key, domain = "sensor") {
     const baseEntityId = `${domain}.home_energy_manager_${key}`;
     return this._hass?.states?.[baseEntityId]
-      || this._managedEntities().find((entity) => (
-        entity.entity_id === baseEntityId || entity.entity_id.startsWith(`${baseEntityId}_`)
-      ));
+      || this._managedEntities().find((entity) => {
+        if (!entity.entity_id.startsWith(`${domain}.`)) {
+          return false;
+        }
+        const objectId = entity.entity_id.slice(domain.length + 1).replace(/_\d+$/, "");
+        const keySuffix = `home_energy_manager_${key}`;
+        return objectId === keySuffix || objectId.endsWith(`_${keySuffix}`);
+      });
   }
 
   _formatEntityState(entity, fallback = "Unavailable") {

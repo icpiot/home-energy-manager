@@ -27,7 +27,7 @@ def test_panel_build_matches_registered_cache_version():
 
 def test_panel_uses_provider_neutral_entity_namespace():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
-    assert r"\.home_energy_manager(?:_|$)" in panel_source
+    assert "home_energy_manager(?:_|$)" in panel_source
     assert "home_energy_manager_${key}" in panel_source
     assert "|bytewatt" not in panel_source.lower()
 
@@ -46,7 +46,7 @@ def test_integration_forwards_select_platform():
 
 def test_manifest_version_matches_panel_milestone():
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    assert manifest["version"] == "1.2.0"
+    assert manifest["version"] == "1.2.1"
     assert manifest["codeowners"] == ["@icpiot"]
 
 

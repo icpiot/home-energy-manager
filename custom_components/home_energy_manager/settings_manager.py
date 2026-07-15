@@ -42,6 +42,7 @@ from homeassistant.util import dt as dt_util
 from .api.settings import BatterySettingsAPI, GridFeedInSettingsAPI
 from .const import signal_pending_changed
 from .models import CycleStrategy, GridFeedInSettings, GridFeedInSlot
+from .topology import ByteWattScope
 from .utilities.time_utils import sanitize_time_format
 
 _LOGGER = logging.getLogger(__name__)
@@ -219,6 +220,23 @@ class SettingsManager:
     @property
     def feedin_cache(self) -> Optional[GridFeedInSettings]:
         return self._feedin_cache
+
+    @property
+    def current_settings_target_id(self) -> str:
+        """Return the system ID currently used for provider settings calls."""
+        return str(getattr(self._client, "host_system_id", "") or "")
+
+    @property
+    def current_settings_target_sys_sn(self) -> str:
+        """Return the serial number currently used for provider settings calls."""
+        return str(getattr(self._client, "host_sys_sn", "") or "")
+
+    async def async_select_settings_target(self, scope: ByteWattScope) -> None:
+        """Apply a settings scope to the active provider client."""
+        self._client.host_system_id = scope.effective_system_id
+        self._client.host_sys_sn = scope.effective_sys_sn
+        self._battery_cache = None
+        self._feedin_cache = None
 
     def has_pending(self) -> bool:
         return bool(

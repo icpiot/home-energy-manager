@@ -6,6 +6,7 @@ cache fallback), and the snapshot-clear-restore atomicity in submit().
 from __future__ import annotations
 
 import asyncio  # noqa: F401 — kept for future async tests
+from types import SimpleNamespace
 import pytest
 
 # SettingsManager imports homeassistant.helpers.dispatcher; skip cleanly
@@ -26,6 +27,7 @@ from custom_components.home_energy_manager.settings_manager import (  # noqa: E4
     SettingsManager,
     SubmitResult,
 )
+from custom_components.home_energy_manager.topology import ByteWattScope  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +236,23 @@ def test_effective_battery_pending_overrides_cache(manager, populated_cache):
     assert manager.effective_battery("minimum_soc") == 25
     # Other fields still read from cache.
     assert manager.effective_battery("grid_charging") is True
+
+
+async def test_select_settings_target_updates_provider_client(stub_hass):
+    client = SimpleNamespace(host_system_id="old-id", host_sys_sn="old-sn")
+    target_manager = SettingsManager(stub_hass, client=client, entry_id="test_entry")
+    target_manager._battery_cache = CycleStrategy()
+    target_manager._feedin_cache = GridFeedInSettings()
+
+    await target_manager.async_select_settings_target(ByteWattScope(
+        system_id="new-id",
+        sys_sn="new-sn",
+    ))
+
+    assert target_manager.current_settings_target_id == "new-id"
+    assert target_manager.current_settings_target_sys_sn == "new-sn"
+    assert target_manager.battery_cache is None
+    assert target_manager.feedin_cache is None
 
 
 def test_effective_feedin_pending_overrides_cache(manager, populated_feedin_cache):
