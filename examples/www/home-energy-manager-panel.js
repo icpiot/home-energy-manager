@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "003";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "004";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -234,32 +234,78 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Battery power", value: this._firstState(/battery_power/i) },
       { label: "Charge cap", value: this._firstState(/charge_cap|battery_charge_cap/i) },
       { label: "Minimum SOC", value: this._firstState(/minimum_soc/i) },
+      { label: "Discharge cutoff", value: this._firstState(/cutoff_soc|discharge_cutoff/i) },
+      { label: "UPS reserve", value: this._firstState(/ups_reserve|ups_reserve_enable/i) },
       { label: "Charge start", value: this._firstState(/charge_start_time/i) },
       { label: "Charge end", value: this._firstState(/charge_end_time/i) },
       { label: "Discharge start", value: this._firstState(/discharge_start_time/i) },
       { label: "Discharge end", value: this._firstState(/discharge_end_time/i) },
     ];
+    const batterySummary = [
+      { label: "Charge mode", value: this._firstState(/charge_mode|grid_charging_battery/i) },
+      { label: "Discharge window", value: this._firstState(/discharge_time_control|ctr_dis/i) },
+      { label: "Grid charging", value: this._firstState(/grid_charging_battery/i) },
+      { label: "Host target", value: this._firstState(/settings_target|host/i) },
+    ];
     return `
-      <section class="grid grid--two">
-        <article class="panel-card panel-card--wide">
+      <section class="battery">
+        <article class="panel-card panel-card--wide battery__hero">
           <div class="panel-card__header">
-            <h2>Battery Snapshot</h2>
-            <span>Control layer</span>
-          </div>
-          <ul class="key-list key-list--compact">
-            ${this._valueList(batteryItems)}
-          </ul>
-        </article>
-        <article class="panel-card">
-          <div class="panel-card__header">
-            <h2>Battery Notes</h2>
-            <span>Planned</span>
+            <h2>Battery Control</h2>
+            <span>Operations</span>
           </div>
           <p>
-            This page will become the place for battery policy controls, charge / discharge
-            windows, UPS reserve, and any provider-specific battery behavior.
+            The battery page will be the day-to-day control surface for charge and discharge
+            policy, safety limits, and provider-specific battery modes.
           </p>
+          <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
+            <button type="button" class="panel-nav__item" data-page="pricing">Pricing</button>
+          </div>
         </article>
+
+        <section class="battery__tiles">
+          ${batterySummary.map((item) => `
+            <article class="battery-tile">
+              <span>${item.label}</span>
+              <strong>${item.value}</strong>
+            </article>
+          `).join("")}
+        </section>
+
+        <section class="grid battery__grid">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Battery Snapshot</h2>
+              <span>Control layer</span>
+            </div>
+            <p>
+              These are the battery controls and indicators the UI knows about right now.
+              Missing values show as unavailable until the provider exposes them.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(batteryItems)}
+            </ul>
+          </article>
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Battery Notes</h2>
+              <span>Planned</span>
+            </div>
+            <p>
+              This page will become the place for charge / discharge windows, minimum SOC,
+              cut-off SOC, UPS reserve, and future dynamic policy controls.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList([
+                { label: "Charge window", value: `${this._firstState(/charge_start_time/i)} → ${this._firstState(/charge_end_time/i)}` },
+                { label: "Discharge window", value: `${this._firstState(/discharge_start_time/i)} → ${this._firstState(/discharge_end_time/i)}` },
+                { label: "Policy page", value: this._pageLabel() },
+              ])}
+            </ul>
+          </article>
+        </section>
       </section>
     `;
   }
