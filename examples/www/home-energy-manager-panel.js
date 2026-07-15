@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "006";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "007";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -472,31 +472,71 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Export spike", value: this._firstState(/export_spike_price/i) },
       { label: "Forecast", value: this._firstState(/solar_forecast/i) },
     ];
+    const pricingSummary = [
+      { label: "Today cost", value: this._firstState(/today_cost/i) },
+      { label: "Dynamic", value: this._firstState(/dynamic_pricing_enabled/i) },
+      { label: "Wear cost", value: this._firstState(/wear_cost/i) },
+      { label: "Spike export", value: this._firstState(/export_spike_price/i) },
+    ];
     return `
-      <section class="grid grid--two">
-        <article class="panel-card panel-card--wide">
+      <section class="pricing">
+        <article class="panel-card panel-card--wide pricing__hero">
           <div class="panel-card__header">
             <h2>Pricing</h2>
             <span>Future-ready</span>
           </div>
           <p>
-            Pricing is intentionally separate so we can support fixed tariffs, dynamic plans,
-            and future export spike pricing without locking the rest of the UI to one model.
+            Pricing gets its own home so we can handle fixed tariffs, dynamic plans, wear cost,
+            and future export spike pricing without tying the rest of the UI to one model.
           </p>
-          <ul class="key-list key-list--compact">
-            ${this._valueList(pricingItems)}
-          </ul>
-        </article>
-        <article class="panel-card">
-          <div class="panel-card__header">
-            <h2>Pricing Notes</h2>
-            <span>Planned</span>
+          <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
           </div>
-          <p>
-            We can bring this in once the base control pages are clean and the history model
-            is settled.
-          </p>
         </article>
+
+        <section class="pricing__tiles">
+          ${pricingSummary.map((item) => `
+            <article class="pricing-tile">
+              <span>${item.label}</span>
+              <strong>${item.value}</strong>
+            </article>
+          `).join("")}
+        </section>
+
+        <section class="grid pricing__grid">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Pricing Snapshot</h2>
+              <span>Tariff layer</span>
+            </div>
+            <p>
+              This page will eventually drive the cost model for daily estimates, charging
+              windows, and solar export decisions.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(pricingItems)}
+            </ul>
+          </article>
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Pricing Notes</h2>
+              <span>Planned</span>
+            </div>
+            <p>
+              The split is deliberate: fixed tariffs, dynamic pricing, and wear cost can evolve
+              independently while keeping the dashboard focused.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList([
+                { label: "Tariff mode", value: this._firstState(/tariff|pricing_mode/i, "Fixed / dynamic") },
+                { label: "Forecast depth", value: this._firstState(/forecast/i, "Future day") },
+                { label: "Pricing page", value: this._pageLabel() },
+              ])}
+            </ul>
+          </article>
+        </section>
       </section>
     `;
   }
