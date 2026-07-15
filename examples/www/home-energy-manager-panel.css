@@ -43,7 +43,8 @@
 .hero,
 .status,
 .cards,
-.grid {
+.grid,
+.panel-nav {
   max-width: 1380px;
   margin: 0 auto 18px;
 }
@@ -70,7 +71,8 @@
 }
 
 .hero__copy h1,
-.panel-card h2 {
+.panel-card h2,
+.cards h2 {
   margin: 0 0 6px;
   font-size: 1.5rem;
 }
@@ -89,6 +91,10 @@
   justify-content: flex-end;
 }
 
+.theme-picker--stacked {
+  justify-content: flex-start;
+}
+
 .theme-pill {
   border: 1px solid var(--hem-panel-border);
   background: var(--hem-panel-surface);
@@ -101,6 +107,36 @@
 .theme-pill.is-active {
   border-color: var(--hem-panel-accent);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.panel-nav {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.panel-nav__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--hem-panel-surface);
+  border: 1px solid var(--hem-panel-border);
+  color: var(--hem-panel-text);
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.panel-nav__item.is-active {
+  border-color: var(--hem-panel-accent);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.panel-nav__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.2rem;
+  color: var(--hem-panel-accent);
 }
 
 .status {
@@ -139,7 +175,6 @@
 }
 
 .cards h2 {
-  margin: 0 0 6px;
   font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -158,6 +193,14 @@
   gap: 14px;
 }
 
+.grid--two {
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+}
+
+.panel-card--wide {
+  min-height: 320px;
+}
+
 .panel-card__header {
   display: flex;
   justify-content: space-between;
@@ -173,7 +216,8 @@
   color: var(--hem-panel-muted);
 }
 
-.entity-list {
+.entity-list,
+.key-list {
   list-style: none;
   padding: 0;
   margin: 18px 0 0;
@@ -181,7 +225,12 @@
   gap: 10px;
 }
 
-.entity-list li {
+.key-list--compact {
+  margin-top: 14px;
+}
+
+.entity-list li,
+.key-list li {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -191,15 +240,22 @@
   background: var(--hem-panel-surface-strong);
 }
 
-.entity-list li span {
+.entity-list li span,
+.key-list li span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.key-list li strong,
+.entity-list li strong {
+  color: var(--hem-panel-text);
+}
+
 @media (max-width: 1080px) {
   .hero,
   .grid,
+  .grid--two,
   .cards {
     grid-template-columns: 1fr;
   }

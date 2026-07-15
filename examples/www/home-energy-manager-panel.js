@@ -1,9 +1,18 @@
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "001";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "002";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
+const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
   { value: "midnight", label: "Midnight" },
   { value: "sunrise", label: "Sunrise" },
   { value: "neon", label: "Neon" },
+];
+const HOME_ENERGY_MANAGER_PANEL_PAGES = [
+  { value: "overview", label: "Overview", icon: "◉" },
+  { value: "battery", label: "Battery", icon: "▣" },
+  { value: "solar", label: "Solar", icon: "☀" },
+  { value: "history", label: "History", icon: "↺" },
+  { value: "pricing", label: "Pricing", icon: "$" },
+  { value: "settings", label: "Settings", icon: "⚙" },
 ];
 
 class HomeEnergyManagerPanel extends HTMLElement {
@@ -12,11 +21,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._config = {};
     this._theme = this._loadTheme();
+    this._page = this._loadPage();
   }
 
   setConfig(config) {
     this._config = config || {};
     this._theme = this._loadTheme();
+    this._page = this._loadPage();
     this._render();
   }
 
@@ -52,6 +63,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
   }
 
+  _loadPage() {
+    try {
+      return localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY) || "overview";
+    } catch (error) {
+      return "overview";
+    }
+  }
+
   _saveTheme(theme) {
     try {
       localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_THEME_KEY, theme);
@@ -60,9 +79,23 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
   }
 
+  _savePage(page) {
+    try {
+      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY, page);
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
   _setTheme(theme) {
     this._theme = theme;
     this._saveTheme(theme);
+    this._render();
+  }
+
+  _setPage(page) {
+    this._page = page;
+    this._savePage(page);
     this._render();
   }
 
@@ -82,14 +115,278 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return HOME_ENERGY_MANAGER_PANEL_THEMES.find((theme) => theme.value === this._theme)?.label || "Midnight";
   }
 
-  _entitySample() {
+  _pageLabel() {
+    return HOME_ENERGY_MANAGER_PANEL_PAGES.find((page) => page.value === this._page)?.label || "Overview";
+  }
+
+  _entitySample(limit = 8) {
     return this._managedEntities()
-      .slice(0, 8)
+      .slice(0, limit)
       .map((entity) => {
         const state = entity.state ?? "unknown";
         return `<li><span>${entity.entity_id}</span><strong>${state}</strong></li>`;
       })
       .join("");
+  }
+
+  _valueList(items, emptyLabel = "No matching entities yet") {
+    const entries = items.length
+      ? items
+      : [{ label: emptyLabel, value: "idle" }];
+    return entries
+      .map((item) => `<li><span>${item.label}</span><strong>${item.value}</strong></li>`)
+      .join("");
+  }
+
+  _matchedEntities(pattern) {
+    return this._managedEntities().filter((entity) => pattern.test(entity.entity_id));
+  }
+
+  _firstState(pattern, fallback = "Unavailable") {
+    const entity = this._matchedEntities(pattern)[0];
+    return entity?.state ?? fallback;
+  }
+
+  _overviewPage() {
+    const sampleList = this._entitySample() || "<li><span>No matching entities yet</span><strong>idle</strong></li>";
+    return `
+      <section class="grid">
+        <article class="panel-card panel-card--wide">
+          <div class="panel-card__header">
+            <h2>Live Preview</h2>
+            <span>Overview</span>
+          </div>
+          <p>
+            This panel is the front door for daily use. We’ll keep the layout focused on the
+            most useful energy information and control actions while keeping Lovelace optional.
+          </p>
+          <ul class="entity-list">
+            ${sampleList}
+          </ul>
+        </article>
+
+        <article class="panel-card">
+          <div class="panel-card__header">
+            <h2>Quick Stats</h2>
+            <span>Today</span>
+          </div>
+          <ul class="key-list">
+            ${this._valueList([
+              { label: "Managed entities", value: String(this._managedEntities().length) },
+              { label: "Sensors", value: String(this._entityCountByDomain("sensor")) },
+              { label: "Controls", value: String(
+                this._entityCountByDomain("switch") +
+                this._entityCountByDomain("number") +
+                this._entityCountByDomain("time") +
+                this._entityCountByDomain("button") +
+                this._entityCountByDomain("select")
+              ) },
+              { label: "Active page", value: this._pageLabel() },
+            ])}
+          </ul>
+        </article>
+      </section>
+    `;
+  }
+
+  _batteryPage() {
+    const batteryItems = [
+      { label: "Battery percentage", value: this._firstState(/battery_percentage|soc/i) },
+      { label: "Battery power", value: this._firstState(/battery_power/i) },
+      { label: "Charge cap", value: this._firstState(/charge_cap|battery_charge_cap/i) },
+      { label: "Minimum SOC", value: this._firstState(/minimum_soc/i) },
+      { label: "Charge start", value: this._firstState(/charge_start_time/i) },
+      { label: "Charge end", value: this._firstState(/charge_end_time/i) },
+      { label: "Discharge start", value: this._firstState(/discharge_start_time/i) },
+      { label: "Discharge end", value: this._firstState(/discharge_end_time/i) },
+    ];
+    return `
+      <section class="grid grid--two">
+        <article class="panel-card panel-card--wide">
+          <div class="panel-card__header">
+            <h2>Battery Snapshot</h2>
+            <span>Control layer</span>
+          </div>
+          <ul class="key-list key-list--compact">
+            ${this._valueList(batteryItems)}
+          </ul>
+        </article>
+        <article class="panel-card">
+          <div class="panel-card__header">
+            <h2>Battery Notes</h2>
+            <span>Planned</span>
+          </div>
+          <p>
+            This page will become the place for battery policy controls, charge / discharge
+            windows, UPS reserve, and any provider-specific battery behavior.
+          </p>
+        </article>
+      </section>
+    `;
+  }
+
+  _solarPage() {
+    const solarItems = [
+      { label: "PV power", value: this._firstState(/pv_power$/i) },
+      { label: "PV generated today", value: this._firstState(/pv_generated_today/i) },
+      { label: "Grid import today", value: this._firstState(/grid_import_today/i) },
+      { label: "Feed in today", value: this._firstState(/feed_in_today/i) },
+      { label: "Self consumption", value: this._firstState(/self_consumption/i) },
+      { label: "Self sufficiency", value: this._firstState(/self_sufficiency/i) },
+    ];
+    return `
+      <section class="grid grid--two">
+        <article class="panel-card panel-card--wide">
+          <div class="panel-card__header">
+            <h2>Solar Snapshot</h2>
+            <span>Generation layer</span>
+          </div>
+          <ul class="key-list key-list--compact">
+            ${this._valueList(solarItems)}
+          </ul>
+        </article>
+        <article class="panel-card">
+          <div class="panel-card__header">
+            <h2>Solar Notes</h2>
+            <span>Planned</span>
+          </div>
+          <p>
+            This page will be the natural home for solar forecasting, grid feed-in policies,
+            and future export spike handling.
+          </p>
+        </article>
+      </section>
+    `;
+  }
+
+  _historyPage() {
+    const historyItems = [
+      { label: "Report build", value: this._firstState(/report_build|latest_report_build/i, "v002") },
+      { label: "Debug build", value: this._firstState(/debug_build|latest_debug_build/i, "Unavailable") },
+      { label: "Last update", value: this._firstState(/last_update|last_updated/i) },
+    ];
+    return `
+      <section class="grid grid--two">
+        <article class="panel-card panel-card--wide">
+          <div class="panel-card__header">
+            <h2>History</h2>
+            <span>Timeline</span>
+          </div>
+          <p>
+            This will show usage, policy changes, and daily trends. For now it provides a
+            light placeholder so the menu feels complete.
+          </p>
+          <ul class="key-list key-list--compact">
+            ${this._valueList(historyItems)}
+          </ul>
+        </article>
+        <article class="panel-card">
+          <div class="panel-card__header">
+            <h2>History Notes</h2>
+            <span>Planned</span>
+          </div>
+          <p>
+            We can later add charts, event logs, and links into any saved history store
+            without forcing Lovelace to be the primary UI.
+          </p>
+        </article>
+      </section>
+    `;
+  }
+
+  _pricingPage() {
+    const pricingItems = [
+      { label: "Today cost", value: this._firstState(/today_cost/i) },
+      { label: "Today income", value: this._firstState(/today_income/i) },
+      { label: "Dynamic pricing", value: this._firstState(/dynamic_pricing_enabled/i) },
+      { label: "Wear cost", value: this._firstState(/wear_cost/i) },
+      { label: "Export spike", value: this._firstState(/export_spike_price/i) },
+      { label: "Forecast", value: this._firstState(/solar_forecast/i) },
+    ];
+    return `
+      <section class="grid grid--two">
+        <article class="panel-card panel-card--wide">
+          <div class="panel-card__header">
+            <h2>Pricing</h2>
+            <span>Future-ready</span>
+          </div>
+          <p>
+            Pricing is intentionally separate so we can support fixed tariffs, dynamic plans,
+            and future export spike pricing without locking the rest of the UI to one model.
+          </p>
+          <ul class="key-list key-list--compact">
+            ${this._valueList(pricingItems)}
+          </ul>
+        </article>
+        <article class="panel-card">
+          <div class="panel-card__header">
+            <h2>Pricing Notes</h2>
+            <span>Planned</span>
+          </div>
+          <p>
+            We can bring this in once the base control pages are clean and the history model
+            is settled.
+          </p>
+        </article>
+      </section>
+    `;
+  }
+
+  _settingsPage() {
+    const settingsItems = [
+      { label: "Theme", value: this._themeLabel() },
+      { label: "Route", value: this._route?.path || this._panel?.url_path || "home-energy-manager" },
+      { label: "Screen", value: this._narrow ? "narrow" : "wide" },
+      { label: "Provider", value: this._config.provider || "ByteWatt" },
+    ];
+    return `
+      <section class="grid grid--two">
+        <article class="panel-card panel-card--wide">
+          <div class="panel-card__header">
+            <h2>Settings</h2>
+            <span>Panel shell</span>
+          </div>
+          <ul class="key-list key-list--compact">
+            ${this._valueList(settingsItems)}
+          </ul>
+        </article>
+        <article class="panel-card">
+          <div class="panel-card__header">
+            <h2>Theme Presets</h2>
+            <span>Local</span>
+          </div>
+          <div class="theme-picker theme-picker--stacked" role="group" aria-label="Theme presets">
+            ${HOME_ENERGY_MANAGER_PANEL_THEMES.map((theme) => `
+              <button
+                type="button"
+                class="theme-pill ${theme.value === this._theme ? "is-active" : ""}"
+                data-theme="${theme.value}"
+              >
+                ${theme.label}
+              </button>
+            `).join("")}
+          </div>
+        </article>
+      </section>
+    `;
+  }
+
+  _pageContent() {
+    switch (this._page) {
+      case "battery":
+        return this._batteryPage();
+      case "solar":
+        return this._solarPage();
+      case "history":
+        return this._historyPage();
+      case "pricing":
+        return this._pricingPage();
+      case "settings":
+        return this._settingsPage();
+      case "overview":
+      default:
+        return this._overviewPage();
+    }
   }
 
   _render() {
@@ -110,7 +407,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const title = this._config.title || "Home Energy Manager";
     const subtitle = this._config.subtitle || "Backend-aware control panel with room for custom themes.";
     const routePath = this._route?.path || this._panel?.url_path || "home-energy-manager";
-    const sampleList = this._entitySample() || "<li><span>No matching entities yet</span><strong>idle</strong></li>";
 
     this.shadowRoot.innerHTML = `
       <link rel="stylesheet" href="/local/community/home-energy-manager/home-energy-manager-panel.css?v=${HOME_ENERGY_MANAGER_PANEL_BUILD}">
@@ -136,12 +432,26 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </div>
         </header>
 
+        <nav class="panel-nav" aria-label="Home Energy Manager sections">
+          ${HOME_ENERGY_MANAGER_PANEL_PAGES.map((page) => `
+            <button
+              type="button"
+              class="panel-nav__item ${page.value === this._page ? "is-active" : ""}"
+              data-page="${page.value}"
+            >
+              <span class="panel-nav__icon">${page.icon}</span>
+              <span>${page.label}</span>
+            </button>
+          `).join("")}
+        </nav>
+
         <section class="status">
           <div class="status__banner">${connectionLabel}</div>
           <div class="status__meta">
             <span>Route: <strong>${routePath}</strong></span>
             <span>Screen: <strong>${this._narrow ? "narrow" : "wide"}</strong></span>
             <span>Theme: <strong>${this._themeLabel()}</strong></span>
+            <span>Page: <strong>${this._pageLabel()}</strong></span>
           </div>
         </section>
 
@@ -168,40 +478,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </article>
         </section>
 
-        <section class="grid">
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Live Preview</h2>
-              <span>Scaffold only</span>
-            </div>
-            <p>
-              This panel is the future custom sidebar experience. It is not Lovelace, so we can
-              own the layout, theming, and navigation independently of dashboards.
-            </p>
-            <ul class="entity-list">
-              ${sampleList}
-            </ul>
-          </article>
-
-          <article class="panel-card">
-            <div class="panel-card__header">
-              <h2>Theme Notes</h2>
-              <span>Funky by design</span>
-            </div>
-            <p>
-              Theme presets live in the panel shell so you can keep the Home Assistant app
-              familiar while letting this view get a bit more expressive.
-            </p>
-            <p>
-              Current theme: <strong>${this._themeLabel()}</strong>
-            </p>
-          </article>
-        </section>
+        ${this._pageContent()}
       </section>
     `;
 
     this.shadowRoot.querySelectorAll(".theme-pill").forEach((button) => {
       button.addEventListener("click", () => this._setTheme(button.dataset.theme));
+    });
+    this.shadowRoot.querySelectorAll(".panel-nav__item").forEach((button) => {
+      button.addEventListener("click", () => this._setPage(button.dataset.page));
     });
   }
 }
