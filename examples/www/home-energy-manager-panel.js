@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=003";
 import "./home-energy-manager-report-card.js?v=298";
 import "./home-energy-manager-debug-card.js?v=030";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "017";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "018";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
