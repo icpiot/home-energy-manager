@@ -11,6 +11,7 @@ PANEL_PATH = ROOT / "examples" / "www" / "home-energy-manager-panel.js"
 INIT_PATH = ROOT / "custom_components" / "home_energy_manager" / "__init__.py"
 MANIFEST_PATH = ROOT / "custom_components" / "home_energy_manager" / "manifest.json"
 PANEL_EXAMPLE_PATH = ROOT / "examples" / "panel" / "home-energy-manager-panel_custom.yaml"
+CONFIG_FLOW_PATH = ROOT / "custom_components" / "home_energy_manager" / "config_flow.py"
 
 
 def test_panel_build_matches_registered_cache_version():
@@ -35,6 +36,22 @@ def test_panel_uses_provider_neutral_entity_namespace():
 def test_panel_reads_configuration_from_home_assistant_panel_property():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
     assert "this._config = panel?.config || this._config" in panel_source
+
+
+def test_panel_exposes_forecast_page_and_configured_entity_lookup():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+    assert 'data-page="forecast"' in panel_source
+    assert "_forecastPage()" in panel_source
+    assert "_configuredEntityId(key)" in panel_source
+    assert "_stateForConfiguredEntity" in panel_source
+
+
+def test_config_flow_collects_forecast_setup():
+    config_flow_source = CONFIG_FLOW_PATH.read_text(encoding="utf-8")
+    assert "async_step_forecast_setup" in config_flow_source
+    assert "forecast_provider" in config_flow_source
+    assert "CONF_FORECAST_GENERATION_TODAY_ENTITY" in config_flow_source
+    assert "CONF_SOLAR_FORECAST_ENTITY" in config_flow_source
 
 
 def test_integration_forwards_select_platform():

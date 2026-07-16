@@ -9,6 +9,8 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    EntitySelector,
+    EntitySelectorConfig,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -20,6 +22,10 @@ from .const import (
     CONF_PROVIDER,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
+    CONF_FORECAST_GENERATION_TODAY_ENTITY,
+    CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
+    CONF_FORECAST_PROVIDER,
+    CONF_SOLAR_FORECAST_ENTITY,
     CONF_HISTORY_BACKFILL_YEARS,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
@@ -27,6 +33,9 @@ from .const import (
     CURRENT_ENTRY_VERSION,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_HISTORY_BACKFILL_YEARS,
+    FORECAST_PROVIDER_FORECAST_SOLAR,
+    FORECAST_PROVIDER_NONE,
+    FORECAST_PROVIDER_OTHER,
     DOMAIN,
     MIN_SCAN_INTERVAL,
     PROVIDER_BYTEWATT,
@@ -70,6 +79,14 @@ def _provider_options() -> list[SelectOptionDict]:
     return [
         SelectOptionDict(value=PROVIDER_BYTEWATT, label="ByteWatt"),
         SelectOptionDict(value=PROVIDER_OTHER, label="Other (future)"),
+    ]
+
+
+def _forecast_provider_options() -> list[SelectOptionDict]:
+    return [
+        SelectOptionDict(value=FORECAST_PROVIDER_NONE, label="No forecast provider"),
+        SelectOptionDict(value=FORECAST_PROVIDER_FORECAST_SOLAR, label="forecast.solar"),
+        SelectOptionDict(value=FORECAST_PROVIDER_OTHER, label="Other / future"),
     ]
 
 
@@ -150,7 +167,7 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     inv = self._inverters[0]
                     self._user_input[CONF_HOST_SYSTEM_ID] = inv.get("systemId", "")
                     self._user_input[CONF_HOST_SYS_SN] = inv.get("sysSn", "")
-                    return self._create_entry()
+                    return await self.async_step_forecast_setup()
                 # Could not enumerate inverters — let the user proceed, but the
                 # grid feed-in features will be disabled until reconfigure.
                 _LOGGER.warning(
@@ -158,7 +175,7 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 self._user_input[CONF_HOST_SYSTEM_ID] = ""
                 self._user_input[CONF_HOST_SYS_SN] = ""
-                return self._create_entry()
+                return await self.async_step_forecast_setup()
 
         return self.async_show_form(
             step_id="provider_login",
@@ -184,7 +201,7 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             self._user_input[CONF_HOST_SYSTEM_ID] = selected_id
             self._user_input[CONF_HOST_SYS_SN] = sys_sn
-            return self._create_entry()
+            return await self.async_step_forecast_setup()
 
         options = _build_inverter_options(self._inverters)
         default = _pre_select_host(self._inverters)
@@ -197,6 +214,44 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
             }),
             description_placeholders={"count": str(len(self._inverters))},
+        )
+
+    async def async_step_forecast_setup(self, user_input=None):
+        """Optional forecast wiring for solar forecast integrations."""
+        if user_input is not None:
+            self._user_input.update(user_input)
+            provider = self._user_input.get(CONF_FORECAST_PROVIDER, FORECAST_PROVIDER_NONE)
+            if provider == FORECAST_PROVIDER_NONE:
+                self._user_input.pop(CONF_FORECAST_GENERATION_TODAY_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, None)
+                self._user_input.pop(CONF_SOLAR_FORECAST_ENTITY, None)
+            return self._create_entry()
+
+        return self.async_show_form(
+            step_id="forecast_setup",
+            data_schema=vol.Schema({
+                vol.Optional(
+                    CONF_FORECAST_PROVIDER,
+                    default=self._user_input.get(CONF_FORECAST_PROVIDER, FORECAST_PROVIDER_NONE),
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=_forecast_provider_options(),
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(
+                    CONF_FORECAST_GENERATION_TODAY_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_GENERATION_TODAY_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_SOLAR_FORECAST_ENTITY,
+                    default=self._user_input.get(CONF_SOLAR_FORECAST_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+            }),
         )
 
     def _create_entry(self):

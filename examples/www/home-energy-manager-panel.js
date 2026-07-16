@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "034";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "035";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
@@ -19,6 +19,7 @@ const HOME_ENERGY_MANAGER_PANEL_PAGES = [
   { value: "report", label: "Report", icon: "▤" },
   { value: "battery", label: "Battery", icon: "▣" },
   { value: "solar", label: "Solar", icon: "☀" },
+  { value: "forecast", label: "Forecast", icon: "⛅" },
   { value: "history", label: "History", icon: "↺" },
   { value: "pricing", label: "Pricing", icon: "$" },
   { value: "settings", label: "Settings", icon: "⚙" },
@@ -217,6 +218,27 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return Object.values(this._hass?.states || {});
   }
 
+  _configuredEntityId(key) {
+    const entityId = String(this._config?.[key] || "").trim();
+    return entityId || null;
+  }
+
+  _configuredEntityState(key, fallback = "Unavailable") {
+    const entityId = this._configuredEntityId(key);
+    if (!entityId) {
+      return fallback;
+    }
+    return this._formatEntityState(this._hass?.states?.[entityId], fallback);
+  }
+
+  _stateForConfiguredEntity(configKey, fallbackKey, domain = "sensor", fallback = "Unavailable") {
+    const configured = this._configuredEntityState(configKey, null);
+    if (configured !== null && configured !== undefined) {
+      return configured;
+    }
+    return this._formattedState(fallbackKey, domain, fallback);
+  }
+
   _managedEntities() {
     return this._states().filter((entity) => (
       /\.[a-z0-9_]*home_energy_manager(?:_|$)/i.test(entity.entity_id)
@@ -316,6 +338,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <button type="button" class="panel-nav__item" data-page="report">Report</button>
             <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
             <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
+            <button type="button" class="panel-nav__item" data-page="forecast">Forecast</button>
             <button type="button" class="panel-nav__item" data-page="history">History</button>
             <button type="button" class="panel-nav__item" data-page="pricing">Pricing</button>
           </div>
@@ -592,12 +615,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Feed in today", value: this._formattedState("feed_in_today") },
       { label: "Self consumption", value: this._formattedState("self_consumption") },
       { label: "Self sufficiency", value: this._formattedState("self_sufficiency") },
+      { label: "Forecast today", value: this._stateForConfiguredEntity("forecast_generation_today_entity", "forecast_generation_today") },
+      { label: "Forecast tomorrow", value: this._stateForConfiguredEntity("forecast_generation_tomorrow_entity", "forecast_generation_tomorrow") },
     ];
     const solarSummary = [
       { label: "Solar now", value: this._formattedState("pv_power") },
       { label: "Grid now", value: this._formattedState("grid_consumption") },
       { label: "Feed in today", value: this._formattedState("feed_in_today") },
-      { label: "Forecast today", value: this._formattedState("forecast_generation_today") },
+      { label: "Forecast today", value: this._stateForConfiguredEntity("forecast_generation_today_entity", "forecast_generation_today") },
     ];
     return `
       <section class="solar">
@@ -613,6 +638,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <div class="overview__actions">
             <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
             <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
+            <button type="button" class="panel-nav__item" data-page="forecast">Forecast</button>
             <button type="button" class="panel-nav__item" data-page="history">History</button>
           </div>
         </article>
@@ -651,12 +677,81 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList([
-                { label: "Forecast today", value: this._formattedState("forecast_generation_today") },
-                { label: "Forecast tomorrow", value: this._formattedState("forecast_generation_tomorrow") },
-                { label: "Export spike", value: this._formattedState("export_spike_price") },
+                { label: "Forecast today", value: this._stateForConfiguredEntity("forecast_generation_today_entity", "forecast_generation_today") },
+                { label: "Forecast tomorrow", value: this._stateForConfiguredEntity("forecast_generation_tomorrow_entity", "forecast_generation_tomorrow") },
+                { label: "Solar forecast", value: this._stateForConfiguredEntity("solar_forecast_entity", "solar_forecast") },
                 { label: "Solar page", value: this._pageLabel() },
               ])}
             </ul>
+          </article>
+        </section>
+      </section>
+    `;
+  }
+
+  _forecastPage() {
+    const forecastItems = [
+      { label: "Forecast provider", value: this._config?.forecast_provider || "none" },
+      { label: "Forecast today", value: this._stateForConfiguredEntity("forecast_generation_today_entity", "forecast_generation_today") },
+      { label: "Forecast tomorrow", value: this._stateForConfiguredEntity("forecast_generation_tomorrow_entity", "forecast_generation_tomorrow") },
+      { label: "Solar forecast", value: this._stateForConfiguredEntity("solar_forecast_entity", "solar_forecast") },
+    ];
+    return `
+      <section class="forecast">
+        <article class="panel-card panel-card--wide forecast__hero">
+          <div class="panel-card__header">
+            <h2>Forecast</h2>
+            <span>Solar outlook</span>
+          </div>
+          <p>
+            This page is wired to the forecast integration you selected during setup. If the
+            forecast entities are missing, they will show as unavailable until the provider
+            integration starts publishing data.
+          </p>
+          <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
+            <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
+          </div>
+        </article>
+
+        <section class="forecast__tiles">
+          ${forecastItems.map((item) => `
+            <article class="forecast-tile">
+              <span>${item.label}</span>
+              <strong>${item.value}</strong>
+            </article>
+          `).join("")}
+        </section>
+
+        <section class="grid forecast__grid">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Forecast Setup</h2>
+              <span>Configured entities</span>
+            </div>
+            <p>
+              The panel reads the forecast entity IDs you choose during installation so the
+              Solar page can show forecast data without assuming a single vendor.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList([
+                { label: "Today entity", value: this._configuredEntityId("forecast_generation_today_entity") || "Not set" },
+                { label: "Tomorrow entity", value: this._configuredEntityId("forecast_generation_tomorrow_entity") || "Not set" },
+                { label: "Solar forecast entity", value: this._configuredEntityId("solar_forecast_entity") || "Not set" },
+                { label: "Forecast page", value: this._pageLabel() },
+              ])}
+            </ul>
+          </article>
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Forecast Notes</h2>
+              <span>Live data</span>
+            </div>
+            <p>
+              If you use forecast.solar or another integration, wire those sensor entities in
+              here once and the panel will surface them on both the forecast and solar pages.
+            </p>
           </article>
         </section>
       </section>
@@ -841,6 +936,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
         </article>
         <article class="panel-card">
           <div class="panel-card__header">
+            <h2>Forecast Wiring</h2>
+            <span>Generic</span>
+          </div>
+          <ul class="key-list key-list--compact">
+            ${this._valueList([
+              { label: "Forecast provider", value: this._config?.forecast_provider || "none" },
+              { label: "Today entity", value: this._configuredEntityId("forecast_generation_today_entity") || "Not set" },
+              { label: "Tomorrow entity", value: this._configuredEntityId("forecast_generation_tomorrow_entity") || "Not set" },
+              { label: "Solar forecast entity", value: this._configuredEntityId("solar_forecast_entity") || "Not set" },
+            ])}
+          </ul>
+        </article>
+        <article class="panel-card">
+          <div class="panel-card__header">
             <h2>Generic Settings</h2>
             <span>Local</span>
           </div>
@@ -919,6 +1028,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
             <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
             <button type="button" class="panel-nav__item" data-page="report">Report</button>
+            <button type="button" class="panel-nav__item" data-page="forecast">Forecast</button>
           </div>
         </article>
 
@@ -966,6 +1076,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return this._historyPage();
       case "pricing":
         return this._pricingPage();
+      case "forecast":
+        return this._forecastPage();
       case "debug":
         return this._debugPage();
       case "settings":

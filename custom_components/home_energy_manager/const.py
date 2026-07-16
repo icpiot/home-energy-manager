@@ -148,6 +148,14 @@ ATTR_FEEDIN_POWER = "power_watts"
 # Host inverter selection
 CONF_HOST_SYSTEM_ID = "host_system_id"
 CONF_HOST_SYS_SN = "host_sys_sn"
+CONF_FORECAST_PROVIDER = "forecast_provider"
+CONF_FORECAST_GENERATION_TODAY_ENTITY = "forecast_generation_today_entity"
+CONF_FORECAST_GENERATION_TOMORROW_ENTITY = "forecast_generation_tomorrow_entity"
+CONF_SOLAR_FORECAST_ENTITY = "solar_forecast_entity"
+
+FORECAST_PROVIDER_NONE = "none"
+FORECAST_PROVIDER_FORECAST_SOLAR = "forecast_solar"
+FORECAST_PROVIDER_OTHER = "other"
 
 # Config entry schema version — bump and add an async_migrate_entry branch
 # whenever you change the shape of entry.data.

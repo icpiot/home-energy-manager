@@ -34,6 +34,10 @@ from .const import (
     PROVIDER_BYTEWATT,
     CONF_USERNAME,
     CONF_PASSWORD,
+    CONF_FORECAST_PROVIDER,
+    CONF_FORECAST_GENERATION_TODAY_ENTITY,
+    CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
+    CONF_SOLAR_FORECAST_ENTITY,
     CONF_RECOVERY_ENABLED,
     CONF_HEARTBEAT_INTERVAL,
     CONF_MAX_DATA_AGE,
@@ -93,7 +97,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=030"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=035"
 PANEL_CONFIG = {
     "title": "Home Energy Manager",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -104,6 +108,10 @@ PANEL_CONFIG = {
     "theme_art_size": "cover",
     "theme_art_position": "center center",
     "theme_art_opacity": "0.18",
+    "forecast_provider": "none",
+    "forecast_generation_today_entity": "",
+    "forecast_generation_tomorrow_entity": "",
+    "solar_forecast_entity": "",
 }
 PANEL_CUSTOM_CONFIG = {
     "_panel_custom": {
@@ -147,6 +155,10 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
                 entry.data.get(CONF_PROVIDER),
                 str(entry.data.get(CONF_PROVIDER, "Configured provider")).title(),
             ),
+            CONF_FORECAST_PROVIDER: entry.data.get(CONF_FORECAST_PROVIDER, "none"),
+            CONF_FORECAST_GENERATION_TODAY_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_TODAY_ENTITY, ""),
+            CONF_FORECAST_GENERATION_TOMORROW_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, ""),
+            CONF_SOLAR_FORECAST_ENTITY: entry.data.get(CONF_SOLAR_FORECAST_ENTITY, ""),
             **PANEL_CUSTOM_CONFIG,
         },
         show_in_sidebar=True,
