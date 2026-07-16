@@ -1,8 +1,8 @@
 import "./home-energy-manager-policy-card.js?v=004";
-import "./home-energy-manager-report-card.js?v=298";
+import "./home-energy-manager-report-card.js?v=299";
 import "./home-energy-manager-debug-card.js?v=032";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "022";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "023";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
@@ -32,14 +32,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._theme = this._loadTheme();
     this._debugEnabled = this._loadDebugEnabled();
     this._page = this._loadPage();
-    this._hasDelegatedHandlers = false;
   }
 
   setConfig(config) {
     this._config = config || {};
-    this._theme = this._loadTheme();
-    this._debugEnabled = this._loadDebugEnabled();
-    this._page = this._loadPage();
+    this._syncStoredState();
     this._render();
   }
 
@@ -51,9 +48,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   set panel(panel) {
     this._panel = panel;
     this._config = panel?.config || this._config;
-    this._theme = this._loadTheme();
-    this._debugEnabled = this._loadDebugEnabled();
-    this._page = this._loadPage();
+    this._syncStoredState();
     this._render();
   }
 
@@ -157,7 +152,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _setPage(page) {
     this._page = this._normalizePage(page);
-    this._savePage(page);
+    this._savePage(this._page);
     this._render();
   }
 
@@ -180,6 +175,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _availablePages() {
     return HOME_ENERGY_MANAGER_PANEL_PAGES.filter((page) => page.value !== "debug" || this._debugEnabled);
+  }
+
+  _syncStoredState() {
+    this._theme = this._loadTheme();
+    this._debugEnabled = this._loadDebugEnabled();
+    this._page = this._loadPage();
   }
 
   _states() {
@@ -1056,27 +1057,23 @@ class HomeEnergyManagerPanel extends HTMLElement {
     `;
 
     this._mountEmbeddedCards();
+    this._bindInteractiveControls();
+  }
 
-    if (!this._hasDelegatedHandlers) {
-      this._hasDelegatedHandlers = true;
-      this.shadowRoot.addEventListener("click", (event) => {
-        const themeButton = event.target.closest?.("[data-theme]");
-        if (themeButton && this.shadowRoot.contains(themeButton)) {
-          this._setTheme(themeButton.dataset.theme);
-          return;
+  _bindInteractiveControls() {
+    this.shadowRoot.querySelectorAll("[data-theme]").forEach((node) => {
+      node.onclick = () => this._setTheme(node.dataset.theme);
+    });
+    this.shadowRoot.querySelectorAll("[data-page]").forEach((node) => {
+      node.onclick = () => {
+        if (!node.hasAttribute("disabled")) {
+          this._setPage(node.dataset.page);
         }
-        const pageButton = event.target.closest?.("[data-page]");
-        if (pageButton && this.shadowRoot.contains(pageButton) && !pageButton.hasAttribute("disabled")) {
-          this._setPage(pageButton.dataset.page);
-        }
-      });
-      this.shadowRoot.addEventListener("change", (event) => {
-        const toggle = event.target.closest?.("[data-debug-toggle]");
-        if (toggle && this.shadowRoot.contains(toggle)) {
-          this._setDebugEnabled(Boolean(toggle.checked));
-        }
-      });
-    }
+      };
+    });
+    this.shadowRoot.querySelectorAll("[data-debug-toggle]").forEach((node) => {
+      node.onchange = () => this._setDebugEnabled(Boolean(node.checked));
+    });
   }
 }
 

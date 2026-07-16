@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "011";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "012";
 
 class ByteWattReportCard extends HTMLElement {
   setConfig(config) {
@@ -39,6 +39,98 @@ class ByteWattReportCard extends HTMLElement {
     return this._selectorState()?.attributes?.reporting || null;
   }
 
+  _numericState(key, domain = "sensor") {
+    const entity = this._entityByKey(key, domain);
+    if (!entity) return null;
+    const raw = String(entity.state ?? "").trim();
+    if (!raw || raw === "unknown" || raw === "unavailable") return null;
+    const parsed = Number(raw.replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  _selectionLabel() {
+    const selection = this._selectionMeta();
+    return selection.remark || selection.sys_sn || selection.system_id || this._config.entity_prefix || "Home Energy Manager";
+  }
+
+  _synthesizedReporting() {
+    const today = new Date();
+    const reportDate = today.toISOString().slice(0, 10);
+    const savedAt = today.toISOString();
+    const live = {
+      soc: this._numericState("battery_percentage"),
+      battery_power: this._numericState("battery_power"),
+      house_consumption: this._numericState("house_consumption"),
+      grid_power: this._numericState("grid_consumption") ?? this._numericState("grid_power"),
+      pv_power: this._numericState("pv_power"),
+      power_source: this._stateObj(this._entityByKey("battery_power")?.entity_id)?.state ? this._batteryDirection(this._numericState("battery_power")) : "Idle",
+    };
+    const todaySummary = {
+      solar_generation: this._numericState("pv_generated_today"),
+      load_consumption: this._numericState("consumed_today"),
+      battery_charge: this._numericState("battery_charged_today"),
+      battery_discharge: this._numericState("battery_discharged_today"),
+      feed_in: this._numericState("feed_in_today"),
+      grid_consumption: this._numericState("grid_import_today"),
+      self_consumption: this._numericState("self_consumption"),
+      self_sufficiency: this._numericState("self_sufficiency"),
+      today_income: this._numericState("today_income"),
+      total_income: this._numericState("total_income"),
+      trees_planted: this._numericState("trees_planted"),
+      co2_reduction_tons: this._numericState("co2_reduction"),
+    };
+    const totals = {
+      solar_generation: this._numericState("total_solar_generation"),
+      house_consumption: this._numericState("total_house_consumption"),
+      battery_charge: this._numericState("total_battery_charge"),
+      battery_discharge: this._numericState("total_battery_discharge"),
+      feed_in: this._numericState("total_feed_in"),
+      grid_consumption: this._numericState("total_grid_consumption"),
+      pv_power_house: this._numericState("pv_power_to_house"),
+      pv_charging_battery: this._numericState("pv_charging_battery"),
+      grid_battery_charge: this._numericState("grid_based_battery_charge"),
+    };
+    const powerDiagram = {
+      date: reportDate,
+      meta: {
+        generated_from: "live_entities",
+      },
+      summary: {
+        soc: live.soc,
+        solar_generation: todaySummary.solar_generation,
+        load_consumption: todaySummary.load_consumption,
+        feed_in: todaySummary.feed_in,
+        grid_consumption: todaySummary.grid_consumption,
+        battery_charge: todaySummary.battery_charge,
+        battery_discharge: todaySummary.battery_discharge,
+      },
+      time: ["now"],
+      series: {
+        bat: [live.battery_power ?? 0],
+        load: [live.house_consumption ?? 0],
+        solar: [live.pv_power ?? 0],
+        feed_in: [todaySummary.feed_in ?? 0],
+        consumed: [todaySummary.load_consumption ?? 0],
+      },
+    };
+    const selection = this._selectionMeta();
+    return {
+      label: this._selectionLabel(),
+      aggregate: Boolean(this._selectorState()?.state === "All systems"),
+      reporting_date: reportDate,
+      saved_at: savedAt,
+      meta: {
+        saved_at: savedAt,
+        history: this._selectorState()?.attributes?.history || {},
+      },
+      live,
+      today: todaySummary,
+      totals,
+      power_diagram: powerDiagram,
+      selection,
+    };
+  }
+
   _systemSummaries() {
     return this._selectorState()?.attributes?.all_system_summaries || [];
   }
@@ -46,6 +138,8 @@ class ByteWattReportCard extends HTMLElement {
   _selectionMeta() {
     const attrs = this._selectorState()?.attributes || {};
     return {
+      label: attrs.selection?.label || this._selectorState()?.state || "",
+      aggregate: Boolean(attrs.selection?.label === "All systems" || this._selectorState()?.state === "All systems"),
       system_id: attrs.system_id || "",
       sys_sn: attrs.sys_sn || "",
       remark: attrs.remark || "",
@@ -723,7 +817,7 @@ class ByteWattReportCard extends HTMLElement {
   render() {
     if (!this._hass || !this._config) return;
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
-    const reporting = this._reporting();
+    const reporting = this._reporting() || this._synthesizedReporting();
 
     this.shadowRoot.innerHTML = `
       <style>

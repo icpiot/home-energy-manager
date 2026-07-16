@@ -97,7 +97,7 @@ type: module
 Reporting card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=298
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=299
 type: module
 ```
 
@@ -139,7 +139,7 @@ type: module
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=298
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=299
 type: module
 ```
 
@@ -153,7 +153,7 @@ type: module
 Current build stamp in this repo:
 
 - Policy card: `003`
-- Reporting card: `011`
+- Reporting card: `012`
 - Debug card: `031`
 
 ## Defaults
