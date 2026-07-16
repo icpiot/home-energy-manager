@@ -1115,19 +1115,32 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _bindInteractiveControls() {
-    this.shadowRoot.querySelectorAll("[data-theme]").forEach((node) => {
-      node.onclick = () => this._setTheme(node.dataset.theme);
+    if (this._hasDelegatedHandlers) {
+      return;
+    }
+
+    this._hasDelegatedHandlers = true;
+    this.shadowRoot.addEventListener("click", (event) => {
+      const themeButton = event.target.closest?.("[data-theme]");
+      if (themeButton) {
+        event.preventDefault();
+        this._setTheme(themeButton.dataset.theme);
+        return;
+      }
+
+      const pageButton = event.target.closest?.("[data-page]");
+      if (pageButton && !pageButton.disabled) {
+        event.preventDefault();
+        this._setPage(pageButton.dataset.page);
+      }
     });
-    this.shadowRoot.querySelectorAll("[data-page]").forEach((node) => {
-      node.onclick = () => {
-        if (!node.hasAttribute("disabled")) {
-          this._setPage(node.dataset.page);
-        }
-      };
+    this.shadowRoot.addEventListener("change", (event) => {
+      const debugToggle = event.target.closest?.("[data-debug-toggle]");
+      if (debugToggle) {
+        this._setDebugEnabled(Boolean(debugToggle.checked));
+      }
     });
-    this.shadowRoot.querySelectorAll("[data-debug-toggle]").forEach((node) => {
-      node.onchange = () => this._setDebugEnabled(Boolean(node.checked));
-    });
+  }
   }
 }
 
