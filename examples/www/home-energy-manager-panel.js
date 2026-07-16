@@ -1141,7 +1141,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       }
     });
   }
-  }
 }
 
 function bootstrapHomeEnergyManagerPanelFallback() {
