@@ -233,6 +233,41 @@ update_battery_settings:
       selector:
         text:
 
+start_force_charge:
+  name: Start Force Charge
+  description: Start immediate battery charging using the portal's force-charge endpoint.
+  fields:
+    charge_cap:
+      name: Charge Cap
+      description: Optional battery cap used by the portal when starting force charge.
+      required: false
+      example: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+stop_force_charge:
+  name: Stop Force Charge
+  description: Stop the immediate force-charge action.
+  fields:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
 set_grid_feedin_enabled:
   name: Set Grid Feed-in Enabled
   description: Enable or disable the Grid Feed-in Function.

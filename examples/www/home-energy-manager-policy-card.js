@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "004";
+const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "005";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
@@ -1213,13 +1213,13 @@ class ByteWattPolicyCard extends HTMLElement {
       `
         <div class="eyebrow">Immediate</div>
         <div class="stack">
-          ${this._titleWithHelp("SOC (%)", "Set the charge cap SOC. The battery will prioritize charging up to this level when charge control or force-charge behavior is active.")}
+          ${this._titleWithHelp("Charging Cutoff SOC", "Set the charge cap SOC. The battery will prioritize charging up to this level while charging is active.")}
           ${this._numberInput("force-charge-limit", this._immediateDraftValue("force-charge-limit", this._entityNumberValue(this._config.charge_cap, 100)), "%")}
         </div>
         ${this._renderImmediateAction(
           "charge",
-          "Start Charging Now",
-          "Stop Charging",
+          "Charge Now",
+          "Stop",
           "start_force_charge",
           "stop_force_charge",
           "primary",
@@ -1241,18 +1241,18 @@ class ByteWattPolicyCard extends HTMLElement {
               <div class="policy-grid charge-policy-grid">
                 ${this._selectCell("Execution Cycle", this._config.execution_cycle, "charge", cycle.options)}
                 ${this._numberCell(
-                  "SOC (%)",
+                  "Charging Cutoff SOC",
                   this._config.charge_cap,
                   "charge",
                   "%",
-                  "Set the charge cap SOC. The battery will prioritize charging up to this level when charge control or force-charge behavior is active."
+                  "Set the charge cap SOC. The battery will prioritize charging up to this level while charging is active."
                 )}
                 ${this._numberCell(
-                  "POWER (W)",
+                  "Battery Charged from Grid Power",
                   this._config.charge_power,
                   "charge",
                   "W",
-                  "Set the charging power limit for the active charge window."
+                  "Set the maximum grid power used while charging is active."
                 )}
               </div>
             `
@@ -1321,8 +1321,8 @@ class ByteWattPolicyCard extends HTMLElement {
         </div>
         ${this._renderImmediateAction(
           "discharge",
-          "Start Discharge Now",
-          "Stop Discharge",
+          "Discharge Now",
+          "Stop",
           "start_discharge_now",
           "stop_discharge_now",
           "purple"
@@ -1343,18 +1343,18 @@ class ByteWattPolicyCard extends HTMLElement {
               <div class="policy-grid discharge-policy-grid">
                 ${this._selectCell("Execution Cycle", this._config.execution_cycle, "discharge", cycle.options)}
                 ${this._numberCell(
-                  "SOC (%)",
+                  "Discharging Cutoff SOC",
                   this._config.discharge_cutoff,
                   "discharge",
                   "%",
                   "Set the battery discharge cutoff state of charge. The battery stops discharging when it reaches this SOC."
                 )}
                 ${this._numberCell(
-                  "POWER (W)",
+                  "Battery Discharge Power",
                   this._config.discharge_power,
                   "discharge",
                   "W",
-                  "Set the discharge power limit for the active discharge window."
+                  "Set the maximum battery discharge power while discharge is active."
                 )}
               </div>
             `
@@ -1426,8 +1426,8 @@ class ByteWattPolicyCard extends HTMLElement {
         </div>
         ${this._renderImmediateAction(
           "feedin",
-          "Start Feed-in Now",
-          "Stop Feed-in",
+          "Feed-in Now",
+          "Stop",
           "start_feedin_now",
           "stop_feedin_now",
           "green"

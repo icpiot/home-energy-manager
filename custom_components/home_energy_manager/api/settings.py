@@ -37,6 +37,10 @@ class BatterySettingsAPI:
 
     GET_ENDPOINT = "api/iterate/sysSet/getCycleStrategy?id="
     PUT_ENDPOINT = "api/iterate/sysSet/setCycleStrategy"
+    FORCE_CHARGE_ENDPOINT = "api/iterate/sysSet/forceCharge"
+    STOP_CHARGE_ENDPOINT = "api/iterate/sysSet/stopCharge"
+    FORCE_CHARGE_STATUS_ENDPOINT = "api/iterate/sysSet/getForceChargeStatus?id="
+    FORCE_CHARGE_LIMIT_ENDPOINT = "api/iterate/sysSet/getForceChargeLimit?id="
 
     def __init__(self, api_client: "NeovoltClient") -> None:
         self._client = api_client
@@ -114,6 +118,90 @@ class BatterySettingsAPI:
                     "setCycleStrategy attempt %d/%d returned: %s",
                     attempt + 1, max_retries, response,
                 )
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+        return False
+
+    async def get_force_charge_status(
+        self,
+        max_retries: int = DEFAULT_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> Optional[bool]:
+        endpoint = f"{self.FORCE_CHARGE_STATUS_ENDPOINT}{self._host_id()}"
+        for attempt in range(max_retries):
+            response = await _with_relogin(self._client, lambda: self._client._async_get(endpoint))
+            if response and response.get("code") == 200 and "data" in response:
+                return bool(response.get("data"))
+            _LOGGER.debug(
+                "Force charge status fetch attempt %d/%d returned: %s",
+                attempt + 1, max_retries, response,
+            )
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+        return None
+
+    async def get_force_charge_limit(
+        self,
+        max_retries: int = DEFAULT_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> Optional[float]:
+        endpoint = f"{self.FORCE_CHARGE_LIMIT_ENDPOINT}{self._host_id()}"
+        for attempt in range(max_retries):
+            response = await _with_relogin(self._client, lambda: self._client._async_get(endpoint))
+            if response and response.get("code") == 200 and "data" in response:
+                try:
+                    return float(response.get("data"))
+                except (TypeError, ValueError):
+                    _LOGGER.debug("Force charge limit was not numeric: %s", response)
+                    return None
+            _LOGGER.debug(
+                "Force charge limit fetch attempt %d/%d returned: %s",
+                attempt + 1, max_retries, response,
+            )
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+        return None
+
+    async def force_charge(
+        self,
+        battery_limit: int = 100,
+        max_retries: int = DEFAULT_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> bool:
+        payload = {
+            "id": self._host_id(),
+            "batUseCap": int(battery_limit),
+        }
+        for attempt in range(max_retries):
+            response = await _with_relogin(
+                self._client, lambda: self._client._async_put(self.FORCE_CHARGE_ENDPOINT, payload)
+            )
+            if response and response.get("code") == 200:
+                return True
+            _LOGGER.debug(
+                "forceCharge attempt %d/%d returned: %s",
+                attempt + 1, max_retries, response,
+            )
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+        return False
+
+    async def stop_charge(
+        self,
+        max_retries: int = DEFAULT_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> bool:
+        payload = {"id": self._host_id()}
+        for attempt in range(max_retries):
+            response = await _with_relogin(
+                self._client, lambda: self._client._async_put(self.STOP_CHARGE_ENDPOINT, payload)
+            )
+            if response and response.get("code") == 200:
+                return True
+            _LOGGER.debug(
+                "stopCharge attempt %d/%d returned: %s",
+                attempt + 1, max_retries, response,
+            )
             if attempt < max_retries - 1:
                 await asyncio.sleep(retry_delay)
         return False

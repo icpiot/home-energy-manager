@@ -54,6 +54,8 @@ from .const import (
     SERVICE_SET_MINIMUM_SOC,
     SERVICE_SET_CHARGE_CAP,
     SERVICE_UPDATE_BATTERY_SETTINGS,
+    SERVICE_START_FORCE_CHARGE,
+    SERVICE_STOP_FORCE_CHARGE,
     SERVICE_FORCE_RECONNECT,
     SERVICE_HEALTH_CHECK,
     SERVICE_TOGGLE_DIAGNOSTICS,
@@ -89,7 +91,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=025"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=026"
 PANEL_CONFIG = {
     "title": "Home Energy Manager",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -561,6 +563,27 @@ def _register_services(hass: HomeAssistant) -> None:
             charge_cap=call.data.get(ATTR_CHARGE_CAP),
         )
 
+    async def handle_start_force_charge(call: ServiceCall) -> None:
+        manager = _manager_for(hass, call)
+        charge_cap = call.data.get(ATTR_CHARGE_CAP, 100)
+        ok = await manager.start_force_charge(int(charge_cap))
+        if not ok:
+            raise HomeAssistantError("Force charge request failed")
+        entry_id = _resolve_entry_id(hass, call)
+        coordinator = hass.data[DOMAIN][entry_id].get("coordinator")
+        if coordinator:
+            await coordinator.async_request_refresh()
+
+    async def handle_stop_force_charge(call: ServiceCall) -> None:
+        manager = _manager_for(hass, call)
+        ok = await manager.stop_force_charge()
+        if not ok:
+            raise HomeAssistantError("Stop charge request failed")
+        entry_id = _resolve_entry_id(hass, call)
+        coordinator = hass.data[DOMAIN][entry_id].get("coordinator")
+        if coordinator:
+            await coordinator.async_request_refresh()
+
     # ---------- Grid feed-in ----------
 
     async def handle_set_grid_feedin_enabled(call: ServiceCall) -> None:
@@ -810,6 +833,17 @@ def _register_services(hass: HomeAssistant) -> None:
             vol.Optional(ATTR_CHARGE_CAP): _soc_schema,
             **_entry_id_opt,
         }),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_START_FORCE_CHARGE, handle_start_force_charge,
+        schema=vol.Schema({
+            vol.Optional(ATTR_CHARGE_CAP, default=100): _soc_schema,
+            **_entry_id_opt,
+        }),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_STOP_FORCE_CHARGE, handle_stop_force_charge,
+        schema=vol.Schema(_entry_id_opt),
     )
     hass.services.async_register(
         DOMAIN, SERVICE_SET_GRID_FEEDIN_ENABLED, handle_set_grid_feedin_enabled,

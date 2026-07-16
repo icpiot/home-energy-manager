@@ -190,6 +190,8 @@ class SettingsManager:
         # Server cache
         self._battery_cache: Optional[CycleStrategy] = None
         self._feedin_cache: Optional[GridFeedInSettings] = None
+        self._force_charge_active: Optional[bool] = None
+        self._force_charge_limit: Optional[float] = None
 
         # Pending diff (cleared per-batch on successful submit)
         self._pending_battery: Dict[str, Any] = {}
@@ -231,12 +233,41 @@ class SettingsManager:
         """Return the serial number currently used for provider settings calls."""
         return str(getattr(self._client, "host_sys_sn", "") or "")
 
+    def battery_policy_summary(self) -> dict[str, Any]:
+        """Return compact policy state for the policy card and selectors."""
+        battery = self._battery_cache
+        execution_cycle = None
+        if battery is not None:
+            try:
+                execution_cycle = "Daily" if int(battery.execution_cycle_type) == 0 else "Weekly"
+            except (TypeError, ValueError):
+                execution_cycle = None
+        return {
+            "execution_cycle_label": execution_cycle,
+            "charge_slot_limit": len(battery.charge_slots) if battery is not None else 0,
+            "discharge_slot_limit": len(battery.discharge_slots) if battery is not None else 0,
+            "force_charge_active": bool(self._force_charge_active),
+            "force_charge_limit": self._force_charge_limit,
+        }
+
+    def feedin_policy_summary(self) -> dict[str, Any]:
+        """Return compact grid feed-in policy state for the policy card."""
+        feedin = self._feedin_cache
+        return {
+            "enabled": bool(feedin.battery_en) if feedin is not None else False,
+            "cutoff_soc": float(feedin.battery_feed_cutoff_soc) if feedin is not None else None,
+            "slot_limit": len(feedin.slots) if feedin is not None else 0,
+            "temporary_feedin_now": False,
+        }
+
     async def async_select_settings_target(self, scope: ByteWattScope) -> None:
         """Apply a settings scope to the active provider client."""
         self._client.host_system_id = scope.effective_system_id
         self._client.host_sys_sn = scope.effective_sys_sn
         self._battery_cache = None
         self._feedin_cache = None
+        self._force_charge_active = None
+        self._force_charge_limit = None
 
     def has_pending(self) -> bool:
         return bool(
@@ -403,6 +434,17 @@ class SettingsManager:
             except Exception as ex:  # noqa: BLE001
                 _LOGGER.warning("Grid feed-in settings refresh failed: %s", ex)
 
+        try:
+            api = BatterySettingsAPI(self._client)
+            force_charge_active = await api.get_force_charge_status()
+            if force_charge_active is not None:
+                self._force_charge_active = force_charge_active
+            force_charge_limit = await api.get_force_charge_limit()
+            if force_charge_limit is not None:
+                self._force_charge_limit = force_charge_limit
+        except Exception as ex:  # noqa: BLE001
+            _LOGGER.warning("Force-charge state refresh failed: %s", ex)
+
     # ------------------------------------------------------------------
     # Submit — single transactional push; per-batch atomicity
     # ------------------------------------------------------------------
@@ -437,6 +479,23 @@ class SettingsManager:
             # will read the new value via effective_battery.
             self._notify_pending_changed()
         return result
+
+    async def start_force_charge(self, battery_limit: int = 100) -> bool:
+        """Trigger the immediate force-charge action."""
+        api = BatterySettingsAPI(self._client)
+        ok = await api.force_charge(battery_limit=battery_limit)
+        if ok:
+            self._force_charge_active = True
+            self._force_charge_limit = float(battery_limit)
+        return ok
+
+    async def stop_force_charge(self) -> bool:
+        """Stop the immediate force-charge action."""
+        api = BatterySettingsAPI(self._client)
+        ok = await api.stop_charge()
+        if ok:
+            self._force_charge_active = False
+        return ok
 
     async def submit_feedin_one_shot(
         self,
