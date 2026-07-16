@@ -2,6 +2,7 @@
 import logging
 import asyncio
 import aiohttp
+import re
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 
@@ -86,6 +87,18 @@ def _stat_value(stats_data, key):
     except (TypeError, ValueError):
         _LOGGER.debug("Non-numeric value for %s in stats response: %r", key, value)
         return 0
+
+
+def _is_success_code(code: Any) -> bool:
+    """Return True when a Byte-Watt endpoint reports a success code.
+
+    The Byte-Watt web app mixes multiple success conventions across endpoint
+    families. Older/home endpoints often report ``"000000"`` while newer
+    iterate/settings endpoints return integer ``200``. Treating only ``200``
+    as success causes account inventory discovery to silently drop valid
+    payloads.
+    """
+    return str(code).strip() in {"0", "200", "000000"}
 
 class NeovoltClient:
     """API Client for Neovolt battery systems."""
@@ -211,7 +224,7 @@ class NeovoltClient:
                     if result is None:
                         return None
 
-                    if result.get("code") != 0 and result.get("code") != 200:
+                    if not _is_success_code(result.get("code")):
                         if result.get("code") == 6069 and _retry_count < MAX_RELOGIN_RETRIES:
                             _LOGGER.warning("Session expired (code 6069), attempting to re-login")
                             if await self.async_login():
@@ -656,6 +669,80 @@ class NeovoltClient:
             unique.append(record)
         return unique
 
+    @staticmethod
+    def _extract_system_ids(payload: Any) -> set[str]:
+        """Recursively pull system IDs out of arbitrary payload fragments.
+
+        Some Byte-Watt account/menu endpoints embed system IDs inside nested
+        route strings rather than exposing a clean ``[{systemId, sysSn}]`` list.
+        We collect both direct fields and ``systemId=...`` query fragments so a
+        second detail pass can still recover the full per-system records.
+        """
+        system_ids: set[str] = set()
+        pattern = re.compile(r"systemId=([A-Za-z0-9]+)")
+
+        def _walk(node: Any) -> None:
+            if isinstance(node, dict):
+                system_id = str(node.get("systemId", "") or node.get("system_id", "")).strip()
+                if system_id:
+                    system_ids.add(system_id)
+                for value in node.values():
+                    _walk(value)
+                return
+
+            if isinstance(node, list):
+                for item in node:
+                    _walk(item)
+                return
+
+            if isinstance(node, str):
+                text = node.strip()
+                if not text:
+                    return
+                for match in pattern.finditer(text):
+                    candidate = str(match.group(1) or "").strip()
+                    if candidate:
+                        system_ids.add(candidate)
+                if text[:1] in "[{":
+                    try:
+                        import json
+
+                        _walk(json.loads(text))
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        pass
+
+        _walk(payload)
+        return system_ids
+
+    async def _fetch_system_detail(self, system_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch one system detail record by systemId."""
+        system_id = str(system_id or "").strip()
+        if not system_id:
+            return None
+
+        response = await self._async_get(
+            f"api/stable/essSystemData/getSystemDetail?systemId={system_id}"
+        )
+        if response is None:
+            return None
+        if response.get("code") == 6069:
+            if not await self.async_login():
+                return None
+            response = await self._async_get(
+                f"api/stable/essSystemData/getSystemDetail?systemId={system_id}"
+            )
+            if response is None:
+                return None
+        if not _is_success_code(response.get("code")):
+            _LOGGER.debug(
+                "System detail endpoint for %s returned code %s",
+                system_id,
+                response.get("code"),
+            )
+            return None
+        data = response.get("data")
+        return data if isinstance(data, dict) else None
+
     async def fetch_inverter_list(self) -> list:
         """Return the list of inverters on this account.
 
@@ -667,6 +754,7 @@ class NeovoltClient:
             "api/stable/home/getCustomMenuEssList?inverterMode=1",
         ]
         collected: list[Dict[str, Any]] = []
+        discovered_system_ids: set[str] = set()
 
         async def _do(endpoint: str) -> Optional[Dict[str, Any]]:
             return await self._async_get(endpoint)
@@ -676,14 +764,32 @@ class NeovoltClient:
             if response and response.get("code") == 6069:
                 if await self.async_login():
                     response = await _do(endpoint)
-            if response and response.get("code") == 200:
-                collected.extend(self._extract_inverter_records(response.get("data")))
+            if response and _is_success_code(response.get("code")):
+                payload = response.get("data")
+                collected.extend(self._extract_inverter_records(payload))
+                discovered_system_ids.update(self._extract_system_ids(payload))
             else:
                 _LOGGER.debug("Inverter list endpoint %s returned %s", endpoint, response)
 
         device_list = await self.async_get_device_list()
         if device_list:
             collected.extend(self._extract_inverter_records(device_list))
+            discovered_system_ids.update(self._extract_system_ids(device_list))
+
+        discovered_system_ids.update(
+            str(record.get("systemId", "") or record.get("system_id", "")).strip()
+            for record in collected
+            if str(record.get("systemId", "") or record.get("system_id", "")).strip()
+        )
+
+        detail_records: list[Dict[str, Any]] = []
+        for system_id in sorted(discovered_system_ids):
+            detail = await self._fetch_system_detail(system_id)
+            if detail:
+                detail_records.append(detail)
+
+        if detail_records:
+            collected.extend(detail_records)
 
         deduped = self._dedupe_inverter_records(collected)
         if deduped:
