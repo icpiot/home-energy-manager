@@ -20,6 +20,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.util import dt as dt_util
 
 from .bytewatt_client import ByteWattClient
 from .coordinator import ByteWattDataUpdateCoordinator
@@ -91,7 +92,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=026"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=028"
 PANEL_CONFIG = {
     "title": "Home Energy Manager",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -263,6 +264,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _register_frontend_panel(hass, entry)
 
+    raw_bootstrap_years = entry.options.get(
+        CONF_HISTORY_BACKFILL_YEARS,
+        entry.data.get(CONF_HISTORY_BACKFILL_YEARS, 2),
+    )
+    try:
+        bootstrap_years = max(1, int(raw_bootstrap_years or 2))
+    except (TypeError, ValueError):
+        bootstrap_years = 2
+    bootstrap_days = bootstrap_years * 365
+    entry_data = hass.data[DOMAIN][entry.entry_id]
+    if not entry_data.get("history_bootstrap_started"):
+        entry_data["history_bootstrap_started"] = True
+        entry.async_create_task(
+            hass,
+            _bootstrap_report_history(hass, entry.entry_id, bootstrap_days),
+        )
+
     return True
 
 
@@ -280,6 +298,144 @@ def _date_range(start_date: str, end_date: str) -> list[str]:
         days.append(current.isoformat())
         current += timedelta(days=1)
     return days
+
+
+def _history_scope_targets(entry_data: dict[str, Any]) -> list[tuple[str, str, str]]:
+    """Return the scopes that should be archived for this entry."""
+    targets: list[tuple[str, str, str]] = [("all", "All systems", "")]
+    seen: set[str] = {"all"}
+
+    for inverter in entry_data.get("inverters") or []:
+        if not isinstance(inverter, DiscoveredInverter):
+            continue
+        scope_key = str(inverter.sys_sn or inverter.system_id or "").strip()
+        if not scope_key or scope_key in seen:
+            continue
+        seen.add(scope_key)
+        label = str(inverter.display_name or scope_key).strip() or scope_key
+        station_id = str(inverter.system_id or "").strip()
+        targets.append((scope_key, label, station_id))
+
+    return targets
+
+
+async def _ensure_report_history_range(
+    hass: HomeAssistant,
+    entry_id: str,
+    *,
+    scope_key: str,
+    start_date: str,
+    end_date: str,
+    force: bool = False,
+    label: str | None = None,
+    station_id: str = "",
+) -> None:
+    """Download and persist report history snapshots for one scope."""
+    entry_data = hass.data[DOMAIN].get(entry_id, {})
+    client = entry_data.get("client")
+    if client is None:
+        raise HomeAssistantError("Home Energy Manager entry is not ready")
+
+    if not station_id and scope_key != "all":
+        for inverter in entry_data.get("inverters") or []:
+            if not isinstance(inverter, DiscoveredInverter):
+                continue
+            candidates = {
+                str(inverter.system_id or "").strip(),
+                str(inverter.sys_sn or "").strip(),
+                str(inverter.display_name or "").strip(),
+            }
+            if scope_key in candidates:
+                station_id = str(inverter.system_id or "").strip()
+                break
+
+    history = ByteWattReportHistory(hass, entry_id)
+    history_label = label or scope_key.replace("_", " ").title()
+    dates = _date_range(start_date, end_date)
+    status_text = f"Downloading {len(dates)} day(s) for {history_label}..."
+    entry_data["history_status"] = status_text
+    notify_create(
+        hass,
+        status_text,
+        title="Home Energy Manager History",
+        notification_id=f"home_energy_manager_history_{entry_id}",
+    )
+
+    for index, day in enumerate(dates, start=1):
+        battery_data = await client.get_battery_data(
+            station_id=station_id or None,
+            report_date=day,
+            include_realtime=day == dates[-1] and not force,
+        )
+        reporting = build_reporting_payload(
+            battery_data or {},
+            aggregate=(scope_key == "all"),
+            label=history_label,
+        )
+        if battery_data:
+            await history.async_store_snapshot(
+                scope_key=scope_key,
+                label=history_label,
+                reporting=reporting,
+                record_date=day,
+            )
+        else:
+            await history.async_mark_missing_date(
+                scope_key=scope_key,
+                label=history_label,
+                record_date=day,
+                reason="no_reporting_data",
+            )
+        progress = f"Downloaded {index}/{len(dates)} days for {history_label}"
+        entry_data["history_status"] = progress
+        notify_create(
+            hass,
+            progress,
+            title="Home Energy Manager History",
+            notification_id=f"home_energy_manager_history_{entry_id}",
+        )
+
+    done_text = f"History ready for {history_label} ({len(dates)} day(s))"
+    entry_data["history_status"] = done_text
+    notify_create(
+        hass,
+        done_text,
+        title="Home Energy Manager History",
+        notification_id=f"home_energy_manager_history_{entry_id}",
+    )
+
+
+async def _bootstrap_report_history(hass: HomeAssistant, entry_id: str, backfill_days: int) -> None:
+    """Seed history for a fresh install if no local archive exists yet."""
+    entry_data = hass.data[DOMAIN].get(entry_id, {})
+    history = ByteWattReportHistory(hass, entry_id)
+    if history.history_file.exists():
+        _LOGGER.debug("History archive already exists for %s; skipping bootstrap", entry_id)
+        return
+
+    from datetime import timedelta
+
+    end_date = dt_util.now().date().isoformat()
+    start_date = (dt_util.now().date() - timedelta(days=max(1, backfill_days) - 1)).isoformat()
+    for scope_key, label, station_id in _history_scope_targets(entry_data):
+        try:
+            await _ensure_report_history_range(
+                hass,
+                entry_id,
+                scope_key=scope_key,
+                start_date=start_date,
+                end_date=end_date,
+                force=False,
+                label=label,
+                station_id=station_id,
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "Failed to bootstrap report history for %s (%s): %s",
+                entry_id,
+                scope_key,
+                err,
+            )
 
 
 def _stop_heartbeat_factory(coordinator):
@@ -726,62 +882,14 @@ def _register_services(hass: HomeAssistant) -> None:
         if not target_entry_ids:
             raise HomeAssistantError("No Home Energy Manager entries are loaded")
 
-        dates = _date_range(start_date, end_date)
         for entry_id in target_entry_ids:
-            entry_data = hass.data[DOMAIN][entry_id]
-            coordinator = entry_data.get("coordinator")
-            client = entry_data.get("client")
-            if coordinator is None or client is None:
-                continue
-            history = ByteWattReportHistory(hass, entry_id)
-            history_label = scope_key.replace("_", " ").title()
-            status_text = f"Downloading {len(dates)} day(s) for {history_label}..."
-            entry_data["history_status"] = status_text
-            notify_create(
+            await _ensure_report_history_range(
                 hass,
-                status_text,
-                title="Home Energy Manager History",
-                notification_id=f"home_energy_manager_history_{entry_id}",
-            )
-            for index, day in enumerate(dates, start=1):
-                battery_data = await client.get_battery_data(
-                    report_date=day,
-                    include_realtime=day == dates[-1] and not force,
-                )
-                reporting = build_reporting_payload(
-                    battery_data or {},
-                    aggregate=(scope_key == "all"),
-                    label=history_label,
-                )
-                if battery_data:
-                    await history.async_store_snapshot(
-                        scope_key=scope_key,
-                        label=history_label,
-                        reporting=reporting,
-                        record_date=day,
-                    )
-                else:
-                    await history.async_mark_missing_date(
-                        scope_key=scope_key,
-                        label=history_label,
-                        record_date=day,
-                        reason="no_reporting_data",
-                    )
-                progress = f"Downloaded {index}/{len(dates)} days for {history_label}"
-                entry_data["history_status"] = progress
-                notify_create(
-                    hass,
-                    progress,
-                    title="Home Energy Manager History",
-                    notification_id=f"home_energy_manager_history_{entry_id}",
-                )
-            done_text = f"History ready for {history_label} ({len(dates)} day(s))"
-            entry_data["history_status"] = done_text
-            notify_create(
-                hass,
-                done_text,
-                title="Home Energy Manager History",
-                notification_id=f"home_energy_manager_history_{entry_id}",
+                entry_id,
+                scope_key=scope_key,
+                start_date=start_date,
+                end_date=end_date,
+                force=force,
             )
 
     # ---------- Schemas ----------

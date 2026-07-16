@@ -242,10 +242,12 @@ class SettingsManager:
                 execution_cycle = "Daily" if int(battery.execution_cycle_type) == 0 else "Weekly"
             except (TypeError, ValueError):
                 execution_cycle = None
+        charge_slots = getattr(battery, "charge_slots", None) or []
+        discharge_slots = getattr(battery, "discharge_slots", None) or []
         return {
             "execution_cycle_label": execution_cycle,
-            "charge_slot_limit": len(battery.charge_slots) if battery is not None else 0,
-            "discharge_slot_limit": len(battery.discharge_slots) if battery is not None else 0,
+            "charge_slot_limit": len(charge_slots),
+            "discharge_slot_limit": len(discharge_slots),
             "force_charge_active": bool(self._force_charge_active),
             "force_charge_limit": self._force_charge_limit,
         }
@@ -253,10 +255,11 @@ class SettingsManager:
     def feedin_policy_summary(self) -> dict[str, Any]:
         """Return compact grid feed-in policy state for the policy card."""
         feedin = self._feedin_cache
+        slots = getattr(feedin, "slots", None) or []
         return {
             "enabled": bool(feedin.battery_en) if feedin is not None else False,
             "cutoff_soc": float(feedin.battery_feed_cutoff_soc) if feedin is not None else None,
-            "slot_limit": len(feedin.slots) if feedin is not None else 0,
+            "slot_limit": len(slots),
             "temporary_feedin_now": False,
         }
 
