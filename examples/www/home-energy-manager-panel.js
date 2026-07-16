@@ -1,6 +1,6 @@
-import "./home-energy-manager-policy-card.js?v=005";
-import "./home-energy-manager-report-card.js?v=299";
-import "./home-energy-manager-debug-card.js?v=032";
+import "./home-energy-manager-policy-card.js?v=007";
+import "./home-energy-manager-report-card.js?v=301";
+import "./home-energy-manager-debug-card.js?v=034";
 
 const HOME_ENERGY_MANAGER_PANEL_BUILD = "028";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
@@ -1144,6 +1144,74 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 }
 
-if (!customElements.get("home-energy-manager-panel")) {
-  customElements.define("home-energy-manager-panel", HomeEnergyManagerPanel);
+function bootstrapHomeEnergyManagerPanelFallback() {
+  document.querySelectorAll("home-energy-manager-panel").forEach((host) => {
+    if (host.__hemFallbackBootstrapped) {
+      return;
+    }
+    host.__hemFallbackBootstrapped = true;
+
+    const panel = Object.create(HomeEnergyManagerPanel.prototype);
+    panel.shadowRoot = host;
+    panel._config = {};
+    panel._theme = panel._loadTheme();
+    panel._debugEnabled = panel._loadDebugEnabled();
+    panel._page = panel._loadPage();
+    panel._hass = null;
+    panel._panel = null;
+    panel._route = null;
+    panel._narrow = false;
+    panel._hasDelegatedHandlers = false;
+
+    Object.defineProperty(host, "hass", {
+      configurable: true,
+      get: () => panel._hass,
+      set: (value) => {
+        panel._hass = value;
+        panel._render();
+      },
+    });
+    Object.defineProperty(host, "panel", {
+      configurable: true,
+      get: () => panel._panel,
+      set: (value) => {
+        panel._panel = value;
+        panel._config = value?.config || panel._config;
+        panel._syncStoredState();
+        panel._render();
+      },
+    });
+    Object.defineProperty(host, "narrow", {
+      configurable: true,
+      get: () => panel._narrow,
+      set: (value) => {
+        panel._narrow = Boolean(value);
+        panel._render();
+      },
+    });
+    Object.defineProperty(host, "route", {
+      configurable: true,
+      get: () => panel._route,
+      set: (value) => {
+        panel._route = value;
+        panel._render();
+      },
+    });
+    host.setConfig = (config) => {
+      panel.setConfig(config);
+    };
+    host.connectedCallback = () => {
+      panel._render();
+    };
+
+    panel._render();
+  });
+}
+
+if (typeof customElements !== "undefined") {
+  if (!customElements.get("home-energy-manager-panel")) {
+    customElements.define("home-energy-manager-panel", HomeEnergyManagerPanel);
+  }
+} else {
+  bootstrapHomeEnergyManagerPanelFallback();
 }

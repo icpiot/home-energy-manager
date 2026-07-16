@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "012";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "014";
 
 class ByteWattReportCard extends HTMLElement {
   setConfig(config) {
@@ -1455,7 +1455,7 @@ class ByteWattReportCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("home-energy-manager-report-card")) {
+if (typeof customElements !== "undefined" && !customElements.get("home-energy-manager-report-card")) {
   customElements.define("home-energy-manager-report-card", ByteWattReportCard);
 }
 

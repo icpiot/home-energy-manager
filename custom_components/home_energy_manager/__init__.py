@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import timedelta
 from typing import Any, Optional
 
 import voluptuous as vol
@@ -263,23 +264,48 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     _register_frontend_panel(hass, entry)
-
-    raw_bootstrap_years = entry.options.get(
-        CONF_HISTORY_BACKFILL_YEARS,
-        entry.data.get(CONF_HISTORY_BACKFILL_YEARS, 2),
-    )
-    try:
-        bootstrap_years = max(1, int(raw_bootstrap_years or 2))
-    except (TypeError, ValueError):
-        bootstrap_years = 2
-    bootstrap_days = bootstrap_years * 365
-    entry_data = hass.data[DOMAIN][entry.entry_id]
-    if not entry_data.get("history_bootstrap_started"):
-        entry_data["history_bootstrap_started"] = True
-        entry.async_create_task(
-            hass,
-            _bootstrap_report_history(hass, entry.entry_id, bootstrap_days),
+    history = ByteWattReportHistory(hass, entry.entry_id)
+    if not history.history_file.exists():
+        backfill_days = _history_backfill_days(entry)
+        end_date = dt_util.now().date()
+        start_date = (end_date - timedelta(days=backfill_days)).isoformat()
+        end_date_str = end_date.isoformat()
+        scopes: list[tuple[str, str]] = [("all", "All systems")]
+        scopes.extend(
+            (
+                inverter.sys_sn or inverter.system_id,
+                inverter.display_name,
+            )
+            for inverter in inverters
+            if inverter.sys_sn or inverter.system_id
         )
+        seen_scopes: set[str] = set()
+        for scope_key, scope_label in scopes:
+            scope_key = str(scope_key or "").strip()
+            if not scope_key or scope_key in seen_scopes:
+                continue
+            seen_scopes.add(scope_key)
+            _LOGGER.info(
+                "Scheduling initial Home Energy Manager history backfill for %s (%s): %s -> %s",
+                entry.entry_id,
+                scope_label,
+                start_date,
+                end_date_str,
+            )
+            hass.async_create_task(
+                hass.services.async_call(
+                    DOMAIN,
+                    "ensure_report_history",
+                    {
+                        ATTR_ENTRY_ID: entry.entry_id,
+                        "scope_key": scope_key,
+                        "start_date": start_date,
+                        "end_date": end_date_str,
+                        "force": False,
+                    },
+                    blocking=False,
+                )
+            )
 
     return True
 

@@ -115,7 +115,6 @@
 
   <script>
     const LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
-    const REFRESH_MS = 5000;
     const meta = document.getElementById("meta");
     const statusEl = document.getElementById("status");
     const logEl = document.getElementById("log");
@@ -132,7 +131,7 @@
         const text = await response.text();
         logEl.textContent = text || "(log is empty)";
         meta.textContent = `Updated ${new Date().toLocaleString()}`;
-        statusEl.textContent = "Auto-refreshing every 5 seconds.";
+        statusEl.textContent = "Press Refresh now to reload the log.";
       } catch (err) {
         logEl.textContent = "";
         meta.textContent = `Updated ${new Date().toLocaleString()}`;
@@ -143,7 +142,6 @@
 
     refreshBtn.addEventListener("click", loadLog);
     loadLog();
-    setInterval(loadLog, REFRESH_MS);
   </script>
 </body>
 </html>

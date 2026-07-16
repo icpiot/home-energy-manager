@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "032";
+const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "034";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
@@ -1668,7 +1668,7 @@ class ByteWattDebugCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("home-energy-manager-debug-card")) {
+if (typeof customElements !== "undefined" && !customElements.get("home-energy-manager-debug-card")) {
   customElements.define("home-energy-manager-debug-card", ByteWattDebugCard);
 }
 

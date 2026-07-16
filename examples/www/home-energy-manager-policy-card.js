@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "005";
+const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "007";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
@@ -3173,7 +3173,7 @@ class ByteWattPolicyCard extends HTMLElement {
   }
 }
 
-if (!customElements.get("home-energy-manager-policy-card")) {
+if (typeof customElements !== "undefined" && !customElements.get("home-energy-manager-policy-card")) {
   customElements.define("home-energy-manager-policy-card", ByteWattPolicyCard);
 }
 

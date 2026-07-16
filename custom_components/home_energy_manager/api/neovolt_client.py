@@ -611,6 +611,19 @@ class NeovoltClient:
         records: list[Dict[str, Any]] = []
 
         def _walk(node: Any) -> None:
+            if isinstance(node, str):
+                text = node.strip()
+                if not text:
+                    return
+                if text[:1] in "[{":
+                    try:
+                        import json
+
+                        _walk(json.loads(text))
+                        return
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        pass
+                return
             if isinstance(node, dict):
                 system_id = str(node.get("systemId", "") or node.get("system_id", "")).strip()
                 sys_sn = str(node.get("sysSn", "") or node.get("sys_sn", "")).strip()
@@ -618,6 +631,8 @@ class NeovoltClient:
                     records.append(dict(node))
                 for value in node.values():
                     if isinstance(value, (dict, list)):
+                        _walk(value)
+                    elif isinstance(value, str):
                         _walk(value)
             elif isinstance(node, list):
                 for item in node:
@@ -672,6 +687,16 @@ class NeovoltClient:
 
         deduped = self._dedupe_inverter_records(collected)
         if deduped:
+            _LOGGER.info(
+                "Discovered %d inverter record(s) from %d endpoint result(s)",
+                len(deduped),
+                len(collected),
+            )
+            if len(deduped) == 1:
+                _LOGGER.warning(
+                    "Only one inverter record was discovered. Parsed record keys: %s",
+                    sorted(deduped[0].keys()),
+                )
             return deduped
 
         _LOGGER.warning("Could not fetch inverter list from any endpoint")
