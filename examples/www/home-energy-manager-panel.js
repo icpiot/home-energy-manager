@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=003";
 import "./home-energy-manager-report-card.js?v=298";
 import "./home-energy-manager-debug-card.js?v=030";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "019";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "020";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
@@ -765,7 +765,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         </article>
         <article class="panel-card">
           <div class="panel-card__header">
-            <h2>Debug Controls</h2>
+            <h2>Generic Settings</h2>
             <span>Local</span>
           </div>
           <div class="settings-toggle">
@@ -777,8 +777,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
               </span>
             </label>
             <p>
-              Debug mode unlocks the debug page and stores the local page state so we can inspect
-              longer-running history, entity snapshots, and provider-specific details.
+              Generic settings keeps the panel device-agnostic while still exposing the debug page
+              for deeper inspection, history checks, and provider-specific details.
             </p>
             <button
               type="button"
@@ -832,12 +832,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
       <section class="debug">
         <article class="panel-card panel-card--wide debug__hero">
           <div class="panel-card__header">
-            <h2>Debug</h2>
-            <span>Diagnostics</span>
+              <h2>Diagnostics</h2>
+            <span>Generic</span>
           </div>
           <p>
             This page is reserved for deeper inspection of the Home Energy Manager data model
-            and the embedded debug card. Enable it from Settings if it is hidden.
+            and the embedded debug card. The controls are generic and device-agnostic.
           </p>
           <div class="overview__actions">
             <button type="button" class="panel-nav__item" data-page="overview">Overview</button>

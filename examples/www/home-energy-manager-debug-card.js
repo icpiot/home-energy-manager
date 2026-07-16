@@ -1456,7 +1456,7 @@ class ByteWattDebugCard extends HTMLElement {
         <div class="shell">
           <div class="header">
             <div class="title">
-              <span>BW</span>
+              <span>HEM</span>
               <span>${this._escape(this._config.title)}</span>
           <span class="badge">v${HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD}</span>
             </div>
