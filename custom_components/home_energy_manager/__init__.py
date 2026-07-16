@@ -122,7 +122,7 @@ PANEL_CUSTOM_CONFIG = {
     }
 }
 PANEL_PROVIDER_LABELS = {
-    PROVIDER_BYTEWATT: "Home Energy Manager",
+    PROVIDER_BYTEWATT: "ByteWatt",
 }
 
 # Services are domain-level; registered once via hass.services.has_service() guard.
