@@ -209,25 +209,8 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
                 else "all"
             ),
             "entry_id": self._config_entry.entry_id,
-            "last_ensure_result": getattr(self.coordinator, "_last_history_ensure_result", {}) or {},
             "backfill_years": backfill_years,
             "backfill_days": _history_backfill_days(self._config_entry),
-            "inventory_scopes": [
-                {
-                    "scope_key": "all",
-                    "label": "All systems",
-                    "aggregate": True,
-                },
-                *[
-                    {
-                        "scope_key": str(inverter.sys_sn or "").strip(),
-                        "label": str(inverter.display_name or inverter.sys_sn or "Battery"),
-                        "aggregate": False,
-                    }
-                    for inverter in self._inventory()
-                    if str(inverter.sys_sn or "").strip() and str(inverter.sys_sn or "").strip().lower() != "all"
-                ],
-            ],
         }
         monitoring_summary = _compact_summary(
             selected_battery if (current is not None or (selected_scope is not None and not selected_scope.aggregate)) else aggregate_battery,
