@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=004";
 import "./home-energy-manager-report-card.js?v=299";
 import "./home-energy-manager-debug-card.js?v=032";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "023";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "024";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
@@ -951,14 +951,23 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return;
       }
       host.textContent = "";
-      const element = document.createElement(tag);
-      if (typeof element.setConfig === "function") {
-        element.setConfig(config);
+      try {
+        const element = document.createElement(tag);
+        if (typeof element.setConfig === "function") {
+          element.setConfig(config);
+        }
+        if (this._hass) {
+          element.hass = this._hass;
+        }
+        host.appendChild(element);
+      } catch (error) {
+        host.innerHTML = `
+          <div class="embedded-fallback">
+            <strong>Embedded card unavailable</strong>
+            <span>${String(error?.message || error || "Unknown error")}</span>
+          </div>
+        `;
       }
-      if (this._hass) {
-        element.hass = this._hass;
-      }
-      host.appendChild(element);
     });
   }
 
