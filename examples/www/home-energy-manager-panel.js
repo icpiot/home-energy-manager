@@ -2,10 +2,11 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "033";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "034";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
+const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
   { value: "midnight", label: "Midnight" },
   { value: "sunrise", label: "Sunrise" },
@@ -32,6 +33,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._theme = this._loadTheme();
     this._debugEnabled = this._loadDebugEnabled();
     this._page = this._loadPage();
+    this._renderHoldUntil = 0;
+    this._deferredRenderTimer = null;
   }
 
   setConfig(config) {
@@ -42,6 +45,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    if (this._shouldHoldRender()) {
+      this._queueDeferredRender();
+      return;
+    }
     this._render();
   }
 
@@ -64,6 +71,28 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   connectedCallback() {
     this._render();
+  }
+
+  _shouldHoldRender() {
+    return Date.now() < this._renderHoldUntil;
+  }
+
+  _holdRenderWindow(duration = HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS) {
+    this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + duration);
+    this._queueDeferredRender();
+  }
+
+  _queueDeferredRender() {
+    if (this._deferredRenderTimer) {
+      clearTimeout(this._deferredRenderTimer);
+    }
+    const delay = Math.max(0, this._renderHoldUntil - Date.now());
+    this._deferredRenderTimer = window.setTimeout(() => {
+      this._deferredRenderTimer = null;
+      if (!this._shouldHoldRender()) {
+        this._render();
+      }
+    }, delay + 10);
   }
 
   _loadTheme() {
@@ -1178,6 +1207,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     });
 
     this.shadowRoot.querySelector("[data-shared-settings-target]")?.addEventListener("change", async (event) => {
+      this._holdRenderWindow();
       if (!this._hass) {
         return;
       }
@@ -1186,6 +1216,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
         option: event.target.value,
       });
     });
+
+    const sharedSelector = this.shadowRoot.querySelector("[data-shared-settings-target]");
+    if (sharedSelector) {
+      sharedSelector.addEventListener("mousedown", () => this._holdRenderWindow());
+      sharedSelector.addEventListener("focus", () => this._holdRenderWindow());
+      sharedSelector.addEventListener("click", () => this._holdRenderWindow());
+      sharedSelector.addEventListener("blur", () => {
+        this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 250);
+        this._queueDeferredRender();
+      });
+    }
   }
 
   _escapeHtml(value) {
