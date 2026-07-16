@@ -96,6 +96,7 @@
 .status,
 .cards,
 .grid,
+.debug,
 .panel-nav {
   max-width: 1380px;
   margin: 0 auto 18px;
@@ -572,6 +573,15 @@
 
 .pricing__grid {
   margin-top: 4px;
+}
+
+.debug {
+  display: grid;
+  gap: 16px;
+}
+
+.debug__grid {
+  grid-template-columns: 1fr;
 }
 
 .grid--two {
