@@ -24,6 +24,7 @@ from homeassistant.helpers import issue_registry as ir
 from .bytewatt_client import ByteWattClient
 from .coordinator import ByteWattDataUpdateCoordinator
 from .settings_manager import SettingsManager, SettingsValidationError
+from .topology import DiscoveredInverter
 from .const import (
     DOMAIN,
     CONF_PROVIDER,
@@ -202,6 +203,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "coordinator": coordinator,
         "manager": manager,
     }
+
+    inverters: list[DiscoveredInverter] = []
+    try:
+        raw_inverters = await client.fetch_inverter_list()
+    except Exception as ex:
+        _LOGGER.debug("Could not fetch inverter inventory during setup: %s", ex)
+        raw_inverters = []
+    if raw_inverters:
+        inverters = [DiscoveredInverter.from_api_response(inv) for inv in raw_inverters]
+        hass.data[DOMAIN][entry.entry_id]["inverters"] = inverters
+        if not host_system_id and len(inverters) == 1:
+            host_system_id = inverters[0].system_id
+            host_sys_sn = inverters[0].sys_sn
+            client.api_client.host_system_id = host_system_id
+            client.api_client.host_sys_sn = host_sys_sn
+            hass.config_entries.async_update_entry(
+                entry,
+                data={
+                    **entry.data,
+                    CONF_HOST_SYSTEM_ID: host_system_id,
+                    CONF_HOST_SYS_SN: host_sys_sn,
+                },
+            )
 
     # If host is now configured, clear any leftover repair issue from prior runs.
     # If it's still empty, _check_host_inverter_repair_issue may raise one.
