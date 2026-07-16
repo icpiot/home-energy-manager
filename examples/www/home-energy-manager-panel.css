@@ -272,6 +272,77 @@
   gap: 10px;
 }
 
+.shared-selector {
+  display: grid;
+  grid-template-columns: auto minmax(240px, 340px);
+  gap: 12px;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding-top: 2px;
+}
+
+.shared-selector__label {
+  color: var(--hem-panel-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.shared-selector__control {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 42px;
+  min-width: 0;
+  padding: 10px 40px 10px 14px;
+  border: 1px solid var(--hem-panel-border);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+    linear-gradient(45deg, transparent 50%, var(--hem-panel-accent) 50%),
+    linear-gradient(135deg, var(--hem-panel-accent) 50%, transparent 50%),
+    var(--hem-panel-surface);
+  background-repeat: no-repeat;
+  background-position:
+    0 0,
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px),
+    0 0;
+  background-size:
+    100% 100%,
+    6px 6px,
+    6px 6px,
+    100% 100%;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+  color: var(--hem-panel-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.shared-selector__control:hover {
+  border-color: rgba(153, 190, 255, 0.32);
+}
+
+.shared-selector__control:focus {
+  outline: none;
+  border-color: var(--hem-panel-accent);
+  box-shadow:
+    0 0 0 1px rgba(111, 178, 255, 0.35),
+    0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+.shared-selector__control:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.shared-selector__control option {
+  color: #0f1a2d;
+}
+
 .status__banner {
   background: var(--hem-panel-surface);
   border: 1px solid var(--hem-panel-border);
@@ -688,5 +759,14 @@
 
   .theme-picker {
     justify-content: flex-start;
+  }
+
+  .shared-selector {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .shared-selector__control {
+    width: 100%;
   }
 }
