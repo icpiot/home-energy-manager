@@ -247,6 +247,7 @@
   border-radius: 999px;
   padding: 10px 16px;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .panel-nav__item:disabled,
