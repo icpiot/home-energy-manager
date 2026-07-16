@@ -414,16 +414,6 @@
   gap: 16px;
 }
 
-.overview__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.overview__actions .panel-nav__item {
-  margin: 0;
-}
-
 .overview__tiles {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

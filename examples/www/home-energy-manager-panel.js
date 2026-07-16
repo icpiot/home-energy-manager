@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "046";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "047";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -429,15 +429,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             This is the daily control surface for battery, solar, grid, and future pricing
             workflows. The panel will stay focused on the most useful actions first.
           </p>
-          <div class="overview__actions">
-            <button type="button" class="panel-nav__item" data-page="policy">Policy</button>
-            <button type="button" class="panel-nav__item" data-page="report">Report</button>
-            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
-            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
-            <button type="button" class="panel-nav__item" data-page="forecast">Forecast</button>
-            <button type="button" class="panel-nav__item" data-page="history">History</button>
-            <button type="button" class="panel-nav__item" data-page="pricing">Pricing</button>
-          </div>
         </article>
 
         <section class="overview__tiles">
@@ -522,11 +513,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             The battery page will be the day-to-day control surface for charge and discharge
             policy, safety limits, and provider-specific battery modes.
           </p>
-          <div class="overview__actions">
-            <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
-            <button type="button" class="panel-nav__item" data-page="history">History</button>
-            <button type="button" class="panel-nav__item" data-page="pricing">Pricing</button>
-          </div>
         </article>
 
         <section class="battery__tiles">
@@ -594,11 +580,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             This page shows the live policy summary inside the Home Energy Manager panel so
             battery charge and feed-in rules stay in one place.
           </p>
-          <div class="overview__actions">
-            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
-            <button type="button" class="panel-nav__item" data-page="report">Report</button>
-            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
-          </div>
         </article>
 
         <section class="policy__stack">
@@ -662,11 +643,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             The report view shows a live summary from the generic Home Energy Manager sensors
             so you can see current data while history continues to build.
           </p>
-          <div class="overview__actions">
-            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
-            <button type="button" class="panel-nav__item" data-page="policy">Policy</button>
-            <button type="button" class="panel-nav__item" data-page="history">History</button>
-          </div>
         </article>
 
         <section class="report__stack">
@@ -731,12 +707,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             Solar is where we’ll surface live generation, feed-in, and future forecasting so
             the panel can guide battery and pricing decisions from the same place.
           </p>
-          <div class="overview__actions">
-            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
-            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
-            <button type="button" class="panel-nav__item" data-page="forecast">Forecast</button>
-            <button type="button" class="panel-nav__item" data-page="history">History</button>
-          </div>
         </article>
 
         <section class="solar__tiles">
@@ -804,11 +774,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             forecast entities are missing, they will show as unavailable until the provider
             integration starts publishing data.
           </p>
-          <div class="overview__actions">
-            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
-            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
-            <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
-          </div>
         </article>
 
         <section class="forecast__tiles">
@@ -880,11 +845,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             This is where usage trends, state changes, and future reporting views will live.
             It gives us a dedicated place for history without making Lovelace the primary UI.
           </p>
-          <div class="overview__actions">
-            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
-            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
-            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
-          </div>
         </article>
 
         <section class="history__tiles">
@@ -959,11 +919,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             Pricing gets its own home so we can handle fixed tariffs, dynamic plans, wear cost,
             and future export spike pricing without tying the rest of the UI to one model.
           </p>
-          <div class="overview__actions">
-            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
-            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
-            <button type="button" class="panel-nav__item" data-page="history">History</button>
-          </div>
         </article>
 
         <section class="pricing__tiles">
@@ -1120,12 +1075,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             This page is reserved for deeper inspection of the Home Energy Manager data model
             and the embedded debug card. The controls are generic and device-agnostic.
           </p>
-          <div class="overview__actions">
-            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
-            <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
-            <button type="button" class="panel-nav__item" data-page="report">Report</button>
-            <button type="button" class="panel-nav__item" data-page="forecast">Forecast</button>
-          </div>
         </article>
 
         <section class="grid debug__grid">

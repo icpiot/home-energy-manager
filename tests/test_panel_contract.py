@@ -40,10 +40,10 @@ def test_panel_reads_configuration_from_home_assistant_panel_property():
 
 def test_panel_exposes_forecast_page_and_configured_entity_lookup():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
-    assert 'data-page="forecast"' in panel_source
     assert "_forecastPage()" in panel_source
     assert "_configuredEntityId(key)" in panel_source
     assert "_stateForConfiguredEntity" in panel_source
+    assert "Forecast Wiring" in panel_source
 
 
 def test_panel_section_navigation_uses_page_fragment_links():
@@ -52,8 +52,9 @@ def test_panel_section_navigation_uses_page_fragment_links():
     assert 'HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery"' in panel_source
     assert "_pageHref(page)" in panel_source
     assert 'url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=' in panel_source
-    assert 'type="button" class="panel-nav__item" data-page="forecast"' in panel_source
-    assert 'class="panel-nav__item"' in panel_source
+    assert 'data-page="${page.value}"' in panel_source
+    assert 'class="panel-nav__item ${page.value === this._page ? "is-active" : ""}"' in panel_source
+    assert "overview__actions" not in panel_source
 
 
 def test_config_flow_collects_forecast_setup():
