@@ -605,20 +605,74 @@ class NeovoltClient:
             _LOGGER.debug("Error making PUT request to %s: %s", url, error)
             return None
 
+    @staticmethod
+    def _extract_inverter_records(payload: Any) -> list[Dict[str, Any]]:
+        """Recursively pull inverter-like records out of an arbitrary payload."""
+        records: list[Dict[str, Any]] = []
+
+        def _walk(node: Any) -> None:
+            if isinstance(node, dict):
+                system_id = str(node.get("systemId", "") or node.get("system_id", "")).strip()
+                sys_sn = str(node.get("sysSn", "") or node.get("sys_sn", "")).strip()
+                if system_id or sys_sn:
+                    records.append(dict(node))
+                for value in node.values():
+                    if isinstance(value, (dict, list)):
+                        _walk(value)
+            elif isinstance(node, list):
+                for item in node:
+                    _walk(item)
+
+        _walk(payload)
+        return records
+
+    @staticmethod
+    def _dedupe_inverter_records(records: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+        """Return unique inverter records, keeping the first seen per identity."""
+        unique: list[Dict[str, Any]] = []
+        seen: set[tuple[str, str]] = set()
+        for record in records:
+            system_id = str(record.get("systemId", "") or record.get("system_id", "")).strip()
+            sys_sn = str(record.get("sysSn", "") or record.get("sys_sn", "")).strip()
+            key = (system_id, sys_sn)
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(record)
+        return unique
+
     async def fetch_inverter_list(self) -> list:
         """Return the list of inverters on this account.
 
         Used by the config flow / migration to populate the Host inverter
         selection. Re-logs in once on session expiry (code 6069).
         """
-        endpoint = "api/stable/home/getCustomMenuEssList?inverterMode=0"
-        async def _do():
+        endpoints = [
+            "api/stable/home/getCustomMenuEssList?inverterMode=0",
+            "api/stable/home/getCustomMenuEssList?inverterMode=1",
+        ]
+        collected: list[Dict[str, Any]] = []
+
+        async def _do(endpoint: str) -> Optional[Dict[str, Any]]:
             return await self._async_get(endpoint)
-        response = await _do()
-        if response and response.get("code") == 6069:
-            if await self.async_login():
-                response = await _do()
-        if response and response.get("code") == 200:
-            return response.get("data") or []
-        _LOGGER.warning("Could not fetch inverter list: %s", response)
+
+        for endpoint in endpoints:
+            response = await _do(endpoint)
+            if response and response.get("code") == 6069:
+                if await self.async_login():
+                    response = await _do(endpoint)
+            if response and response.get("code") == 200:
+                collected.extend(self._extract_inverter_records(response.get("data")))
+            else:
+                _LOGGER.debug("Inverter list endpoint %s returned %s", endpoint, response)
+
+        device_list = await self.async_get_device_list()
+        if device_list:
+            collected.extend(self._extract_inverter_records(device_list))
+
+        deduped = self._dedupe_inverter_records(collected)
+        if deduped:
+            return deduped
+
+        _LOGGER.warning("Could not fetch inverter list from any endpoint")
         return []
