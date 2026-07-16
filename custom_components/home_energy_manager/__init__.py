@@ -86,7 +86,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=014"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=015"
 PANEL_CONFIG = {
     "title": "Home Energy Manager",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -107,7 +107,7 @@ PANEL_CUSTOM_CONFIG = {
     }
 }
 PANEL_PROVIDER_LABELS = {
-    PROVIDER_BYTEWATT: "ByteWatt",
+    PROVIDER_BYTEWATT: "Home Energy Manager",
 }
 
 # Services are domain-level; registered once via hass.services.has_service() guard.
@@ -614,7 +614,7 @@ def _register_services(hass: HomeAssistant) -> None:
             notify_create(
                 hass,
                 "\n".join(summary_lines),
-                title="ByteWatt Health Check Results",
+                title="Home Energy Manager Health Check Results",
                 notification_id="bytewatt_health_check",
             )
         except (AttributeError, TypeError) as ex:
@@ -636,7 +636,7 @@ def _register_services(hass: HomeAssistant) -> None:
                 notify_create(
                     hass,
                     f"Diagnostics mode: {'enabled' if enabled_now else 'disabled'}",
-                    title="ByteWatt Diagnostics",
+                    title="Home Energy Manager Diagnostics",
                     notification_id="bytewatt_diagnostics",
                 )
             except (AttributeError, TypeError) as ex:

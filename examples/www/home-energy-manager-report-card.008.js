@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "009";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "010";
 
 class ByteWattReportCard extends HTMLElement {
   setConfig(config) {
@@ -127,7 +127,7 @@ class ByteWattReportCard extends HTMLElement {
     const times = powerDiagram.time || [];
 
     const rows = [
-      ["Label", reporting?.label || "ByteWatt"],
+      ["Label", reporting?.label || "Home Energy Manager"],
       ["Date", powerDiagram.date || ""],
       ["Live SOC", live.soc ?? ""],
       ["Live Battery Power", live.battery_power ?? ""],
@@ -195,9 +195,9 @@ class ByteWattReportCard extends HTMLElement {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     const stamp = (reporting?.power_diagram?.date || "today").replaceAll("/", "-");
-    const label = (reporting?.label || "bytewatt").replaceAll(/[^a-zA-Z0-9_-]+/g, "_");
+    const label = (reporting?.label || "home-energy-manager").replaceAll(/[^a-zA-Z0-9_-]+/g, "_");
     link.href = url;
-    link.download = `bytewatt-report-${label}-${stamp}.csv`;
+    link.download = `home-energy-manager-report-${label}-${stamp}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -618,7 +618,7 @@ class ByteWattReportCard extends HTMLElement {
             ${this._ring("Today's Feed-in", this._fmtEnergy(powerSummary.feed_in), "feed")}
             ${this._ring("Today's Grid Consumption", this._fmtEnergy(powerSummary.grid_consumption), "grid")}
           </div>
-          <svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="ByteWatt power diagram chart">
+          <svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Home Energy Manager power diagram chart">
             <line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis"></line>
             <line x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" class="axis"></line>
             ${[0, 0.25, 0.5, 0.75, 1]

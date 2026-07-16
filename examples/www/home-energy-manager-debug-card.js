@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "028";
+const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "029";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
@@ -9,7 +9,7 @@ class ByteWattDebugCard extends HTMLElement {
       title: config?.title || "Home Energy Manager Debug",
       ...config,
     };
-    this._debugStorageKey = `bytewatt-debug:${this._config.entity_prefix}:${this._config.settings_target}`;
+    this._debugStorageKey = `home-energy-manager-debug:${this._config.entity_prefix}:${this._config.settings_target}`;
     this._status = "";
     this._statusKind = "neutral";
     const saved = this._loadDebugState();
@@ -386,8 +386,8 @@ class ByteWattDebugCard extends HTMLElement {
   }
 
   _localHistoryKey() {
-    const entity = String(this._config?.settings_target || "bytewatt").replace(/[^A-Za-z0-9_.-]+/g, "_");
-    return `bytewatt-debug-history:${entity}`;
+    const entity = String(this._config?.settings_target || "home_energy_manager").replace(/[^A-Za-z0-9_.-]+/g, "_");
+    return `home-energy-manager-debug-history:${entity}`;
   }
 
   _readLocalHistory() {
