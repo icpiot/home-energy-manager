@@ -20,11 +20,13 @@ from .const import (
     CONF_PROVIDER,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
+    CONF_HISTORY_BACKFILL_YEARS,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
     CURRENT_ENTRY_VERSION,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_HISTORY_BACKFILL_YEARS,
     DOMAIN,
     MIN_SCAN_INTERVAL,
     PROVIDER_BYTEWATT,
@@ -116,6 +118,9 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
+                vol.Optional(
+                    CONF_HISTORY_BACKFILL_YEARS, default=DEFAULT_HISTORY_BACKFILL_YEARS
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
             }),
             errors={},
         )
@@ -163,6 +168,9 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
+                vol.Optional(
+                    CONF_HISTORY_BACKFILL_YEARS, default=DEFAULT_HISTORY_BACKFILL_YEARS
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
             }),
             errors=errors,
         )
@@ -261,7 +269,7 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class ByteWattOptionsFlowHandler(config_entries.OptionsFlow):
-    """Options: scan interval only."""
+    """Options for runtime polling and archive horizon."""
 
     def __init__(self, config_entry):
         self.config_entry = config_entry
@@ -278,5 +286,11 @@ class ByteWattOptionsFlowHandler(config_entries.OptionsFlow):
                         CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
                     ),
                 ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
+                vol.Optional(
+                    CONF_HISTORY_BACKFILL_YEARS,
+                    default=self.config_entry.options.get(
+                        CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
             }),
         )

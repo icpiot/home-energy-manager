@@ -23,6 +23,7 @@ from homeassistant.helpers import issue_registry as ir
 
 from .bytewatt_client import ByteWattClient
 from .coordinator import ByteWattDataUpdateCoordinator
+from .reporting import ByteWattReportHistory, build_reporting_payload
 from .settings_manager import SettingsManager, SettingsValidationError
 from .topology import DiscoveredInverter
 from .const import (
@@ -74,6 +75,7 @@ from .const import (
     ATTR_ENTRY_ID,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
+    CONF_HISTORY_BACKFILL_YEARS,
     CURRENT_ENTRY_VERSION,
     FEEDIN_MAX_SLOTS,
     FEEDIN_MAX_POWER_W,
@@ -260,6 +262,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _register_frontend_panel(hass, entry)
 
     return True
+
+
+def _date_range(start_date: str, end_date: str) -> list[str]:
+    """Return inclusive YYYY-MM-DD dates between two bounds."""
+    from datetime import datetime, timedelta
+
+    start = datetime.strptime(start_date, "%Y-%m-%d").date()
+    end = datetime.strptime(end_date, "%Y-%m-%d").date()
+    if end < start:
+        start, end = end, start
+    days = []
+    current = start
+    while current <= end:
+        days.append(current.isoformat())
+        current += timedelta(days=1)
+    return days
 
 
 def _stop_heartbeat_factory(coordinator):
@@ -668,12 +686,94 @@ def _register_services(hass: HomeAssistant) -> None:
         else:
             _LOGGER.error("No ByteWatt integrations found to toggle diagnostics")
 
+    async def handle_ensure_report_history(call: ServiceCall) -> None:
+        target_entry = call.data.get(ATTR_ENTRY_ID)
+        scope_key = str(call.data.get("scope_key") or "all").strip() or "all"
+        start_date = str(call.data.get("start_date") or "").strip()
+        end_date = str(call.data.get("end_date") or "").strip()
+        force = bool(call.data.get("force", False))
+        if not start_date or not end_date:
+            raise HomeAssistantError("start_date and end_date are required")
+        target_entry_ids = [
+            entry_id
+            for entry_id, entry_data in hass.data[DOMAIN].items()
+            if isinstance(entry_data, dict) and entry_data.get("coordinator")
+            and (not target_entry or entry_id == target_entry)
+        ]
+        if not target_entry_ids:
+            raise HomeAssistantError("No Home Energy Manager entries are loaded")
+
+        dates = _date_range(start_date, end_date)
+        for entry_id in target_entry_ids:
+            entry_data = hass.data[DOMAIN][entry_id]
+            coordinator = entry_data.get("coordinator")
+            client = entry_data.get("client")
+            if coordinator is None or client is None:
+                continue
+            history = ByteWattReportHistory(hass, entry_id)
+            history_label = scope_key.replace("_", " ").title()
+            status_text = f"Downloading {len(dates)} day(s) for {history_label}..."
+            entry_data["history_status"] = status_text
+            notify_create(
+                hass,
+                status_text,
+                title="Home Energy Manager History",
+                notification_id=f"home_energy_manager_history_{entry_id}",
+            )
+            for index, day in enumerate(dates, start=1):
+                battery_data = await client.get_battery_data(
+                    report_date=day,
+                    include_realtime=day == dates[-1] and not force,
+                )
+                reporting = build_reporting_payload(
+                    battery_data or {},
+                    aggregate=(scope_key == "all"),
+                    label=history_label,
+                )
+                if battery_data:
+                    await history.async_store_snapshot(
+                        scope_key=scope_key,
+                        label=history_label,
+                        reporting=reporting,
+                        record_date=day,
+                    )
+                else:
+                    await history.async_mark_missing_date(
+                        scope_key=scope_key,
+                        label=history_label,
+                        record_date=day,
+                        reason="no_reporting_data",
+                    )
+                progress = f"Downloaded {index}/{len(dates)} days for {history_label}"
+                entry_data["history_status"] = progress
+                notify_create(
+                    hass,
+                    progress,
+                    title="Home Energy Manager History",
+                    notification_id=f"home_energy_manager_history_{entry_id}",
+                )
+            done_text = f"History ready for {history_label} ({len(dates)} day(s))"
+            entry_data["history_status"] = done_text
+            notify_create(
+                hass,
+                done_text,
+                title="Home Energy Manager History",
+                notification_id=f"home_energy_manager_history_{entry_id}",
+            )
+
     # ---------- Schemas ----------
 
     _time_schema = vol.All(cv.string)
     _soc_schema = vol.All(vol.Coerce(int), vol.Range(min=1, max=100))
     _feedin_power_schema = vol.All(vol.Coerce(int), vol.Range(min=0, max=FEEDIN_MAX_POWER_W))
     _entry_id_opt = {vol.Optional(ATTR_ENTRY_ID): cv.string}
+    _history_schema = vol.Schema({
+        vol.Required("scope_key"): cv.string,
+        vol.Required("start_date"): cv.string,
+        vol.Required("end_date"): cv.string,
+        vol.Optional("force", default=False): cv.boolean,
+        **_entry_id_opt,
+    })
 
     hass.services.async_register(
         DOMAIN, SERVICE_SET_DISCHARGE_TIME, handle_set_discharge_time,
@@ -743,4 +843,8 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_TOGGLE_DIAGNOSTICS, handle_toggle_diagnostics,
         schema=vol.Schema({vol.Optional("enable"): cv.boolean, **_entry_id_opt}),
+    )
+    hass.services.async_register(
+        DOMAIN, "ensure_report_history", handle_ensure_report_history,
+        schema=_history_schema,
     )

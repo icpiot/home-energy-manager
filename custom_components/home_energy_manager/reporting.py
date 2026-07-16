@@ -19,6 +19,49 @@ HISTORY_DIR_NAME = "home-energy-manager-history"
 HISTORY_FILE_NAME = "history.json"
 
 
+def _synthesized_power_diagram(
+    battery_data: dict[str, Any],
+    *,
+    reporting_date: str,
+) -> dict[str, Any]:
+    """Build a minimal power diagram when the backend did not provide one."""
+    live_battery = battery_data.get("pbat")
+    live_load = battery_data.get("pload")
+    live_grid = battery_data.get("pgrid")
+    live_pv = battery_data.get("ppv")
+    daily_solar = battery_data.get("PV_Generated_Today")
+    daily_load = battery_data.get("Consumed_Today")
+    daily_feed = battery_data.get("Feed_In_Today")
+    daily_grid = battery_data.get("Grid_Import_Today")
+    daily_charge = battery_data.get("Battery_Charged_Today")
+    daily_discharge = battery_data.get("Battery_Discharged_Today")
+    return {
+        "date": reporting_date,
+        "meta": {
+            "source": "synthesized",
+            "label": "Home Energy Manager",
+            "date": reporting_date,
+        },
+        "summary": {
+            "soc": battery_data.get("soc"),
+            "solar_generation": daily_solar,
+            "load_consumption": daily_load,
+            "feed_in": daily_feed,
+            "grid_consumption": daily_grid,
+            "battery_charge": daily_charge,
+            "battery_discharge": daily_discharge,
+        },
+        "time": ["00:00"],
+        "series": {
+            "bat": [live_battery],
+            "load": [live_load],
+            "solar": [live_pv or daily_solar],
+            "feed_in": [daily_feed if daily_feed is not None else live_grid],
+            "consumed": [daily_load if daily_load is not None else live_load],
+        },
+    }
+
+
 def build_reporting_payload(
     battery_data: dict[str, Any],
     *,
@@ -26,8 +69,14 @@ def build_reporting_payload(
     label: str,
 ) -> dict[str, Any]:
     """Build the compact reporting payload used by the custom Lovelace cards."""
+    reporting_date = str(
+        battery_data.get("reporting_date")
+        or battery_data.get("Power_Diagram", {}).get("date")
+        or dt_util.now().date().isoformat()
+    )
     power_diagram = battery_data.get("Power_Diagram") or {}
-    reporting_date = str(power_diagram.get("date") or dt_util.now().date().isoformat())
+    if not isinstance(power_diagram, dict) or not power_diagram:
+        power_diagram = _synthesized_power_diagram(battery_data, reporting_date=reporting_date)
     saved_at = dt_util.utcnow().isoformat()
     return {
         "aggregate": aggregate,

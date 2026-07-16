@@ -39,14 +39,23 @@ class ByteWattClient:
         """Authenticate against the Byte-Watt API."""
         return await self.api_client.async_login()
 
-    async def get_battery_data(self, station_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_battery_data(
+        self,
+        station_id: Optional[str] = None,
+        report_date: Optional[str] = None,
+        include_realtime: bool = True,
+    ) -> Dict[str, Any]:
         """Poll the real-time + cumulative battery data endpoints.
 
         Raises ``ByteWattAPIError`` on failure — the caller (coordinator)
         relies on this so its circuit-breaker accounting sees real failures
         instead of silently treating None as success.
         """
-        return await self.api_client.async_get_battery_data(station_id)
+        return await self.api_client.async_get_battery_data(
+            station_id,
+            report_date=report_date,
+            include_realtime=include_realtime,
+        )
 
     async def get_device_list(self) -> Optional[Dict[str, Any]]:
         return await self.api_client.async_get_device_list()

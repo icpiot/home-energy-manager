@@ -231,7 +231,11 @@ class NeovoltClient:
             return None
     
     async def async_get_battery_data(
-        self, station_id: str = None, _retry_count: int = 0,
+        self,
+        station_id: str = None,
+        _retry_count: int = 0,
+        report_date: str | None = None,
+        include_realtime: bool = True,
     ) -> Dict[str, Any]:
         """Get data for a specific battery using the new API endpoint.
 
@@ -255,6 +259,7 @@ class NeovoltClient:
             if not await self.async_login():
                 raise ByteWattAPIError("Login failed; cannot fetch battery data")
 
+        report_date_str = report_date or dt_util.now().date().isoformat()
         # First get the real-time power data — failures of THIS call raise.
         url = f"{self.base_url}/api/report/energyStorage/getLastPowerData"
 
@@ -273,37 +278,48 @@ class NeovoltClient:
         try:
             battery_data: Dict[str, Any] = {}
 
-            async with asyncio.timeout(DEFAULT_TIMEOUT):
-                async with self.session.get(
-                    url=url, params=params, headers=headers,
-                ) as response:
-                    if response.status != 200:
-                        body = await response.text()
-                        if response.status == 401 and _retry_count < MAX_RELOGIN_RETRIES:
-                            if await self.async_login():
-                                return await self.async_get_battery_data(station_id, _retry_count + 1)
-                        raise ByteWattAPIError(
-                            f"getLastPowerData HTTP {response.status}: {body[:200]}"
-                        )
+            if include_realtime:
+                async with asyncio.timeout(DEFAULT_TIMEOUT):
+                    async with self.session.get(
+                        url=url, params=params, headers=headers,
+                    ) as response:
+                        if response.status != 200:
+                            body = await response.text()
+                            if response.status == 401 and _retry_count < MAX_RELOGIN_RETRIES:
+                                if await self.async_login():
+                                    return await self.async_get_battery_data(
+                                        station_id,
+                                        _retry_count + 1,
+                                        report_date=report_date,
+                                        include_realtime=include_realtime,
+                                    )
+                            raise ByteWattAPIError(
+                                f"getLastPowerData HTTP {response.status}: {body[:200]}"
+                            )
 
-                    result = await _decode_json_object(response, "getLastPowerData")
-                    if result is None:
-                        raise ByteWattAPIError(
-                            "getLastPowerData returned a non-JSON or non-object body"
-                        )
+                        result = await _decode_json_object(response, "getLastPowerData")
+                        if result is None:
+                            raise ByteWattAPIError(
+                                "getLastPowerData returned a non-JSON or non-object body"
+                            )
 
-                    if result.get("code") not in (0, 200):
-                        if result.get("code") == 6069:
-                            _LOGGER.warning("Session expired (code 6069), attempting to re-login")
-                            if _retry_count < MAX_RELOGIN_RETRIES and await self.async_login():
-                                return await self.async_get_battery_data(station_id, _retry_count + 1)
-                        raise ByteWattAPIError(
-                            f"getLastPowerData code={result.get('code')}: {result.get('msg')}"
-                        )
+                        if result.get("code") not in (0, 200):
+                            if result.get("code") == 6069:
+                                _LOGGER.warning("Session expired (code 6069), attempting to re-login")
+                                if _retry_count < MAX_RELOGIN_RETRIES and await self.async_login():
+                                    return await self.async_get_battery_data(
+                                        station_id,
+                                        _retry_count + 1,
+                                        report_date=report_date,
+                                        include_realtime=include_realtime,
+                                    )
+                            raise ByteWattAPIError(
+                                f"getLastPowerData code={result.get('code')}: {result.get('msg')}"
+                            )
 
-                    power_data = result.get("data", {}) or {}
-                    _LOGGER.debug("Received battery power data: %s", power_data)
-                    battery_data.update(power_data)
+                        power_data = result.get("data", {}) or {}
+                        _LOGGER.debug("Received battery power data: %s", power_data)
+                        battery_data.update(power_data)
             
             # Now get the energy statistics
             stats_url = f"{self.base_url}/api/report/energy/getEnergyStatistics"
@@ -313,7 +329,7 @@ class NeovoltClient:
             # where cumulative totals temporarily show yesterday's values for ~30 minutes
             # after midnight in timezones ahead of the API server (e.g., UTC+9:30)
             # This ensures the API always returns complete data for "today"
-            now = dt_util.now()
+            now = dt_util.parse_datetime(report_date_str + "T12:00:00Z") or dt_util.now()
             end_date = (now + timedelta(days=1)).strftime("%Y-%m-%d")
             begin_date = "2020-01-01"
             
@@ -373,7 +389,7 @@ class NeovoltClient:
             
             # Now get today's stats
             today_url = f"{self.base_url}/api/stable/home/getSumDataForCustomer"
-            today_date = now.strftime("%Y-%m-%d")
+            today_date = report_date_str
             
             today_params = {
                 "sn": "All",
@@ -437,7 +453,7 @@ class NeovoltClient:
 
             # Now get today's statistics
             today_stats_url = f"{self.base_url}/api/report/power/staticsByDay"
-            today_stats_date = now.strftime("%Y-%m-%d")
+            today_stats_date = report_date_str
             today_stats_params = {
                 "sysSn": "",
                 "date": today_stats_date,
