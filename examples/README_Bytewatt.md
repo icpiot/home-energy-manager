@@ -90,21 +90,21 @@ Copy the working file from `examples/www/` to your Home Assistant `www` folder:
 Then add it as a dashboard resource using a fixed filename and a cache-buster:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=002
+url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=003
 type: module
 ```
 
 Reporting card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=297
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=298
 type: module
 ```
 
 Debug card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=029
+url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=030
 type: module
 ```
 
@@ -132,29 +132,29 @@ To force Home Assistant and the browser to load a fresh custom-card build:
 Example next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=002
+url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=003
 type: module
 ```
 
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=297
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=298
 type: module
 ```
 
 Debug card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=029
+url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=030
 type: module
 ```
 
 Current build stamp in this repo:
 
-- Policy card: `002`
-- Reporting card: `010`
-- Debug card: `029`
+- Policy card: `003`
+- Reporting card: `011`
+- Debug card: `030`
 
 ## Defaults
 

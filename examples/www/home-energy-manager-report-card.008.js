@@ -1,11 +1,11 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "010";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "011";
 
 class ByteWattReportCard extends HTMLElement {
   setConfig(config) {
     const prefix = config?.entity_prefix || "home_energy_manager";
     this._config = {
       entity_prefix: prefix,
-      settings_target: config?.settings_target || `select.${prefix}_settings_target`,
+      settings_target: config?.settings_target || `select.house_${prefix}_settings_target`,
       ...config,
     };
     this._view = this._view || "power";
