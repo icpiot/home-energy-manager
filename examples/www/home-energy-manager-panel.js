@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "048";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "049";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -136,6 +136,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
   }
 
+  _loadSettingsFocus() {
+    try {
+      return localStorage.getItem("home-energy-manager.panel.settings.focus") || "entities";
+    } catch (error) {
+      return "entities";
+    }
+  }
+
   _cleanCssValue(value, fallback) {
     const text = String(value ?? fallback ?? "").replace(/[;\r\n]/g, "").trim();
     return text || fallback;
@@ -218,6 +226,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _saveDebugEnabled(enabled) {
     try {
       localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY, enabled ? "true" : "false");
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
+  _saveSettingsFocus(focus) {
+    try {
+      localStorage.setItem("home-energy-manager.panel.settings.focus", focus);
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
@@ -408,6 +424,82 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _firstState(pattern, fallback = "Unavailable") {
     const entity = this._matchedEntities(pattern)[0];
     return this._formatEntityState(entity, fallback);
+  }
+
+  _panelCounts() {
+    const entities = this._states().length;
+    const managed = this._managedEntities().length;
+    const sensors = this._entityCountByDomain("sensor");
+    const controls =
+      this._entityCountByDomain("switch") +
+      this._entityCountByDomain("number") +
+      this._entityCountByDomain("time") +
+      this._entityCountByDomain("button") +
+      this._entityCountByDomain("select");
+    return { entities, managed, sensors, controls };
+  }
+
+  _listEntityPreview(pattern, limit = 5) {
+    const items = this._matchedEntities(pattern)
+      .slice(0, limit)
+      .map((entity) => entity.entity_id);
+    return items.length ? items.join(", ") : "Unavailable";
+  }
+
+  _settingsFocusCards() {
+    const counts = this._panelCounts();
+    return [
+      {
+        key: "entities",
+        label: "Entities",
+        value: String(counts.entities),
+        note: "All Home Assistant entities currently loaded.",
+        description: "Use this to confirm the panel is reading the full Home Assistant state machine.",
+        items: [
+          { label: "Total entities", value: String(counts.entities) },
+          { label: "Active page", value: this._pageLabel() },
+          { label: "Connection", value: this._connectionName() },
+        ],
+      },
+      {
+        key: "managed",
+        label: "Managed",
+        value: String(counts.managed),
+        note: "Entities provided by Home Energy Manager.",
+        description: "These are the entities the integration is explicitly exposing for the panel.",
+        items: [
+          { label: "Managed entities", value: String(counts.managed) },
+          { label: "Provider", value: this._config.provider || "Configured provider" },
+          { label: "Entity prefix", value: this._config.entity_prefix || "home_energy_manager" },
+        ],
+      },
+      {
+        key: "sensors",
+        label: "Sensors",
+        value: String(counts.sensors),
+        note: "Monitoring and history surfaces.",
+        description: "Sensor values are the live telemetry source for the panel and reporting views.",
+        items: [
+          { label: "Sensor count", value: String(counts.sensors) },
+          { label: "Sample sensors", value: this._listEntityPreview(/^sensor\./, 5) },
+        ],
+      },
+      {
+        key: "controls",
+        label: "Controls",
+        value: String(counts.controls),
+        note: "Switches, numbers, selects, times, buttons.",
+        description: "Controls are the entities the user can press, toggle, or adjust from the panel.",
+        items: [
+          { label: "Control count", value: String(counts.controls) },
+          { label: "Sample controls", value: this._listEntityPreview(/^(switch|number|time|button|select)\./, 5) },
+        ],
+      },
+    ];
+  }
+
+  _settingsFocusDetail(focusKey) {
+    return this._settingsFocusCards().find((card) => card.key === focusKey) || this._settingsFocusCards()[0];
   }
 
   _overviewPage() {
@@ -974,6 +1066,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Provider", value: this._config.provider || "Configured provider" },
       { label: "Debug", value: this._debugEnabled ? "Enabled" : "Disabled" },
     ];
+    const focusKey = this._loadSettingsFocus();
+    const focusCards = this._settingsFocusCards();
+    const activeFocus = this._settingsFocusDetail(focusKey);
     return `
       <section class="grid grid--two">
         <article class="panel-card panel-card--wide">
@@ -1044,6 +1139,31 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </div>
         </article>
       </section>
+
+      <section class="settings-metrics" aria-label="Panel metrics">
+        ${focusCards.map((card) => `
+          <button
+            type="button"
+            class="settings-metric ${card.key === activeFocus.key ? "is-active" : ""}"
+            data-settings-focus="${card.key}"
+          >
+            <span>${card.label}</span>
+            <strong>${card.value}</strong>
+            <small>${card.note}</small>
+          </button>
+        `).join("")}
+      </section>
+
+      <article class="panel-card panel-card--wide settings-detail">
+        <div class="panel-card__header">
+          <h2>${activeFocus.label} Details</h2>
+          <span>Press a metric above</span>
+        </div>
+        <p>${activeFocus.description}</p>
+        <ul class="key-list key-list--compact">
+          ${this._valueList(activeFocus.items)}
+        </ul>
+      </article>
     `;
   }
 
@@ -1252,15 +1372,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return;
     }
 
-    const entityCount = this._states().length;
-    const managedCount = this._managedEntities().length;
-    const sensorCount = this._entityCountByDomain("sensor");
-    const controlCount =
-      this._entityCountByDomain("switch") +
-      this._entityCountByDomain("number") +
-      this._entityCountByDomain("time") +
-      this._entityCountByDomain("button") +
-      this._entityCountByDomain("select");
     const connectionName = this._connectionName();
     const connectionLabel = this._hass ? `Connected to ${connectionName}` : `Waiting for ${connectionName}`;
     const title = this._config.title || "Home Energy Manager";
@@ -1317,29 +1428,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
           ${this._renderSharedBatterySelector()}
         </section>
 
-        <section class="cards">
-          <article>
-            <h2>Entities</h2>
-            <p>${entityCount}</p>
-            <small>All Home Assistant entities currently loaded.</small>
-          </article>
-          <article>
-            <h2>Managed</h2>
-            <p>${managedCount}</p>
-            <small>Entities provided by Home Energy Manager.</small>
-          </article>
-          <article>
-            <h2>Sensors</h2>
-            <p>${sensorCount}</p>
-            <small>Monitoring and history surfaces.</small>
-          </article>
-          <article>
-            <h2>Controls</h2>
-            <p>${controlCount}</p>
-            <small>Switches, numbers, selects, times, buttons.</small>
-          </article>
-        </section>
-
         ${this._pageContent()}
       </section>
     `;
@@ -1370,6 +1458,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
         }
         event.preventDefault();
         this._setPage(button.dataset.page);
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-settings-focus]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        this._saveSettingsFocus(button.dataset.settingsFocus || "entities");
+        this._render();
       };
     });
 

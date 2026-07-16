@@ -57,6 +57,14 @@ def test_panel_section_navigation_uses_page_fragment_links():
     assert "overview__actions" not in panel_source
 
 
+def test_panel_keeps_stats_links_on_settings_only():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+    assert "settings-metrics" in panel_source
+    assert "data-settings-focus" in panel_source
+    assert "Settings Focus" not in panel_source
+    assert '<section class="cards">' not in panel_source
+
+
 def test_config_flow_collects_forecast_setup():
     config_flow_source = CONFIG_FLOW_PATH.read_text(encoding="utf-8")
     assert "async_step_forecast_setup" in config_flow_source
