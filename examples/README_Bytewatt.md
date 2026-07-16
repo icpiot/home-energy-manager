@@ -104,7 +104,7 @@ type: module
 Debug card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=030
+url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=031
 type: module
 ```
 
@@ -146,7 +146,7 @@ type: module
 Debug card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=030
+url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=031
 type: module
 ```
 
@@ -154,7 +154,7 @@ Current build stamp in this repo:
 
 - Policy card: `003`
 - Reporting card: `011`
-- Debug card: `030`
+- Debug card: `031`
 
 ## Defaults
 
