@@ -2,10 +2,10 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "038";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "039";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
-const HOME_ENERGY_MANAGER_PANEL_PAGE_QUERY_KEY = "hem_page";
+const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -108,8 +108,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _loadPage() {
     try {
-      const queryPage = new URL(window.location.href).searchParams.get(HOME_ENERGY_MANAGER_PANEL_PAGE_QUERY_KEY);
-      return this._normalizePage(queryPage || localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY) || "overview");
+      const url = new URL(window.location.href);
+      const hashPage = new URLSearchParams(String(url.hash || "").replace(/^#/, "")).get(HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY);
+      const queryPage = url.searchParams.get(HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY);
+      return this._normalizePage(
+        hashPage || queryPage || localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY) || "overview",
+      );
     } catch (error) {
       return "overview";
     }
@@ -174,7 +178,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _syncPageUrl(page) {
     try {
       const url = new URL(window.location.href);
-      url.searchParams.set(HOME_ENERGY_MANAGER_PANEL_PAGE_QUERY_KEY, this._normalizePage(page));
+      url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
       window.history.replaceState({}, "", url);
     } catch (error) {
       // Ignore URL sync failures in sandboxed or restricted environments.
@@ -221,10 +225,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _pageHref(page) {
     try {
       const url = new URL(window.location.href);
-      url.searchParams.set(HOME_ENERGY_MANAGER_PANEL_PAGE_QUERY_KEY, this._normalizePage(page));
+      url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
       return url.toString();
     } catch (error) {
-      return `?${HOME_ENERGY_MANAGER_PANEL_PAGE_QUERY_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
+      return `#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
     }
   }
 
