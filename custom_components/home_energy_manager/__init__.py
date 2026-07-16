@@ -97,9 +97,9 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=049"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=050"
 PANEL_CONFIG = {
-    "title": "Home Energy Manager",
+    "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
     "theme": "cyberpunk",
     "entity_prefix": "home_energy_manager",
@@ -146,7 +146,7 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
     async_register_built_in_panel(
         hass,
         component_name="custom",
-        sidebar_title="Home Energy Manager",
+        sidebar_title="HEM",
         sidebar_icon="mdi:solar-power-variant",
         frontend_url_path=PANEL_FRONTEND_URL_PATH,
         config={

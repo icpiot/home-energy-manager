@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "049";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "050";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -465,7 +465,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         key: "managed",
         label: "Managed",
         value: String(counts.managed),
-        note: "Entities provided by Home Energy Manager.",
+        note: "Entities provided by Home Energy Manager (HEM).",
         description: "These are the entities the integration is explicitly exposing for the panel.",
         items: [
           { label: "Managed entities", value: String(counts.managed) },
@@ -669,7 +669,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Charge and feed-in control</span>
           </div>
           <p>
-            This page shows the live policy summary inside the Home Energy Manager panel so
+            This page shows the live policy summary inside the Home Energy Manager (HEM) panel so
             battery charge and feed-in rules stay in one place.
           </p>
         </article>
@@ -732,7 +732,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Power diagram and exports</span>
           </div>
           <p>
-            The report view shows a live summary from the generic Home Energy Manager sensors
+            The report view shows a live summary from the generic Home Energy Manager (HEM) sensors
             so you can see current data while history continues to build.
           </p>
         </article>
@@ -744,7 +744,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Live summary</span>
             </div>
             <p>
-              This live report summary is built from the generic Home Energy Manager sensors
+              This live report summary is built from the generic Home Energy Manager (HEM) sensors
               so you still get a visible output even before the longer history archive is ready.
             </p>
             <div class="report-summary">
@@ -1192,7 +1192,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Generic</span>
           </div>
           <p>
-            This page is reserved for deeper inspection of the Home Energy Manager data model
+            This page is reserved for deeper inspection of the Home Energy Manager (HEM) data model
             and the embedded debug card. The controls are generic and device-agnostic.
           </p>
         </article>
@@ -1374,7 +1374,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     const connectionName = this._connectionName();
     const connectionLabel = this._hass ? `Connected to ${connectionName}` : `Waiting for ${connectionName}`;
-    const title = this._config.title || "Home Energy Manager";
+    const title = this._config.title || "Home Energy Manager (HEM)";
     const subtitle = this._config.subtitle || "Backend-aware control panel with room for custom themes.";
     const statusMeta = this._page === "settings"
       ? `
@@ -1409,7 +1409,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </div>
         </header>
 
-        <nav class="panel-nav" aria-label="Home Energy Manager sections">
+        <nav class="panel-nav" aria-label="Home Energy Manager (HEM) sections">
           ${availablePages.map((page) => `
               <button
                 type="button"
