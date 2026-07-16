@@ -7,11 +7,13 @@ PROJECT_SLUG="${PROJECT_SLUG:-home_energy_manager}"
 TOKEN_FILE="${TOKEN_FILE:-/config/.github_pat}"
 LOG_DIR="${LOG_DIR:-/config/www/ha-git}"
 LOG="${LOG:-$LOG_DIR/${PROJECT_SLUG}_git_last.txt}"
-SCRIPT_BUILD="${SCRIPT_BUILD:-2026-07-15.02}"
+SCRIPT_BUILD="${SCRIPT_BUILD:-2026-07-16.01}"
 REPO_URL="${REPO_URL:-github.com/icpiot/home-energy-manager.git}"
 REPO_DIR="${REPO_DIR:-/config/repos/home-energy-manager}"
 BRANCH="${GIT_BRANCH:-main}"
 DEPLOY_MANIFEST="${DEPLOY_MANIFEST:-$REPO_DIR/scripts/ha_deploy.manifest}"
+FETCH_ATTEMPTS="${FETCH_ATTEMPTS:-3}"
+FETCH_RETRY_DELAY_SECONDS="${FETCH_RETRY_DELAY_SECONDS:-5}"
 
 mkdir -p "$LOG_DIR"
 
@@ -68,6 +70,27 @@ deploy_repo_to_ha() {
   done < "$DEPLOY_MANIFEST"
 }
 
+fetch_with_retry() {
+  local attempt=1
+
+  while [ "$attempt" -le "$FETCH_ATTEMPTS" ]; do
+    if git -C "$REPO_DIR" fetch "$AUTH_REMOTE" "$BRANCH"; then
+      return 0
+    fi
+
+    if [ "$attempt" -ge "$FETCH_ATTEMPTS" ]; then
+      break
+    fi
+
+    echo "Fetch attempt $attempt/$FETCH_ATTEMPTS failed. Retrying in ${FETCH_RETRY_DELAY_SECONDS}s..."
+    sleep "$FETCH_RETRY_DELAY_SECONDS"
+    attempt=$((attempt + 1))
+  done
+
+  echo "ERROR: Unable to fetch $BRANCH after $FETCH_ATTEMPTS attempts."
+  return 1
+}
+
 {
   echo "=============================="
   echo "$PROJECT_NAME Git Pull"
@@ -110,7 +133,7 @@ deploy_repo_to_ha() {
   echo "No tracked file changes found. Untracked files are ignored."
   echo ""
   echo "Fetching via HTTPS token..."
-  git -C "$REPO_DIR" fetch "$AUTH_REMOTE" "$BRANCH" || exit 1
+  fetch_with_retry || exit 1
 
   echo "Checking out target branch..."
   git -C "$REPO_DIR" checkout -B "$BRANCH" FETCH_HEAD || exit 1
