@@ -16,6 +16,10 @@ BRANCH="${GIT_BRANCH:-main}"
 
 mkdir -p "$LOG_DIR"
 
+trust_repo_directory() {
+  git config --global --add safe.directory "$REPO_DIR" >/dev/null 2>&1 || true
+}
+
 {
   echo "=============================="
   echo "$PROJECT_NAME Git Push"
@@ -33,6 +37,8 @@ mkdir -p "$LOG_DIR"
     echo "ERROR: repo clone not found: $REPO_DIR"
     exit 1
   fi
+
+  trust_repo_directory
 
   if [ ! -f "$TOKEN_FILE" ]; then
     echo "ERROR: Token file missing: $TOKEN_FILE"

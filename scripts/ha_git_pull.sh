@@ -19,6 +19,10 @@ FETCH_RETRY_DELAY_SECONDS="${FETCH_RETRY_DELAY_SECONDS:-5}"
 
 mkdir -p "$LOG_DIR"
 
+trust_repo_directory() {
+  git config --global --add safe.directory "$REPO_DIR" >/dev/null 2>&1 || true
+}
+
 resolve_source_path() {
   local source_path="$1"
   if [[ "$source_path" = /* ]]; then
@@ -110,6 +114,8 @@ fetch_with_retry() {
     echo "ERROR: repo clone not found: $REPO_DIR"
     exit 1
   fi
+
+  trust_repo_directory
 
   if [ ! -f "$TOKEN_FILE" ]; then
     echo "ERROR: Token file missing: $TOKEN_FILE"
