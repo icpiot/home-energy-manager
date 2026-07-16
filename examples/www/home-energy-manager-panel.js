@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "043";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "044";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -317,6 +317,33 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _themeLabel() {
     return HOME_ENERGY_MANAGER_PANEL_THEMES.find((theme) => theme.value === this._theme)?.label || "Midnight";
+  }
+
+  _connectionName() {
+    const rawName =
+      this._config?.provider_label ||
+      this._config?.provider ||
+      this._config?.connection_name ||
+      this._config?.connection_label ||
+      this._config?.title ||
+      "Home Energy Manager";
+    const normalized = String(rawName || "").trim();
+
+    if (!normalized) {
+      return "Home Energy Manager";
+    }
+
+    if (/^bytewatt$/i.test(normalized)) {
+      return "ByteWatt";
+    }
+
+    if (/^[a-z0-9_-]+$/i.test(normalized)) {
+      return normalized
+        .replace(/[_-]+/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    }
+
+    return normalized;
   }
 
   _pageLabel() {
@@ -1282,10 +1309,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
       this._entityCountByDomain("time") +
       this._entityCountByDomain("button") +
       this._entityCountByDomain("select");
-    const connectionLabel = this._hass ? "Connected to Home Assistant" : "Waiting for Home Assistant";
+    const connectionName = this._connectionName();
+    const connectionLabel = this._hass ? `Connected to ${connectionName}` : `Waiting for ${connectionName}`;
     const title = this._config.title || "Home Energy Manager";
     const subtitle = this._config.subtitle || "Backend-aware control panel with room for custom themes.";
-    const routePath = this._route?.path || this._panel?.url_path || "home-energy-manager";
+    const statusMeta = this._page === "settings"
+      ? `
+          <div class="status__meta">
+            <span>Theme: <strong>${this._themeLabel()}</strong></span>
+          </div>
+        `
+      : "";
     const availablePages = this._availablePages();
 
     this.shadowRoot.innerHTML = `
@@ -1327,12 +1361,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
         <section class="status">
           <div class="status__banner">${connectionLabel}</div>
-          <div class="status__meta">
-            <span>Route: <strong>${routePath}</strong></span>
-            <span>Screen: <strong>${this._narrow ? "narrow" : "wide"}</strong></span>
-            <span>Theme: <strong>${this._themeLabel()}</strong></span>
-            <span>Page: <strong>${this._pageLabel()}</strong></span>
-          </div>
+          ${statusMeta}
           ${this._renderSharedBatterySelector()}
         </section>
 
