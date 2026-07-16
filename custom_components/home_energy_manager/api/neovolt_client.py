@@ -547,6 +547,10 @@ class NeovoltClient:
         non-JSON body, or JSON that isn't an object). Callers can safely
         do ``response.get(...)`` without further type checks.
         """
+        if not self.token:
+            if not await self.async_login():
+                _LOGGER.debug("GET %s aborted because login failed", endpoint)
+                return None
         url = f"{self.base_url}/{endpoint}"
         headers = self._get_auth_headers()
         try:

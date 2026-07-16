@@ -33,6 +33,7 @@ encrypt_password = neovolt_auth.encrypt_password
 ByteWattAPIError = neovolt_client.ByteWattAPIError
 _stat_value = neovolt_client._stat_value
 _decode_json_object = neovolt_client._decode_json_object
+NeovoltClient = neovolt_client.NeovoltClient
 
 
 def test_stat_value_returns_value_when_present():
@@ -136,3 +137,56 @@ async def test_decode_returns_none_on_value_error():
     """ValueError covers json.JSONDecodeError for malformed bodies."""
     result = await _decode_json_object(_FakeResponse(raise_exc=ValueError("bad json")), "ctx")
     assert result is None
+
+
+class _FakeGetResponse:
+    """Async context manager for GET responses."""
+
+    def __init__(self, status=200, json_value=None):
+        self.status = status
+        self._json_value = json_value if json_value is not None else {"code": 200}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def json(self):
+        return self._json_value
+
+
+class _FakeSession:
+    """Minimal aiohttp session stand-in for _async_get tests."""
+
+    def __init__(self, response):
+        self.response = response
+        self.calls = []
+
+    def get(self, url, headers=None, timeout=None):
+        self.calls.append({"url": url, "headers": headers, "timeout": timeout})
+        return self.response
+
+
+@pytest.mark.asyncio
+async def test_async_get_logs_in_before_request_when_token_missing(monkeypatch):
+    client = NeovoltClient.__new__(NeovoltClient)
+    client.base_url = "https://monitor.byte-watt.com"
+    client.session = _FakeSession(_FakeGetResponse(json_value={"code": 200, "data": []}))
+    client.token = None
+
+    login_calls = {"count": 0}
+
+    async def _fake_login():
+        login_calls["count"] += 1
+        client.token = "fresh-token"
+        return True
+
+    client.async_login = _fake_login
+
+    result = await client._async_get("api/stable/home/getCustomMenuEssList?inverterMode=0")
+
+    assert result == {"code": 200, "data": []}
+    assert login_calls["count"] == 1
+    assert len(client.session.calls) == 1
+    assert client.session.calls[0]["headers"]["Authorization"] == "Bearer fresh-token"
