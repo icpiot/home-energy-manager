@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "045";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "046";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -329,6 +329,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const normalized = String(rawName || "").trim();
 
     if (!normalized) {
+      return "ByteWatt";
+    }
+
+    if (/^home energy manager$/i.test(normalized)) {
       return "ByteWatt";
     }
 
