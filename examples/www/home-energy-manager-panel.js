@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "041";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "042";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -378,13 +378,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
             workflows. The panel will stay focused on the most useful actions first.
           </p>
           <div class="overview__actions">
-            <a class="panel-nav__item" data-page="policy" href="${this._pageHref("policy")}">Policy</a>
-            <a class="panel-nav__item" data-page="report" href="${this._pageHref("report")}">Report</a>
-            <a class="panel-nav__item" data-page="battery" href="${this._pageHref("battery")}">Battery</a>
-            <a class="panel-nav__item" data-page="solar" href="${this._pageHref("solar")}">Solar</a>
-            <a class="panel-nav__item" data-page="forecast" href="${this._pageHref("forecast")}">Forecast</a>
-            <a class="panel-nav__item" data-page="history" href="${this._pageHref("history")}">History</a>
-            <a class="panel-nav__item" data-page="pricing" href="${this._pageHref("pricing")}">Pricing</a>
+            <button type="button" class="panel-nav__item" data-page="policy">Policy</button>
+            <button type="button" class="panel-nav__item" data-page="report">Report</button>
+            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
+            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
+            <button type="button" class="panel-nav__item" data-page="forecast">Forecast</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
+            <button type="button" class="panel-nav__item" data-page="pricing">Pricing</button>
           </div>
         </article>
 
@@ -471,9 +471,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             policy, safety limits, and provider-specific battery modes.
           </p>
           <div class="overview__actions">
-            <a class="panel-nav__item" data-page="settings" href="${this._pageHref("settings")}">Settings</a>
-            <a class="panel-nav__item" data-page="history" href="${this._pageHref("history")}">History</a>
-            <a class="panel-nav__item" data-page="pricing" href="${this._pageHref("pricing")}">Pricing</a>
+            <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
+            <button type="button" class="panel-nav__item" data-page="pricing">Pricing</button>
           </div>
         </article>
 
@@ -543,9 +543,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             battery charge and feed-in rules stay in one place.
           </p>
           <div class="overview__actions">
-            <a class="panel-nav__item" data-page="overview" href="${this._pageHref("overview")}">Overview</a>
-            <a class="panel-nav__item" data-page="report" href="${this._pageHref("report")}">Report</a>
-            <a class="panel-nav__item" data-page="battery" href="${this._pageHref("battery")}">Battery</a>
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="report">Report</button>
+            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
           </div>
         </article>
 
@@ -611,9 +611,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             so you can see current data while history continues to build.
           </p>
           <div class="overview__actions">
-            <a class="panel-nav__item" data-page="overview" href="${this._pageHref("overview")}">Overview</a>
-            <a class="panel-nav__item" data-page="policy" href="${this._pageHref("policy")}">Policy</a>
-            <a class="panel-nav__item" data-page="history" href="${this._pageHref("history")}">History</a>
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="policy">Policy</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
           </div>
         </article>
 
@@ -680,10 +680,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
             the panel can guide battery and pricing decisions from the same place.
           </p>
           <div class="overview__actions">
-            <a class="panel-nav__item" data-page="overview" href="${this._pageHref("overview")}">Overview</a>
-            <a class="panel-nav__item" data-page="battery" href="${this._pageHref("battery")}">Battery</a>
-            <a class="panel-nav__item" data-page="forecast" href="${this._pageHref("forecast")}">Forecast</a>
-            <a class="panel-nav__item" data-page="history" href="${this._pageHref("history")}">History</a>
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
+            <button type="button" class="panel-nav__item" data-page="forecast">Forecast</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
           </div>
         </article>
 
@@ -753,9 +753,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             integration starts publishing data.
           </p>
           <div class="overview__actions">
-            <a class="panel-nav__item" data-page="overview" href="${this._pageHref("overview")}">Overview</a>
-            <a class="panel-nav__item" data-page="solar" href="${this._pageHref("solar")}">Solar</a>
-            <a class="panel-nav__item" data-page="settings" href="${this._pageHref("settings")}">Settings</a>
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
+            <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
           </div>
         </article>
 
@@ -829,9 +829,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             It gives us a dedicated place for history without making Lovelace the primary UI.
           </p>
           <div class="overview__actions">
-            <a class="panel-nav__item" data-page="overview" href="${this._pageHref("overview")}">Overview</a>
-            <a class="panel-nav__item" data-page="battery" href="${this._pageHref("battery")}">Battery</a>
-            <a class="panel-nav__item" data-page="solar" href="${this._pageHref("solar")}">Solar</a>
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="battery">Battery</button>
+            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
           </div>
         </article>
 
@@ -908,9 +908,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             and future export spike pricing without tying the rest of the UI to one model.
           </p>
           <div class="overview__actions">
-            <a class="panel-nav__item" data-page="overview" href="${this._pageHref("overview")}">Overview</a>
-            <a class="panel-nav__item" data-page="solar" href="${this._pageHref("solar")}">Solar</a>
-            <a class="panel-nav__item" data-page="history" href="${this._pageHref("history")}">History</a>
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="solar">Solar</button>
+            <button type="button" class="panel-nav__item" data-page="history">History</button>
           </div>
         </article>
 
@@ -1069,10 +1069,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
             and the embedded debug card. The controls are generic and device-agnostic.
           </p>
           <div class="overview__actions">
-            <a class="panel-nav__item" data-page="overview" href="${this._pageHref("overview")}">Overview</a>
-            <a class="panel-nav__item" data-page="settings" href="${this._pageHref("settings")}">Settings</a>
-            <a class="panel-nav__item" data-page="report" href="${this._pageHref("report")}">Report</a>
-            <a class="panel-nav__item" data-page="forecast" href="${this._pageHref("forecast")}">Forecast</a>
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
+            <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
+            <button type="button" class="panel-nav__item" data-page="report">Report</button>
+            <button type="button" class="panel-nav__item" data-page="forecast">Forecast</button>
           </div>
         </article>
 
@@ -1286,14 +1286,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
         <nav class="panel-nav" aria-label="Home Energy Manager sections">
           ${availablePages.map((page) => `
-              <a
+              <button
+                type="button"
                 class="panel-nav__item ${page.value === this._page ? "is-active" : ""}"
                 data-page="${page.value}"
-                href="${this._pageHref(page.value)}"
               >
                 <span class="panel-nav__icon">${page.icon}</span>
                 <span>${page.label}</span>
-              </a>
+              </button>
           `).join("")}
         </nav>
 
@@ -1506,3 +1506,5 @@ if (typeof customElements !== "undefined") {
 } else {
   bootstrapHomeEnergyManagerPanelFallback();
 }
+
+

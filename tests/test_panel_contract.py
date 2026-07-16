@@ -51,7 +51,7 @@ def test_panel_section_navigation_uses_page_fragment_links():
     assert 'HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page"' in panel_source
     assert "_pageHref(page)" in panel_source
     assert 'url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=' in panel_source
-    assert 'href="${this._pageHref("forecast")}"' in panel_source
+    assert 'type="button" class="panel-nav__item" data-page="forecast"' in panel_source
     assert 'class="panel-nav__item"' in panel_source
 
 
