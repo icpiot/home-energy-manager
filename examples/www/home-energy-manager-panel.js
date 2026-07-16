@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=004";
 import "./home-energy-manager-report-card.js?v=299";
 import "./home-energy-manager-debug-card.js?v=032";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "024";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "025";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
@@ -426,6 +426,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _policyPage() {
+    const policyItems = [
+      { label: "Charge window", value: `${this._formattedState("charge_start_time", "time")} → ${this._formattedState("charge_end_time", "time")}` },
+      { label: "Discharge window", value: `${this._formattedState("discharge_start_time", "time")} → ${this._formattedState("discharge_end_time", "time")}` },
+      { label: "Minimum SOC", value: this._formattedState("minimum_soc") },
+      { label: "Charge cap", value: this._formattedState("charge_cap") },
+      { label: "UPS reserve", value: this._formattedState("ups_reserve", "switch") },
+      { label: "Grid charging", value: this._formattedState("grid_charging", "switch") },
+    ];
     return `
       <section class="policy">
         <article class="panel-card panel-card--wide policy__hero">
@@ -434,8 +442,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Charge and feed-in control</span>
           </div>
           <p>
-            This page embeds the live policy editors so battery charge and feed-in rules stay
-            inside the Home Energy Manager panel instead of separate Lovelace cards.
+            This page shows the live policy summary inside the Home Energy Manager panel so
+            battery charge and feed-in rules stay in one place.
           </p>
           <div class="overview__actions">
             <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
@@ -447,25 +455,35 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <section class="policy__stack">
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Battery Policy</h2>
-              <span>Primary control</span>
+              <h2>Battery Policy Summary</h2>
+              <span>Live settings</span>
             </div>
             <p>
-              Charge and discharge windows, reserve limits, and SOC controls are managed here.
+              The current live settings are shown below while the embedded policy editors are
+              stabilised. This keeps the page responsive even if the provider card is unavailable.
             </p>
-            <div class="panel-card__embedded" data-embedded="battery-policy"></div>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(policyItems)}
+            </ul>
           </article>
 
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Feed-in Policy</h2>
+              <h2>Feed-in Policy Summary</h2>
               <span>Export control</span>
             </div>
             <p>
-              Feed-in limits and export behavior are embedded alongside the battery policy so
-              both control surfaces stay in one place.
+              Feed-in limits and export behavior can be reviewed here without depending on the
+              embedded editor lifecycle.
             </p>
-            <div class="panel-card__embedded" data-embedded="feedin-policy"></div>
+            <ul class="key-list key-list--compact">
+              ${this._valueList([
+                { label: "Feed-in enabled", value: this._formattedState("feedin_enabled", "switch") },
+                { label: "Feed-in cutoff SOC", value: this._formattedState("feedin_cutoff_soc") },
+                { label: "Feed-in slot limit", value: this._formattedState("feedin_slot_limit") },
+                { label: "Selected page", value: this._pageLabel() },
+              ])}
+            </ul>
           </article>
         </section>
       </section>
@@ -473,6 +491,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _reportPage() {
+    const reportItems = [
+      { label: "Battery SOC", value: this._formattedState("battery_percentage") },
+      { label: "Battery power", value: this._formattedState("battery_power") },
+      { label: "PV power", value: this._formattedState("pv_power") },
+      { label: "House consumption", value: this._formattedState("house_consumption") },
+      { label: "Grid consumption", value: this._formattedState("grid_consumption") },
+      { label: "PV generated today", value: this._formattedState("pv_generated_today") },
+      { label: "Consumed today", value: this._formattedState("consumed_today") },
+      { label: "Feed in today", value: this._formattedState("feed_in_today") },
+      { label: "Grid import today", value: this._formattedState("grid_import_today") },
+    ];
     return `
       <section class="report">
         <article class="panel-card panel-card--wide report__hero">
@@ -481,8 +510,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Power diagram and exports</span>
           </div>
           <p>
-            The report view embeds the normalized reporting card so the panel can show live
-            history, charts, and exportable summaries in the sidebar app.
+            The report view shows a live summary from the generic Home Energy Manager sensors
+            so you can see current data while history continues to build.
           </p>
           <div class="overview__actions">
             <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
@@ -494,14 +523,30 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <section class="report__stack">
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Reporting Card</h2>
-              <span>Embedded</span>
+              <h2>Report Output</h2>
+              <span>Live summary</span>
             </div>
             <p>
-              The report card is mounted directly into the panel so it can reuse the same
-              entity selection and live data as the other pages.
+              This live report summary is built from the generic Home Energy Manager sensors
+              so you still get a visible output even before the longer history archive is ready.
             </p>
-            <div class="panel-card__embedded" data-embedded="report"></div>
+            <div class="report-summary">
+              <ul class="key-list key-list--compact">
+                ${this._valueList(reportItems)}
+              </ul>
+            </div>
+          </article>
+
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Report Notes</h2>
+              <span>History</span>
+            </div>
+            <p>
+              History backfill and daily snapshots will appear here once the archive download
+              finishes. For now, this page gives you the live report snapshot and navigation
+              paths to policy, battery, history, and solar pages.
+            </p>
           </article>
         </section>
       </section>
