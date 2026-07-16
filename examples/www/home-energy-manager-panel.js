@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "039";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "040";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -38,6 +38,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._renderHoldUntil = 0;
     this._deferredRenderTimer = null;
     this._delegatedHandlersBound = false;
+    this._boundLocationChange = this._handleLocationChange.bind(this);
   }
 
   setConfig(config) {
@@ -73,7 +74,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   connectedCallback() {
+    window.addEventListener("hashchange", this._boundLocationChange);
+    window.addEventListener("popstate", this._boundLocationChange);
     this._render();
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener("hashchange", this._boundLocationChange);
+    window.removeEventListener("popstate", this._boundLocationChange);
   }
 
   _shouldHoldRender() {
@@ -240,6 +248,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._theme = this._loadTheme();
     this._debugEnabled = this._loadDebugEnabled();
     this._page = this._loadPage();
+  }
+
+  _handleLocationChange() {
+    const nextPage = this._loadPage();
+    if (nextPage !== this._page) {
+      this._page = nextPage;
+    }
+    this._render();
   }
 
   _states() {
