@@ -46,6 +46,14 @@ def test_panel_exposes_forecast_page_and_configured_entity_lookup():
     assert "_stateForConfiguredEntity" in panel_source
 
 
+def test_panel_section_navigation_uses_page_query_links():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+    assert 'HOME_ENERGY_MANAGER_PANEL_PAGE_QUERY_KEY = "hem_page"' in panel_source
+    assert "_pageHref(page)" in panel_source
+    assert 'href="${this._pageHref("forecast")}"' in panel_source
+    assert 'class="panel-nav__item"' in panel_source
+
+
 def test_config_flow_collects_forecast_setup():
     config_flow_source = CONFIG_FLOW_PATH.read_text(encoding="utf-8")
     assert "async_step_forecast_setup" in config_flow_source
