@@ -315,9 +315,11 @@
     100% 100%;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
   color: var(--hem-panel-text);
+  background-color: rgba(17, 30, 50, 0.94);
   cursor: pointer;
   font: inherit;
   font-size: 0.95rem;
+  font-weight: 600;
   line-height: 1.2;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -340,7 +342,14 @@
 }
 
 .shared-selector__control option {
-  color: #0f1a2d;
+  background: #122033;
+  color: #eef4ff;
+}
+
+.shared-selector__control option:checked,
+.shared-selector__control option:hover {
+  background: #1c3454;
+  color: #ffffff;
 }
 
 .status__banner {
