@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "007";
+const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "008";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
@@ -1031,7 +1031,6 @@ class ByteWattPolicyCard extends HTMLElement {
                 <button class="cache-button" type="button" data-clear-cache>Clear Cache</button>
               </div>
             </div>
-            ${this._renderSelector()}
           </div>
           ${this._renderStatus()}
           ${this._renderSummary(attrs)}
@@ -1042,27 +1041,6 @@ class ByteWattPolicyCard extends HTMLElement {
 
     this._bindEvents();
     this._restoreScrollPosition(scrollRoot, preservedScrollTop);
-  }
-
-  _renderSelector() {
-    const stateObj = this._stateObj(this._config.settings_target);
-    const options = stateObj?.attributes?.options || [];
-    const current = stateObj?.state || "";
-    return `
-      <div class="selector-row">
-        <div class="label">Battery Selection</div>
-        <select data-select="${this._config.settings_target}">
-          ${options
-            .map(
-              (option) =>
-                `<option value="${this._escapeHtml(option)}" ${
-                  option === current ? "selected" : ""
-                }>${this._escapeHtml(option)}</option>`
-            )
-            .join("")}
-        </select>
-      </div>
-    `;
   }
 
   _renderMainPolicy(batteryPolicy) {
@@ -3028,23 +3006,6 @@ class ByteWattPolicyCard extends HTMLElement {
       });
       node.addEventListener("focusout", () => {
         this._scheduleEditSessionRelease();
-      });
-    });
-
-    this.shadowRoot.querySelectorAll("[data-select]").forEach((node) => {
-      node.addEventListener("change", (event) => {
-        this._run(
-          async () => {
-            this._clearAllDrafts();
-            await this._hass.callService("select", "select_option", {
-              entity_id: node.dataset.select,
-              option: event.target.value,
-            });
-            this._resetImmediateState();
-          },
-          "Selection updated",
-          "Selection failed"
-        );
       });
     });
 

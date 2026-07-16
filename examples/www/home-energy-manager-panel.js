@@ -1,8 +1,8 @@
-import "./home-energy-manager-policy-card.js?v=007";
-import "./home-energy-manager-report-card.js?v=301";
-import "./home-energy-manager-debug-card.js?v=034";
+import "./home-energy-manager-policy-card.js?v=008";
+import "./home-energy-manager-report-card.js?v=302";
+import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "030";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "031";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
@@ -1016,6 +1016,44 @@ class HomeEnergyManagerPanel extends HTMLElement {
     });
   }
 
+  _settingsTargetId() {
+    const prefix = this._config?.entity_prefix || "home_energy_manager";
+    return this._config?.settings_target || `select.house_${prefix}_settings_target`;
+  }
+
+  _settingsTargetState() {
+    return this._hass?.states?.[this._settingsTargetId()] || null;
+  }
+
+  _renderSharedBatterySelector() {
+    const selector = this._settingsTargetState();
+    const options = Array.isArray(selector?.attributes?.options) ? selector.attributes.options : [];
+    const current = String(selector?.state || "").trim();
+    const hasOptions = options.length > 0;
+    return `
+      <div class="shared-selector">
+        <label class="shared-selector__label" for="hem-shared-battery-select">Battery Selection</label>
+        <select
+          id="hem-shared-battery-select"
+          class="shared-selector__control"
+          data-shared-settings-target="${this._settingsTargetId()}"
+          ${hasOptions ? "" : "disabled"}
+        >
+          ${
+            hasOptions
+              ? options
+                  .map((option) => {
+                    const selected = option === current ? "selected" : "";
+                    return `<option value="${this._escapeHtml(option)}" ${selected}>${this._escapeHtml(option)}</option>`;
+                  })
+                  .join("")
+              : '<option value="" selected>No batteries available</option>'
+          }
+        </select>
+      </div>
+    `;
+  }
+
   _render() {
     if (!this.shadowRoot) {
       return;
@@ -1081,6 +1119,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Theme: <strong>${this._themeLabel()}</strong></span>
             <span>Page: <strong>${this._pageLabel()}</strong></span>
           </div>
+          ${this._renderSharedBatterySelector()}
         </section>
 
         <section class="cards">
@@ -1137,6 +1176,25 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._setDebugEnabled(Boolean(toggle.checked));
       };
     });
+
+    this.shadowRoot.querySelector("[data-shared-settings-target]")?.addEventListener("change", async (event) => {
+      if (!this._hass) {
+        return;
+      }
+      await this._hass.callService("select", "select_option", {
+        entity_id: event.target.dataset.sharedSettingsTarget,
+        option: event.target.value,
+      });
+    });
+  }
+
+  _escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
   }
 }
 

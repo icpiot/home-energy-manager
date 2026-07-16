@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "034";
+const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "035";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
@@ -730,25 +730,6 @@ class ByteWattDebugCard extends HTMLElement {
     return `<button class="history-pill ${this._debugPeriod === value ? "active" : ""}" data-debug-period="${value}">${label}</button>`;
   }
 
-  _renderSelector() {
-    const selector = this._selectorState();
-    const options = selector?.attributes?.options || [];
-    const current = selector?.state || "";
-    return `
-      <div class="selector-row">
-        <div class="label">Battery Selection</div>
-        <select data-select-target>
-          ${options
-            .map(
-              (option) =>
-                `<option value="${this._escape(option)}" ${option === current ? "selected" : ""}>${this._escape(option)}</option>`,
-            )
-            .join("")}
-        </select>
-      </div>
-    `;
-  }
-
   _fmtNumber(value, digits = 1) {
     const number = Number(value);
     if (!Number.isFinite(number)) return "Unavailable";
@@ -1468,8 +1449,6 @@ class ByteWattDebugCard extends HTMLElement {
 
           ${this._status ? `<div class="status ${statusClass}">${this._escape(this._status)}</div>` : ""}
 
-          ${this._renderSelector()}
-
           <div class="panel">
             <div class="panel-title">Archive Selection</div>
             <div class="controls">
@@ -1568,19 +1547,6 @@ class ByteWattDebugCard extends HTMLElement {
     if (forceSelectedDateDownloadButton) {
       forceSelectedDateDownloadButton.onclick = () => this._requestSelectedDateDownload(true);
     }
-
-    this.shadowRoot.querySelector("[data-select-target]")?.addEventListener("change", async (event) => {
-      try {
-        await this._hass.callService("select", "select_option", {
-          entity_id: this._config.settings_target,
-          option: event.target.value,
-        });
-      } finally {
-        this._historySourceKey = "";
-        this._historyData = null;
-        this.render();
-      }
-    });
 
     this.shadowRoot.querySelectorAll("[data-debug-period]").forEach((item) => {
       item.onclick = () => {

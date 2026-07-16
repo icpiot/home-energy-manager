@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "014";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "015";
 
 class ByteWattReportCard extends HTMLElement {
   setConfig(config) {
@@ -296,34 +296,6 @@ class ByteWattReportCard extends HTMLElement {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }
-
-  _renderSelector() {
-    const selector = this._selectorState();
-    const historyScopes = selector?.attributes?.history?.inventory_scopes || [];
-    const options = selector?.attributes?.options?.length
-      ? selector.attributes.options
-      : historyScopes
-          .map((scope) => scope?.label || scope?.sys_sn || "")
-          .filter((label) => label);
-    const current = selector?.state || (options.includes("All systems") ? "All systems" : options[0] || "");
-    return `
-      <div class="selector-row">
-        <div class="label">Battery Selection</div>
-        <select data-select-target>
-          ${
-            options.length
-              ? options
-                  .map(
-                    (option) =>
-                      `<option value="${this._escape(option)}" ${option === current ? "selected" : ""}>${this._escape(option)}</option>`
-                  )
-                  .join("")
-              : '<option value="" selected disabled>No batteries available</option>'
-          }
-        </select>
-      </div>
-    `;
   }
 
   _renderAggregateStrip(reporting) {
@@ -1393,7 +1365,6 @@ class ByteWattReportCard extends HTMLElement {
             <div class="title">Home Energy Manager Report</div>
                 <div class="version-badge">v${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}</div>
           </div>
-          ${this._renderSelector()}
           ${
             reporting
               ? `
@@ -1421,12 +1392,6 @@ class ByteWattReportCard extends HTMLElement {
   }
 
   _bindEvents() {
-    this.shadowRoot.querySelector("[data-select-target]")?.addEventListener("change", async (event) => {
-      await this._hass.callService("select", "select_option", {
-        entity_id: this._config.settings_target,
-        option: event.target.value,
-      });
-    });
     this.shadowRoot.querySelectorAll("[data-view]").forEach((button) => {
       button.addEventListener("click", () => {
         this._view = button.dataset.view;
