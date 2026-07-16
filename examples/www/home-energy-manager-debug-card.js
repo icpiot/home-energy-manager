@@ -1,8 +1,8 @@
-const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "027";
+const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "028";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
-    const prefix = config?.entity_prefix || "house_bytewatt_battery_system";
+    const prefix = config?.entity_prefix || "home_energy_manager";
     this._config = {
       entity_prefix: prefix,
       settings_target: config?.settings_target || `select.${prefix}_settings_target`,

@@ -1,8 +1,8 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "008";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "009";
 
 class ByteWattReportCard extends HTMLElement {
   setConfig(config) {
-    const prefix = config?.entity_prefix || "house_bytewatt_battery_system";
+    const prefix = config?.entity_prefix || "home_energy_manager";
     this._config = {
       entity_prefix: prefix,
       settings_target: config?.settings_target || `select.${prefix}_settings_target`,
@@ -206,18 +206,27 @@ class ByteWattReportCard extends HTMLElement {
 
   _renderSelector() {
     const selector = this._selectorState();
-    const options = selector?.attributes?.options || [];
-    const current = selector?.state || "";
+    const historyScopes = selector?.attributes?.history?.inventory_scopes || [];
+    const options = selector?.attributes?.options?.length
+      ? selector.attributes.options
+      : historyScopes
+          .map((scope) => scope?.label || scope?.sys_sn || "")
+          .filter((label) => label);
+    const current = selector?.state || (options.includes("All systems") ? "All systems" : options[0] || "");
     return `
       <div class="selector-row">
         <div class="label">Battery Selection</div>
         <select data-select-target>
-          ${options
-            .map(
-              (option) =>
-                `<option value="${this._escape(option)}" ${option === current ? "selected" : ""}>${this._escape(option)}</option>`
-            )
-            .join("")}
+          ${
+            options.length
+              ? options
+                  .map(
+                    (option) =>
+                      `<option value="${this._escape(option)}" ${option === current ? "selected" : ""}>${this._escape(option)}</option>`
+                  )
+                  .join("")
+              : '<option value="" selected disabled>No batteries available</option>'
+          }
         </select>
       </div>
     `;

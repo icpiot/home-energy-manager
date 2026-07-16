@@ -1,1 +1,1 @@
-import "./home-energy-manager-report-card.008.js?v=295";
+import "./home-energy-manager-report-card.008.js?v=296";

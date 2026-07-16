@@ -1,7 +1,7 @@
-import "./home-energy-manager-policy-card.js?v=001";
-import "./home-energy-manager-report-card.js?v=295";
+import "./home-energy-manager-policy-card.js?v=002";
+import "./home-energy-manager-report-card.js?v=296";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "013";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "014";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [

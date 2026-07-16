@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "001";
+const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "002";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
@@ -33,7 +33,7 @@ class ByteWattPolicyCard extends HTMLElement {
   }
 
   _withDefaults(config) {
-    const prefix = config.entity_prefix || "house_bytewatt_battery_system";
+    const prefix = config.entity_prefix || "home_energy_manager";
     return {
       ...config,
       entity_prefix: prefix,
