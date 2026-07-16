@@ -2,10 +2,11 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "042";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "043";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
+const HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -178,6 +179,27 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const normalizedPage = this._normalizePage(page);
       localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY, normalizedPage);
       this._syncPageUrl(normalizedPage);
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
+  _loadBatterySelection() {
+    try {
+      return String(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY) || "").trim();
+    } catch (error) {
+      return "";
+    }
+  }
+
+  _saveBatterySelection(option) {
+    try {
+      const value = String(option || "").trim();
+      if (value) {
+        localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY, value);
+      } else {
+        localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY);
+      }
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
@@ -1215,6 +1237,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const selector = this._settingsTargetState();
     const options = Array.isArray(selector?.attributes?.options) ? selector.attributes.options : [];
     const current = String(selector?.state || "").trim();
+    const storedSelection = this._loadBatterySelection();
+    const selectedOption = options.includes(storedSelection)
+      ? storedSelection
+      : options.includes(current) && current !== "unavailable"
+        ? current
+        : "All systems";
     const hasOptions = options.length > 0;
     return `
       <div class="shared-selector">
@@ -1229,7 +1257,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             hasOptions
               ? options
                   .map((option) => {
-                    const selected = option === current ? "selected" : "";
+                    const selected = option === selectedOption ? "selected" : "";
                     return `<option value="${this._escapeHtml(option)}" ${selected}>${this._escapeHtml(option)}</option>`;
                   })
                   .join("")
@@ -1398,6 +1426,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         if (!this._hass) {
           return;
         }
+        this._saveBatterySelection(target.value);
         await this._hass.callService("select", "select_option", {
           entity_id: target.dataset.sharedSettingsTarget,
           option: target.value,
