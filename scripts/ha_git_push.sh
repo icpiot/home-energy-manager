@@ -1,15 +1,17 @@
 #!/bin/bash
 
-cd /config || exit 1
+CONFIG_DIR="${CONFIG_DIR:-/config}"
+
+cd "$CONFIG_DIR" || exit 1
 
 PROJECT_NAME="${PROJECT_NAME:-Home Energy Manager}"
 PROJECT_SLUG="${PROJECT_SLUG:-home_energy_manager}"
-TOKEN_FILE="${TOKEN_FILE:-/config/.github_pat}"
-LOG_DIR="${LOG_DIR:-/config/www/ha-git}"
+TOKEN_FILE="${TOKEN_FILE:-$CONFIG_DIR/.github_pat}"
+LOG_DIR="${LOG_DIR:-$CONFIG_DIR/www/ha-git}"
 LOG="${LOG:-$LOG_DIR/${PROJECT_SLUG}_git_last.txt}"
 SCRIPT_BUILD="${SCRIPT_BUILD:-2026-07-15.02}"
 REPO_URL="${REPO_URL:-github.com/icpiot/home-energy-manager.git}"
-REPO_DIR="${REPO_DIR:-/config/repos/home-energy-manager}"
+REPO_DIR="${REPO_DIR:-$CONFIG_DIR/repos/home-energy-manager}"
 BRANCH="${GIT_BRANCH:-main}"
 
 mkdir -p "$LOG_DIR"
