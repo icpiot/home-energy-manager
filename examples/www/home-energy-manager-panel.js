@@ -1296,7 +1296,28 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _bindInteractiveControls() {
-    if (!this.shadowRoot || this._delegatedHandlersBound) {
+    if (!this.shadowRoot) {
+      return;
+    }
+
+    this.shadowRoot.querySelectorAll('[data-theme]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        this._setTheme(button.dataset.theme);
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-page]').forEach((button) => {
+      button.onclick = (event) => {
+        if (button.disabled) {
+          return;
+        }
+        event.preventDefault();
+        this._setPage(button.dataset.page);
+      };
+    });
+
+    if (this._delegatedHandlersBound) {
       return;
     }
 
