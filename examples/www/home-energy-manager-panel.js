@@ -1,7 +1,7 @@
 import "./home-energy-manager-policy-card.js?v=001";
 import "./home-energy-manager-report-card.js?v=295";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "012";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "013";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
@@ -761,7 +761,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _mountEmbeddedCards() {
-    const prefix = this._config?.entity_prefix || "house_bytewatt_battery_system";
+    const prefix = this._config?.entity_prefix || "home_energy_manager";
     const settingsTarget = this._config?.settings_target || `select.${prefix}_settings_target`;
     const mounts = [
       {

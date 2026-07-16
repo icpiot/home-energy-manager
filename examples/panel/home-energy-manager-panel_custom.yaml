@@ -4,11 +4,13 @@
   sidebar_title: Home Energy Manager
   sidebar_icon: mdi:solar-power-variant
   url_path: home-energy-manager
-  module_url: /local/community/home-energy-manager/home-energy-manager-panel.js?v=012
+  module_url: /local/community/home-energy-manager/home-energy-manager-panel.js?v=013
   config:
     title: Home Energy Manager
     subtitle: Live energy control, custom theming, and provider-aware dashboards.
     theme: cyberpunk
+    entity_prefix: home_energy_manager
+    settings_target: select.home_energy_manager_settings_target
     theme_art_url: ""
     theme_art_size: cover
     theme_art_position: center center
