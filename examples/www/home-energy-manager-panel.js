@@ -1115,30 +1115,27 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _bindInteractiveControls() {
-    if (this._hasDelegatedHandlers) {
-      return;
-    }
-
-    this._hasDelegatedHandlers = true;
-    this.shadowRoot.addEventListener("click", (event) => {
-      const themeButton = event.target.closest?.("[data-theme]");
-      if (themeButton) {
+    this.shadowRoot.querySelectorAll("[data-theme]").forEach((button) => {
+      button.onclick = (event) => {
         event.preventDefault();
-        this._setTheme(themeButton.dataset.theme);
-        return;
-      }
-
-      const pageButton = event.target.closest?.("[data-page]");
-      if (pageButton && !pageButton.disabled) {
-        event.preventDefault();
-        this._setPage(pageButton.dataset.page);
-      }
+        this._setTheme(button.dataset.theme);
+      };
     });
-    this.shadowRoot.addEventListener("change", (event) => {
-      const debugToggle = event.target.closest?.("[data-debug-toggle]");
-      if (debugToggle) {
-        this._setDebugEnabled(Boolean(debugToggle.checked));
-      }
+
+    this.shadowRoot.querySelectorAll("[data-page]").forEach((button) => {
+      button.onclick = (event) => {
+        if (button.disabled) {
+          return;
+        }
+        event.preventDefault();
+        this._setPage(button.dataset.page);
+      };
+    });
+
+    this.shadowRoot.querySelectorAll("[data-debug-toggle]").forEach((toggle) => {
+      toggle.onchange = () => {
+        this._setDebugEnabled(Boolean(toggle.checked));
+      };
     });
   }
 }
