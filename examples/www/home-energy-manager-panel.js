@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "037";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "038";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_QUERY_KEY = "hem_page";
@@ -1332,6 +1332,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
     });
 
     this.shadowRoot.querySelectorAll('[data-page]').forEach((button) => {
+      if (button.tagName === "A") {
+        return;
+      }
       button.onclick = (event) => {
         if (button.disabled) {
           return;
@@ -1357,7 +1360,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       }
 
       const pageButton = path.find((node) => node?.dataset?.page);
-      if (pageButton && !pageButton.disabled) {
+      if (pageButton && !pageButton.disabled && pageButton.tagName !== "A") {
         event.preventDefault();
         this._setPage(pageButton.dataset.page);
       }
