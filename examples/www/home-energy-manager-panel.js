@@ -1,6 +1,6 @@
 import "./home-energy-manager-policy-card.js?v=003";
-import "./home-energy-manager-debug-card.js?v=030";
 import "./home-energy-manager-report-card.js?v=298";
+import "./home-energy-manager-debug-card.js?v=030";
 
 const HOME_ENERGY_MANAGER_PANEL_BUILD = "017";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
@@ -21,7 +21,7 @@ const HOME_ENERGY_MANAGER_PANEL_PAGES = [
   { value: "history", label: "History", icon: "↺" },
   { value: "pricing", label: "Pricing", icon: "$" },
   { value: "settings", label: "Settings", icon: "⚙" },
-  { value: "debug", label: "Debug", icon: "⚡" },
+  { value: "debug", label: "Debug", icon: "◫" },
 ];
 
 class HomeEnergyManagerPanel extends HTMLElement {
@@ -32,6 +32,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._theme = this._loadTheme();
     this._debugEnabled = this._loadDebugEnabled();
     this._page = this._loadPage();
+    this._hasDelegatedHandlers = false;
   }
 
   setConfig(config) {
@@ -39,7 +40,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._theme = this._loadTheme();
     this._debugEnabled = this._loadDebugEnabled();
     this._page = this._loadPage();
-    this._page = this._normalizePage(this._page);
     this._render();
   }
 
@@ -53,6 +53,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._config = panel?.config || this._config;
     this._theme = this._loadTheme();
     this._debugEnabled = this._loadDebugEnabled();
+    this._page = this._loadPage();
     this._render();
   }
 
@@ -78,19 +79,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
   }
 
+  _loadPage() {
+    try {
+      return this._normalizePage(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY) || "overview");
+    } catch (error) {
+      return "overview";
+    }
+  }
+
   _loadDebugEnabled() {
     try {
       return localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY) === "true";
     } catch (error) {
       return false;
-    }
-  }
-
-  _loadPage() {
-    try {
-      return localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY) || "overview";
-    } catch (error) {
-      return "overview";
     }
   }
 
@@ -134,7 +135,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _savePage(page) {
     try {
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY, page);
+      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY, this._normalizePage(page));
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
@@ -156,35 +157,29 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _setPage(page) {
     this._page = this._normalizePage(page);
-    this._savePage(this._page);
+    this._savePage(page);
     this._render();
   }
 
   _setDebugEnabled(enabled) {
-    this._debugEnabled = Boolean(enabled);
-    this._saveDebugEnabled(this._debugEnabled);
-    if (!this._debugEnabled && this._page === "debug") {
-      this._page = "settings";
-      this._savePage(this._page);
+    const next = Boolean(enabled);
+    this._debugEnabled = next;
+    this._saveDebugEnabled(next);
+    if (!next && this._page === "debug") {
+      this._page = "overview";
+      this._savePage("overview");
     }
     this._render();
   }
 
-  _availablePages() {
-    return this._debugEnabled
-      ? HOME_ENERGY_MANAGER_PANEL_PAGES
-      : HOME_ENERGY_MANAGER_PANEL_PAGES.filter((page) => page.value !== "debug");
+  _normalizePage(page) {
+    const availablePages = this._availablePages();
+    const requested = String(page || "overview").trim().toLowerCase();
+    return availablePages.some((item) => item.value === requested) ? requested : "overview";
   }
 
-  _normalizePage(page) {
-    const allowed = this._availablePages().some((item) => item.value === page);
-    if (allowed) {
-      return page;
-    }
-    if (!this._debugEnabled && page === "debug") {
-      return "settings";
-    }
-    return "overview";
+  _availablePages() {
+    return HOME_ENERGY_MANAGER_PANEL_PAGES.filter((page) => page.value !== "debug" || this._debugEnabled);
   }
 
   _states() {
@@ -770,6 +765,33 @@ class HomeEnergyManagerPanel extends HTMLElement {
         </article>
         <article class="panel-card">
           <div class="panel-card__header">
+            <h2>Debug Controls</h2>
+            <span>Local</span>
+          </div>
+          <div class="settings-toggle">
+            <label class="toggle-row">
+              <span class="toggle-row__label">Enable Debug</span>
+              <span class="toggle-row__control">
+                <input type="checkbox" data-debug-toggle ${this._debugEnabled ? "checked" : ""} />
+                <span class="toggle-row__switch" aria-hidden="true"></span>
+              </span>
+            </label>
+            <p>
+              Debug mode unlocks the debug page and stores the local page state so we can inspect
+              longer-running history, entity snapshots, and provider-specific details.
+            </p>
+            <button
+              type="button"
+              class="panel-nav__item ${this._debugEnabled ? "" : "is-disabled"}"
+              data-page="debug"
+              ${this._debugEnabled ? "" : "disabled"}
+            >
+              Open Debug page
+            </button>
+          </div>
+        </article>
+        <article class="panel-card">
+          <div class="panel-card__header">
             <h2>Theme Presets</h2>
             <span>Local</span>
           </div>
@@ -785,85 +807,68 @@ class HomeEnergyManagerPanel extends HTMLElement {
             `).join("")}
           </div>
         </article>
-        <article class="panel-card panel-card--wide">
-          <div class="panel-card__header">
-            <h2>Debug</h2>
-            <span>Optional</span>
-          </div>
-          <div class="toggle-row">
-            <label class="toggle" aria-label="Enable Debug">
-              <input
-                type="checkbox"
-                class="toggle__input"
-                data-debug-toggle
-                ${this._debugEnabled ? "checked" : ""}
-              >
-              <span class="toggle__track" aria-hidden="true">
-                <span class="toggle__thumb"></span>
-              </span>
-              <span class="toggle__label">Enable Debug</span>
-            </label>
-            <p class="toggle__copy">
-              Turn this on to reveal the Debug page and inspect raw archive, history, and reporting data.
-            </p>
-          </div>
-          <div class="button-row">
-            <button
-              type="button"
-              class="panel-nav__item"
-              data-page="debug"
-              ${this._debugEnabled ? "" : "disabled"}
-            >
-              Open Debug page
-            </button>
-          </div>
-        </article>
       </section>
     `;
   }
 
   _debugPage() {
-    const settingsTarget = this._config?.settings_target || "select.house_home_energy_manager_settings_target";
-    const reportTarget = this._config?.report_target || `select.${this._config?.entity_prefix || "home_energy_manager"}_report_target`;
-    const debugSummary = [
+    const debugItems = [
       { label: "Debug mode", value: this._debugEnabled ? "Enabled" : "Disabled" },
-      { label: "Settings target", value: settingsTarget },
-      { label: "Report target", value: reportTarget },
+      { label: "Settings target", value: this._config?.settings_target || "Unavailable" },
+      { label: "Entity prefix", value: this._config?.entity_prefix || "Unavailable" },
+      { label: "Provider", value: this._config?.provider || "Configured provider" },
+      { label: "Managed entities", value: String(this._managedEntities().length) },
+      { label: "Sensors", value: String(this._entityCountByDomain("sensor")) },
+      { label: "Controls", value: String(
+        this._entityCountByDomain("switch") +
+        this._entityCountByDomain("number") +
+        this._entityCountByDomain("time") +
+        this._entityCountByDomain("button") +
+        this._entityCountByDomain("select")
+      ) },
       { label: "Page", value: this._pageLabel() },
     ];
     return `
       <section class="debug">
         <article class="panel-card panel-card--wide debug__hero">
           <div class="panel-card__header">
-            <h2>Debug Console</h2>
-            <span>Live diagnostics</span>
+            <h2>Debug</h2>
+            <span>Diagnostics</span>
           </div>
           <p>
-            Use this page to inspect raw entity state, history payloads, and the reporting data
-            the panel is consuming. It is intentionally separate from the main report view.
+            This page is reserved for deeper inspection of the Home Energy Manager data model
+            and the embedded debug card. Enable it from Settings if it is hidden.
           </p>
           <div class="overview__actions">
+            <button type="button" class="panel-nav__item" data-page="overview">Overview</button>
             <button type="button" class="panel-nav__item" data-page="settings">Settings</button>
             <button type="button" class="panel-nav__item" data-page="report">Report</button>
-            <button type="button" class="panel-nav__item" data-page="history">History</button>
           </div>
         </article>
 
-        <section class="grid grid--two">
-          <article class="panel-card">
-            <div class="panel-card__header">
-              <h2>Debug Status</h2>
-              <span>Local</span>
-            </div>
-            <ul class="key-list key-list--compact">
-              ${this._valueList(debugSummary)}
-            </ul>
-          </article>
+        <section class="grid debug__grid">
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Debug Card</h2>
-              <span>Embedded</span>
+              <h2>Debug Snapshot</h2>
+              <span>Internal</span>
             </div>
+            <p>
+              The values below should help confirm the panel is using the generic Home Energy
+              Manager entities and that the provider data is flowing through correctly.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(debugItems)}
+            </ul>
+          </article>
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Embedded Debug Card</h2>
+              <span>Live</span>
+            </div>
+            <p>
+              This is the provider-aware debug card used to inspect history, report data, and
+              entity selection in one place.
+            </p>
             <div class="panel-card__embedded" data-embedded="debug"></div>
           </article>
         </section>
@@ -885,10 +890,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return this._historyPage();
       case "pricing":
         return this._pricingPage();
-      case "settings":
-        return this._settingsPage();
       case "debug":
         return this._debugPage();
+      case "settings":
+        return this._settingsPage();
       case "overview":
       default:
         return this._overviewPage();
@@ -935,7 +940,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
           ...this._config,
           entity_prefix: prefix,
           settings_target: settingsTarget,
-          report_target: this._config?.report_target || `select.${prefix}_report_target`,
         },
       },
     ];
@@ -975,7 +979,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const title = this._config.title || "Home Energy Manager";
     const subtitle = this._config.subtitle || "Backend-aware control panel with room for custom themes.";
     const routePath = this._route?.path || this._panel?.url_path || "home-energy-manager";
-    this._page = this._normalizePage(this._page);
+    const availablePages = this._availablePages();
 
     this.shadowRoot.innerHTML = `
       <link rel="stylesheet" href="/local/community/home-energy-manager/home-energy-manager-panel.css?v=${HOME_ENERGY_MANAGER_PANEL_BUILD}">
@@ -1002,7 +1006,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         </header>
 
         <nav class="panel-nav" aria-label="Home Energy Manager sections">
-          ${this._availablePages().map((page) => `
+          ${availablePages.map((page) => `
             <button
               type="button"
               class="panel-nav__item ${page.value === this._page ? "is-active" : ""}"
@@ -1053,15 +1057,26 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this._mountEmbeddedCards();
 
-    this.shadowRoot.querySelectorAll(".theme-pill").forEach((button) => {
-      button.addEventListener("click", () => this._setTheme(button.dataset.theme));
-    });
-    this.shadowRoot.querySelectorAll("[data-page]").forEach((button) => {
-      button.addEventListener("click", () => this._setPage(button.dataset.page));
-    });
-    this.shadowRoot.querySelectorAll("[data-debug-toggle]").forEach((item) => {
-      item.addEventListener("change", (event) => this._setDebugEnabled(event.target.checked));
-    });
+    if (!this._hasDelegatedHandlers) {
+      this._hasDelegatedHandlers = true;
+      this.shadowRoot.addEventListener("click", (event) => {
+        const themeButton = event.target.closest?.("[data-theme]");
+        if (themeButton && this.shadowRoot.contains(themeButton)) {
+          this._setTheme(themeButton.dataset.theme);
+          return;
+        }
+        const pageButton = event.target.closest?.("[data-page]");
+        if (pageButton && this.shadowRoot.contains(pageButton) && !pageButton.hasAttribute("disabled")) {
+          this._setPage(pageButton.dataset.page);
+        }
+      });
+      this.shadowRoot.addEventListener("change", (event) => {
+        const toggle = event.target.closest?.("[data-debug-toggle]");
+        if (toggle && this.shadowRoot.contains(toggle)) {
+          this._setDebugEnabled(Boolean(toggle.checked));
+        }
+      });
+    }
   }
 }
 
