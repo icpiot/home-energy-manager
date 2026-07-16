@@ -155,9 +155,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
     @property
     def options(self) -> list[str]:
         labels = list(self._options_map())
-        if len(labels) > 1:
-            return ["All systems", *labels]
-        return labels
+        return ["All systems", *labels]
 
     @property
     def available(self) -> bool:
@@ -167,7 +165,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
     def current_option(self) -> str | None:
         selected_scope = self._selected_scope()
         if selected_scope is not None and selected_scope.aggregate:
-            return "All systems" if len(self.options) > 1 else (self.options[0] if self.options else None)
+            return "All systems"
         current = self._current_inverter()
         if current is not None:
             for label, inverter in self._options_map().items():
@@ -182,9 +180,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         for label, inverter in self._options_map().items():
             if inverter.system_id == self._manager.current_settings_target_id:
                 return label
-        if len(self.options) > 1:
-            return "All systems"
-        return self.options[0] if self.options else None
+        return "All systems" if self.options else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
