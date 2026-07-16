@@ -35,6 +35,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._page = this._loadPage();
     this._renderHoldUntil = 0;
     this._deferredRenderTimer = null;
+    this._delegatedHandlersBound = false;
   }
 
   setConfig(config) {
@@ -1183,50 +1184,65 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _bindInteractiveControls() {
-    this.shadowRoot.querySelectorAll("[data-theme]").forEach((button) => {
-      button.onclick = (event) => {
+    if (!this.shadowRoot || this._delegatedHandlersBound) {
+      return;
+    }
+
+    this._delegatedHandlersBound = true;
+
+    this.shadowRoot.addEventListener("click", (event) => {
+      const path = event.composedPath?.() || [];
+      const themeButton = path.find((node) => node?.dataset?.theme);
+      if (themeButton) {
         event.preventDefault();
-        this._setTheme(button.dataset.theme);
-      };
-    });
-
-    this.shadowRoot.querySelectorAll("[data-page]").forEach((button) => {
-      button.onclick = (event) => {
-        if (button.disabled) {
-          return;
-        }
-        event.preventDefault();
-        this._setPage(button.dataset.page);
-      };
-    });
-
-    this.shadowRoot.querySelectorAll("[data-debug-toggle]").forEach((toggle) => {
-      toggle.onchange = () => {
-        this._setDebugEnabled(Boolean(toggle.checked));
-      };
-    });
-
-    this.shadowRoot.querySelector("[data-shared-settings-target]")?.addEventListener("change", async (event) => {
-      this._holdRenderWindow();
-      if (!this._hass) {
+        this._setTheme(themeButton.dataset.theme);
         return;
       }
-      await this._hass.callService("select", "select_option", {
-        entity_id: event.target.dataset.sharedSettingsTarget,
-        option: event.target.value,
-      });
+
+      const pageButton = path.find((node) => node?.dataset?.page);
+      if (pageButton && !pageButton.disabled) {
+        event.preventDefault();
+        this._setPage(pageButton.dataset.page);
+      }
     });
 
-    const sharedSelector = this.shadowRoot.querySelector("[data-shared-settings-target]");
-    if (sharedSelector) {
-      sharedSelector.addEventListener("mousedown", () => this._holdRenderWindow());
-      sharedSelector.addEventListener("focus", () => this._holdRenderWindow());
-      sharedSelector.addEventListener("click", () => this._holdRenderWindow());
-      sharedSelector.addEventListener("blur", () => {
+    this.shadowRoot.addEventListener("change", async (event) => {
+      const target = event.target;
+      if (target?.dataset?.debugToggle !== undefined) {
+        this._setDebugEnabled(Boolean(target.checked));
+        return;
+      }
+
+      if (target?.dataset?.sharedSettingsTarget) {
+        this._holdRenderWindow();
+        if (!this._hass) {
+          return;
+        }
+        await this._hass.callService("select", "select_option", {
+          entity_id: target.dataset.sharedSettingsTarget,
+          option: target.value,
+        });
+      }
+    });
+
+    this.shadowRoot.addEventListener("mousedown", (event) => {
+      if (event.target?.dataset?.sharedSettingsTarget) {
+        this._holdRenderWindow();
+      }
+    }, true);
+
+    this.shadowRoot.addEventListener("focusin", (event) => {
+      if (event.target?.dataset?.sharedSettingsTarget) {
+        this._holdRenderWindow();
+      }
+    });
+
+    this.shadowRoot.addEventListener("focusout", (event) => {
+      if (event.target?.dataset?.sharedSettingsTarget) {
         this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 250);
         this._queueDeferredRender();
-      });
-    }
+      }
+    });
   }
 
   _escapeHtml(value) {
