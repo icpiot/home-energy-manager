@@ -32,12 +32,29 @@ resolve_source_path() {
   fi
 }
 
+resolve_dest_path() {
+  local dest_path="$1"
+  case "$dest_path" in
+    /config/*)
+      printf '%s%s\n' "$CONFIG_DIR" "${dest_path#/config}"
+      ;;
+    /config)
+      printf '%s\n' "$CONFIG_DIR"
+      ;;
+    *)
+      printf '%s\n' "$dest_path"
+      ;;
+  esac
+}
+
 copy_deploy_entry() {
   local source_spec="$1"
   local dest_path="$2"
   local mode="${3:-}"
   local source_path
+  local resolved_dest_path
   source_path="$(resolve_source_path "$source_spec")"
+  resolved_dest_path="$(resolve_dest_path "$dest_path")"
 
   if [ ! -e "$source_path" ]; then
     echo "ERROR: Missing deploy source: $source_path"
@@ -45,14 +62,14 @@ copy_deploy_entry() {
   fi
 
   if [ "$mode" = "tree" ] || { [ -z "$mode" ] && [ -d "$source_path" ]; }; then
-    mkdir -p "$dest_path"
-    cp -a "$source_path/." "$dest_path/"
+    mkdir -p "$resolved_dest_path"
+    cp -a "$source_path/." "$resolved_dest_path/"
   else
-    mkdir -p "$(dirname "$dest_path")"
-    cp -f "$source_path" "$dest_path"
+    mkdir -p "$(dirname "$resolved_dest_path")"
+    cp -f "$source_path" "$resolved_dest_path"
   fi
 
-  echo "  $source_path -> $dest_path"
+  echo "  $source_path -> $resolved_dest_path"
 }
 
 deploy_repo_to_ha() {
