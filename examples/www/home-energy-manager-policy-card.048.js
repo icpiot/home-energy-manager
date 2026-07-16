@@ -2488,7 +2488,7 @@ class ByteWattPolicyCard extends HTMLElement {
   }
 
   async _callByteWatt(service, data = {}) {
-    await this._hass.callService("bytewatt", service, data);
+    await this._hass.callService("home_energy_manager", service, data);
   }
 
   _setStatus(type, message) {

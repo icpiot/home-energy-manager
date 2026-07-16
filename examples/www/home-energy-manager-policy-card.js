@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "003";
+const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "004";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
@@ -2591,8 +2591,12 @@ class ByteWattPolicyCard extends HTMLElement {
     return fields;
   }
 
+  async _callIntegration(service, data = {}) {
+    await this._hass.callService("home_energy_manager", service, data);
+  }
+
   async _callByteWatt(service, data = {}) {
-    await this._hass.callService("bytewatt", service, data);
+    return this._callIntegration(service, data);
   }
 
   _setStatus(type, message) {

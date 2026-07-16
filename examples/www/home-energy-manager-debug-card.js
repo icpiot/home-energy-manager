@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "031";
+const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "032";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
@@ -1026,7 +1026,7 @@ class ByteWattDebugCard extends HTMLElement {
         force: Boolean(force),
       };
       if (entryId) payload.entry_id = entryId;
-      await this._hass.callService("bytewatt", "ensure_report_history", payload);
+      await this._hass.callService("home_energy_manager", "ensure_report_history", payload);
       this._status = `${force ? "Forced " : ""}archive probe sent for ${scopeKey} ${this._debugPeriod} ${startDate} -> ${endDate}`;
       this._statusKind = "success";
       if (this._historyConfigured()) {
@@ -1063,7 +1063,7 @@ class ByteWattDebugCard extends HTMLElement {
         force: Boolean(force),
       };
       if (entryId) payload.entry_id = entryId;
-      await this._hass.callService("bytewatt", "ensure_report_history", payload);
+      await this._hass.callService("home_energy_manager", "ensure_report_history", payload);
       this._status = `${force ? "Forced " : ""}download sent for ${scopeKey} ${selectedDate}`;
       this._statusKind = "success";
       if (this._historyConfigured()) {
