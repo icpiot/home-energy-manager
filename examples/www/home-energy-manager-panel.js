@@ -357,7 +357,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _normalizePage(page) {
     const availablePages = this._availablePages();
-    const syncStatusVisible = this._page === "settings" && this._debugEnabled;
     const requested = String(page || "overview").trim().toLowerCase();
     return availablePages.some((item) => item.value === requested) ? requested : "overview";
   }
@@ -1912,6 +1911,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
       };
     });
 
+    this.shadowRoot.querySelectorAll('[data-debug-toggle]').forEach((input) => {
+      input.onchange = (event) => {
+        event.preventDefault();
+        this._setDebugEnabled(Boolean(input.checked));
+      };
+    });
+
     this.shadowRoot.querySelectorAll('[data-sync-refresh]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
@@ -1938,11 +1944,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
           entity_id: target.dataset.sharedSettingsTarget,
           option: target.value,
         });
-        return;
-      }
-
-      if (target?.dataset?.debugToggle !== undefined) {
-        this._setDebugEnabled(Boolean(target.checked));
         return;
       }
 
