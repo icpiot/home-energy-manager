@@ -57,7 +57,7 @@ PROJECT_SLUG="${PROJECT_SLUG:-home_energy_manager}"
 TOKEN_FILE="${TOKEN_FILE:-$CONFIG_DIR/.github_pat}"
 LOG_DIR="${LOG_DIR:-$CONFIG_DIR/www/ha-git}"
 LOG="${LOG:-$LOG_DIR/${PROJECT_SLUG}_git_last.txt}"
-SCRIPT_BUILD="${SCRIPT_BUILD:-2026-07-16.01}"
+SCRIPT_BUILD="${SCRIPT_BUILD:-2026-07-17.01}"
 REPO_URL="${REPO_URL:-github.com/icpiot/home-energy-manager.git}"
 REPO_DIR="${REPO_DIR:-$CONFIG_DIR/repos/home-energy-manager}"
 BRANCH="${GIT_BRANCH:-main}"
@@ -69,6 +69,11 @@ mkdir -p "$LOG_DIR"
 
 trust_repo_directory() {
   git config --global --add safe.directory "$REPO_DIR" >/dev/null 2>&1 || true
+}
+
+normalize_repo_checkout() {
+  git -C "$REPO_DIR" config core.autocrlf false
+  git -C "$REPO_DIR" config core.eol lf
 }
 
 resolve_source_path() {
@@ -181,6 +186,7 @@ fetch_with_retry() {
   fi
 
   trust_repo_directory
+  normalize_repo_checkout
 
   if [ ! -f "$TOKEN_FILE" ]; then
     echo "ERROR: Token file missing: $TOKEN_FILE"
