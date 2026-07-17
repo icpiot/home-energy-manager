@@ -57,7 +57,7 @@ PROJECT_SLUG="${PROJECT_SLUG:-home_energy_manager}"
 TOKEN_FILE="${TOKEN_FILE:-$CONFIG_DIR/.github_pat}"
 LOG_DIR="${LOG_DIR:-$CONFIG_DIR/www/ha-git}"
 LOG="${LOG:-$LOG_DIR/${PROJECT_SLUG}_git_last.txt}"
-SCRIPT_BUILD="${SCRIPT_BUILD:-2026-07-17.01}"
+SCRIPT_BUILD="${SCRIPT_BUILD:-2026-07-17.02}"
 REPO_URL="${REPO_URL:-github.com/icpiot/home-energy-manager.git}"
 REPO_DIR="${REPO_DIR:-$CONFIG_DIR/repos/home-energy-manager}"
 BRANCH="${GIT_BRANCH:-main}"
@@ -74,6 +74,13 @@ trust_repo_directory() {
 normalize_repo_checkout() {
   git -C "$REPO_DIR" config core.autocrlf false
   git -C "$REPO_DIR" config core.eol lf
+}
+
+reset_dirty_checkout() {
+  if [ -n "$(git -C "$REPO_DIR" status --porcelain --untracked-files=no)" ]; then
+    echo "WARNING: Tracked files have local changes. Resetting checkout before pull."
+    git -C "$REPO_DIR" reset --hard HEAD || exit 1
+  fi
 }
 
 resolve_source_path() {
@@ -187,6 +194,7 @@ fetch_with_retry() {
 
   trust_repo_directory
   normalize_repo_checkout
+  reset_dirty_checkout
 
   if [ ! -f "$TOKEN_FILE" ]; then
     echo "ERROR: Token file missing: $TOKEN_FILE"
