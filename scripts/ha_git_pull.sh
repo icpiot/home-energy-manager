@@ -196,10 +196,11 @@ fetch_with_retry() {
   AUTH_REMOTE="https://icpiot:${TOKEN}@${REPO_URL}"
 
   echo "Checking tracked files..."
-  if [ -n "$(git -C "$REPO_DIR" status --porcelain --untracked-files=no)" ]; then
+  tracked_changes="$(git -C "$REPO_DIR" status --porcelain --untracked-files=no -- . ':(exclude)scripts/ha_git_pull.sh' ':(exclude)scripts/ha_git_push.sh')"
+  if [ -n "$tracked_changes" ]; then
     echo "ERROR: Tracked files have local changes. Pull cancelled."
     echo ""
-    git -C "$REPO_DIR" status --short --untracked-files=no
+    printf '%s\n' "$tracked_changes"
     exit 1
   fi
 
