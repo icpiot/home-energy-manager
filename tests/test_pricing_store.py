@@ -1,12 +1,13 @@
 """Tests for pricing history persistence helpers."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
-from custom_components.home_energy_manager.pricing import PriceRecord
+from custom_components.home_energy_manager.pricing import PriceRecord, PricingRule
 from custom_components.home_energy_manager.pricing_store import (
     PriceHistoryStore,
+    PricingScheduleStore,
     load_pricing_history_file,
     write_pricing_history_file,
 )
@@ -93,3 +94,39 @@ def test_pricing_history_file_helpers_handle_missing_file(tmp_path):
     path = tmp_path / "missing.json"
 
     assert load_pricing_history_file(path) == {}
+
+
+def test_pricing_schedule_store_persists_rules_and_holidays(tmp_path):
+    store = PricingScheduleStore(_FakeHass(tmp_path), "entry-1")
+    rule = PricingRule(
+        rule_id="rule-1",
+        effective_date=date(2026, 7, 1),
+        pricing_type="dynamic",
+        start_time="00:00",
+        provider="Amber",
+        label="Dynamic plan",
+        import_rate=24.5,
+    )
+
+    import asyncio
+
+    asyncio.run(store.async_upsert_rule(rule))
+    asyncio.run(
+        store.async_set_holidays(
+            holiday_dates=["2026-07-16", "2026-12-25"],
+            holiday_source="workday",
+            region="NSW",
+        )
+    )
+
+    schedule = asyncio.run(store.async_schedule())
+
+    assert len(schedule.rules) == 1
+    assert schedule.rules[0] == rule
+    assert schedule.holiday_source == "workday"
+    assert schedule.region == "NSW"
+    assert [item.isoformat() for item in schedule.holiday_dates] == ["2026-07-16", "2026-12-25"]
+
+    asyncio.run(store.async_remove_rule("rule-1"))
+    schedule_after_remove = asyncio.run(store.async_schedule())
+    assert schedule_after_remove.rules == []

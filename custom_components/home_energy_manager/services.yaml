@@ -358,3 +358,205 @@ update_grid_feedin_slot:
       required: false
       selector:
         text:
+
+pricing_upsert_rule:
+  name: Upsert Pricing Rule
+  description: Save or update one date-based pricing rule.
+  fields:
+    rule_id:
+      name: Rule ID
+      description: Optional existing rule id for updates. Leave blank for a new rule.
+      required: false
+      selector:
+        text:
+    effective_date:
+      name: Effective Date
+      description: Date the rule starts applying.
+      required: true
+      selector:
+        date:
+    effective_time:
+      name: Effective Time
+      description: Start time for the rule.
+      required: false
+      selector:
+        time: {}
+    effective_end_date:
+      name: Effective End Date
+      description: Optional end date for the rule.
+      required: false
+      selector:
+        date:
+    effective_end_time:
+      name: Effective End Time
+      description: Optional end time for the rule.
+      required: false
+      selector:
+        time: {}
+    pricing_type:
+      name: Pricing Type
+      description: Fixed or dynamic pricing.
+      required: false
+      default: fixed
+      selector:
+        select:
+          options:
+            - fixed
+            - dynamic
+    provider:
+      name: Provider
+      description: Tariff or retailer name.
+      required: false
+      selector:
+        text:
+    label:
+      name: Label
+      description: Human-friendly rule label.
+      required: false
+      selector:
+        text:
+    import_rate:
+      name: Import Rate
+      description: Price for imported energy.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: c/kWh
+    export_rate:
+      name: Export Rate
+      description: Price for exported energy.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: c/kWh
+    supply_charge:
+      name: Supply Charge
+      description: Daily supply charge.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: $/day
+    controlled_load_1:
+      name: Controlled Load 1
+      description: Controlled load 1 rate.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: c/kWh
+    controlled_load_2:
+      name: Controlled Load 2
+      description: Controlled load 2 rate.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: c/kWh
+    additional_charge:
+      name: Additional Charge
+      description: Extra fee or adjustment.
+      required: false
+      selector:
+        number:
+          min: -100
+          max: 100
+          step: 0.001
+          unit_of_measurement: $
+    holiday_only:
+      name: Holiday Only
+      description: Apply only on public holidays.
+      required: false
+      selector:
+        boolean:
+    days_of_week:
+      name: Days of Week
+      description: Optional list of weekdays, e.g. mon,tue,wed.
+      required: false
+      selector:
+        text:
+    notes:
+      name: Notes
+      description: Optional notes for the rule.
+      required: false
+      selector:
+        text:
+    region:
+      name: Region
+      description: Optional region for future holiday imports.
+      required: false
+      selector:
+        text:
+    holiday_source:
+      name: Holiday Source
+      description: Source label such as manual or Workday.
+      required: false
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+pricing_remove_rule:
+  name: Remove Pricing Rule
+  description: Delete one stored pricing rule by id.
+  fields:
+    rule_id:
+      name: Rule ID
+      description: Stored rule id to remove.
+      required: true
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+pricing_set_holidays:
+  name: Set Holiday Dates
+  description: Replace the stored holiday calendar.
+  fields:
+    holiday_dates:
+      name: Holiday Dates
+      description: Comma-separated list or list selector of public holiday dates.
+      required: true
+      selector:
+        text:
+    holiday_source:
+      name: Holiday Source
+      description: Source label such as manual or Workday.
+      required: false
+      selector:
+        text:
+    region:
+      name: Region
+      description: Optional region for the holiday set.
+      required: false
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:

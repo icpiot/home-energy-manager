@@ -2,12 +2,13 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "050";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "051";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
 const HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
+const HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY = "home-energy-manager.panel.pricing.draft";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
   { value: "midnight", label: "Midnight" },
@@ -239,6 +240,30 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
   }
 
+  _loadPricingDraft() {
+    try {
+      return JSON.parse(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY) || "{}") || {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  _savePricingDraft(draft) {
+    try {
+      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY, JSON.stringify(draft || {}));
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
+  _clearPricingDraft() {
+    try {
+      localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY);
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
   _setTheme(theme) {
     this._theme = theme;
     this._saveTheme(theme);
@@ -341,19 +366,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
       this._config?.provider ||
       this._config?.connection_name ||
       this._config?.connection_label ||
-      "ByteWatt";
+      "Home Energy Manager";
     const normalized = String(rawName || "").trim();
 
     if (!normalized) {
-      return "ByteWatt";
+      return "Home Energy Manager";
     }
 
-    if (/^home energy manager$/i.test(normalized)) {
-      return "ByteWatt";
-    }
-
-    if (/^bytewatt$/i.test(normalized)) {
-      return "ByteWatt";
+    if (/^(home energy manager|bytewatt)$/i.test(normalized)) {
+      return "Home Energy Manager";
     }
 
     if (/^[a-z0-9_-]+$/i.test(normalized)) {
@@ -389,6 +410,159 @@ class HomeEnergyManagerPanel extends HTMLElement {
         const keySuffix = `home_energy_manager_${key}`;
         return objectId === keySuffix || objectId.endsWith(`_${keySuffix}`);
       });
+  }
+
+  _pricingScheduleEntity() {
+    return this._entityByKey("pricing_schedule");
+  }
+
+  _pricingScheduleData() {
+    const entity = this._pricingScheduleEntity();
+    const attributes = entity?.attributes || {};
+    const rules = Array.isArray(attributes.rules) ? attributes.rules : [];
+    const holidayDates = Array.isArray(attributes.holiday_dates) ? attributes.holiday_dates : [];
+    const dateMap = attributes.date_map && typeof attributes.date_map === "object" ? attributes.date_map : {};
+    const activeRule = attributes.active_rule && typeof attributes.active_rule === "object"
+      ? attributes.active_rule
+      : null;
+    return {
+      state: entity?.state || "Unavailable",
+      ruleCount: Number(attributes.rule_count ?? rules.length ?? 0),
+      holidayCount: Number(attributes.holiday_count ?? holidayDates.length ?? 0),
+      holidaySource: String(attributes.holiday_source || "manual"),
+      region: String(attributes.region || ""),
+      holidayDates,
+      dateMap,
+      rules,
+      activeRule,
+      updatedAt: String(attributes.updated_at || ""),
+      activeType: String(attributes.active_type || ""),
+      activeProvider: String(attributes.active_provider || ""),
+    };
+  }
+
+  _pricingDraftDefaults() {
+    return {
+      rule_id: "",
+      effective_date: new Date().toISOString().slice(0, 10),
+      effective_time: "00:00",
+      effective_end_date: "",
+      effective_end_time: "",
+      pricing_type: "fixed",
+      provider: this._connectionName(),
+      label: "",
+      import_rate: "",
+      export_rate: "",
+      supply_charge: "",
+      controlled_load_1: "",
+      controlled_load_2: "",
+      additional_charge: "",
+      holiday_only: false,
+      days_of_week: [],
+      notes: "",
+      region: "",
+      holiday_source: "manual",
+    };
+  }
+
+  _pricingDraft() {
+    return { ...this._pricingDraftDefaults(), ...this._loadPricingDraft() };
+  }
+
+  _savePricingDraftValue(field, value) {
+    const draft = this._pricingDraft();
+    draft[field] = value;
+    this._savePricingDraft(draft);
+  }
+
+  _pricingRuleById(ruleId) {
+    const schedule = this._pricingScheduleData();
+    return schedule.rules.find((rule) => String(rule.rule_id || "") === String(ruleId || ""));
+  }
+
+  _formatPricingRate(value, unit = "c/kWh") {
+    if (value === null || value === undefined || value === "") {
+      return "Not set";
+    }
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) {
+      return String(value);
+    }
+    return `${numeric.toFixed(3).replace(/\.?0+$/, "")} ${unit}`;
+  }
+
+  _pricingFormDraft() {
+    const draft = this._pricingDraftDefaults();
+    if (!this.shadowRoot) {
+      return draft;
+    }
+
+    this.shadowRoot.querySelectorAll("[data-pricing-field]").forEach((field) => {
+      const key = field.dataset.pricingField;
+      if (!key) {
+        return;
+      }
+      if (field.type === "checkbox") {
+        draft[key] = Boolean(field.checked);
+        return;
+      }
+      if (field.tagName === "SELECT") {
+        draft[key] = String(field.value || "");
+        return;
+      }
+      draft[key] = String(field.value || "");
+    });
+
+    this.shadowRoot.querySelectorAll("[data-pricing-holiday-field]").forEach((field) => {
+      const key = field.dataset.pricingHolidayField;
+      if (!key) {
+        return;
+      }
+      draft[key] = String(field.value || "");
+    });
+
+    return draft;
+  }
+
+  _pricingPayloadFromDraft(draft) {
+    const payload = { ...this._pricingDraftDefaults(), ...draft };
+    const ruleId = String(payload.rule_id || "").trim();
+    if (!ruleId) {
+      payload.rule_id = this._generateRuleId();
+    }
+    payload.effective_date = String(payload.effective_date || "").trim();
+    payload.effective_time = String(payload.effective_time || "00:00").trim() || "00:00";
+    payload.effective_end_date = String(payload.effective_end_date || "").trim();
+    payload.effective_end_time = String(payload.effective_end_time || "").trim();
+    payload.pricing_type = String(payload.pricing_type || "fixed").trim().toLowerCase();
+    payload.provider = String(payload.provider || "").trim();
+    payload.label = String(payload.label || "").trim();
+    payload.import_rate = String(payload.import_rate ?? "").trim() === "" ? null : Number(payload.import_rate);
+    payload.export_rate = String(payload.export_rate ?? "").trim() === "" ? null : Number(payload.export_rate);
+    payload.supply_charge = String(payload.supply_charge ?? "").trim() === "" ? null : Number(payload.supply_charge);
+    payload.controlled_load_1 = String(payload.controlled_load_1 ?? "").trim() === "" ? null : Number(payload.controlled_load_1);
+    payload.controlled_load_2 = String(payload.controlled_load_2 ?? "").trim() === "" ? null : Number(payload.controlled_load_2);
+    payload.additional_charge = String(payload.additional_charge ?? "").trim() === "" ? null : Number(payload.additional_charge);
+    payload.holiday_only = Boolean(payload.holiday_only);
+    payload.days_of_week = Array.isArray(payload.days_of_week) ? payload.days_of_week : [];
+    payload.notes = String(payload.notes || "").trim();
+    payload.region = String(payload.region || "").trim();
+    payload.holiday_source = String(payload.holiday_source || "manual").trim() || "manual";
+    payload.holiday_date = String(payload.holiday_date || "").trim();
+    return payload;
+  }
+
+  _generateRuleId() {
+    if (window.crypto?.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    return `rule_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+
+  _syncPricingDraftFromInputs() {
+    const draft = this._pricingFormDraft();
+    this._savePricingDraft(draft);
+    return draft;
   }
 
   _formatEntityState(entity, fallback = "Unavailable") {
@@ -517,9 +691,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <h2>Energy Command Center</h2>
             <span>Overview</span>
           </div>
-          <p>
+            <p>
             This is the daily control surface for battery, solar, grid, and future pricing
-            workflows. The panel will stay focused on the most useful actions first.
+            workflows in HEM. The panel stays focused on the most useful actions first.
           </p>
         </article>
 
@@ -601,8 +775,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <h2>Battery Control</h2>
             <span>Operations</span>
           </div>
-          <p>
-            The battery page will be the day-to-day control surface for charge and discharge
+            <p>
+            The battery page is the day-to-day control surface for charge and discharge
             policy, safety limits, and provider-specific battery modes.
           </p>
         </article>
@@ -668,9 +842,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <h2>Policy</h2>
             <span>Charge and feed-in control</span>
           </div>
-          <p>
-            This page shows the live policy summary inside the Home Energy Manager (HEM) panel so
-            battery charge and feed-in rules stay in one place.
+            <p>
+            This page shows the live policy summary inside the HEM panel so battery charge and
+            feed-in rules stay in one place.
           </p>
         </article>
 
@@ -731,9 +905,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <h2>Report</h2>
             <span>Power diagram and exports</span>
           </div>
-          <p>
-            The report view shows a live summary from the generic Home Energy Manager (HEM) sensors
-            so you can see current data while history continues to build.
+            <p>
+            The report view shows a live summary from the HEM sensors so you can see current
+            data while history continues to build.
           </p>
         </article>
 
@@ -744,9 +918,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Live summary</span>
             </div>
             <p>
-              This live report summary is built from the generic Home Energy Manager (HEM) sensors
-              so you still get a visible output even before the longer history archive is ready.
-            </p>
+            This live report summary is built from the HEM sensors so you still get a visible
+            output even before the longer history archive is ready.
+          </p>
             <div class="report-summary">
               <ul class="key-list key-list--compact">
                 ${this._valueList(reportItems)}
@@ -795,9 +969,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <h2>Solar Control</h2>
             <span>Generation layer</span>
           </div>
-          <p>
-            Solar is where we’ll surface live generation, feed-in, and future forecasting so
-            the panel can guide battery and pricing decisions from the same place.
+            <p>
+            Solar is where we’ll surface live generation, feed-in, and future forecasting so the
+            panel can guide battery and pricing decisions from the same place.
           </p>
         </article>
 
@@ -817,9 +991,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Generation layer</span>
             </div>
             <p>
-              This is the current solar view from Home Assistant. As we continue, it can turn
-              into a daily operations page for power flows and solar forecasts.
-            </p>
+            This is the current solar view from Home Assistant. As we continue, it can become a
+            daily operations page for power flows and solar forecasts.
+          </p>
             <ul class="key-list key-list--compact">
               ${this._valueList(solarItems)}
             </ul>
@@ -985,36 +1159,94 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _pricingPage() {
-    const pricingItems = [
-      { label: "Daily cost estimate", value: this._formattedState("daily_cost_estimate") },
-      { label: "Daily income estimate", value: this._formattedState("daily_income_estimate") },
-      { label: "Current tariff", value: this._formattedState("tariff_current_price") },
-      { label: "Next tariff", value: this._formattedState("tariff_next_price") },
-      { label: "Dynamic pricing", value: this._formattedState("dynamic_pricing_enabled") },
-      { label: "Battery wear cost", value: this._formattedState("battery_wear_cost") },
-      { label: "Export spike", value: this._formattedState("export_spike_price") },
+    const schedule = this._pricingScheduleData();
+    const draft = this._pricingDraft();
+    const rules = Array.isArray(schedule.rules) ? schedule.rules : [];
+    const holidayDates = Array.isArray(schedule.holidayDates) ? schedule.holidayDates : [];
+    const activeRule = schedule.activeRule || {};
+    const currentType = String(activeRule.type || activeRule.pricing_type || "none");
+    const currentProvider = String(activeRule.provider || schedule.activeProvider || "Not set");
+    const ruleTiles = [
+      { label: "Stored rules", value: String(schedule.ruleCount || rules.length || 0) },
+      { label: "Holiday dates", value: String(schedule.holidayCount || holidayDates.length || 0) },
+      { label: "Active type", value: currentType === "none" ? "None" : currentType },
+      { label: "Provider", value: currentProvider },
     ];
-    const pricingSummary = [
-      { label: "Current tariff", value: this._formattedState("tariff_current_price") },
-      { label: "Dynamic", value: this._formattedState("dynamic_pricing_enabled") },
-      { label: "Wear cost", value: this._formattedState("battery_wear_cost") },
-      { label: "Spike export", value: this._formattedState("export_spike_price") },
+    const activeSummary = activeRule && activeRule.rule_id ? [
+      { label: "Date", value: String(activeRule.effective_date || "Not set") },
+      { label: "Type", value: String(activeRule.type || activeRule.pricing_type || "Not set") },
+      { label: "Window", value: `${String(activeRule.start_time || "00:00")} - ${String(activeRule.effective_end_time || activeRule.end_time || "open")}` },
+      { label: "Label", value: String(activeRule.label || "Unnamed rule") },
+    ] : [
+      { label: "Date", value: "No active rule" },
+      { label: "Type", value: "No active rule" },
+      { label: "Window", value: "No active rule" },
+      { label: "Label", value: "No active rule" },
     ];
+    const ruleCards = rules.length
+      ? rules.map((rule) => {
+          const rateBits = [
+            rule.import_rate !== null && rule.import_rate !== undefined ? `Import ${this._formatPricingRate(rule.import_rate)}` : null,
+            rule.export_rate !== null && rule.export_rate !== undefined ? `Export ${this._formatPricingRate(rule.export_rate)}` : null,
+            rule.supply_charge !== null && rule.supply_charge !== undefined ? `Supply ${this._formatPricingRate(rule.supply_charge, "$/day")}` : null,
+            rule.controlled_load_1 !== null && rule.controlled_load_1 !== undefined ? `CL1 ${this._formatPricingRate(rule.controlled_load_1)}` : null,
+            rule.controlled_load_2 !== null && rule.controlled_load_2 !== undefined ? `CL2 ${this._formatPricingRate(rule.controlled_load_2)}` : null,
+            rule.additional_charge !== null && rule.additional_charge !== undefined ? `Add ${this._formatPricingRate(rule.additional_charge, "$")}` : null,
+          ].filter(Boolean);
+          return `
+            <article class="pricing-rule">
+              <div class="pricing-rule__header">
+                <div>
+                  <strong>${this._escapeHtml(String(rule.label || "Unnamed rule"))}</strong>
+                  <span>${this._escapeHtml(String(rule.provider || "Provider not set"))}</span>
+                </div>
+                <div class="pricing-rule__actions">
+                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-load-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Load</button>
+                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete</button>
+                </div>
+              </div>
+              <dl class="pricing-rule__meta">
+                <div><dt>Effective</dt><dd>${this._escapeHtml(String(rule.effective_date || "Not set"))}</dd></div>
+                <div><dt>Type</dt><dd>${this._escapeHtml(String(rule.type || rule.pricing_type || "fixed"))}</dd></div>
+                <div><dt>Start</dt><dd>${this._escapeHtml(String(rule.start_time || "00:00"))}</dd></div>
+                <div><dt>End</dt><dd>${this._escapeHtml(String(rule.effective_end_time || rule.end_time || "open"))}</dd></div>
+              </dl>
+              <div class="pricing-rule__rates">
+                ${rateBits.length ? rateBits.map((bit) => `<span>${this._escapeHtml(bit)}</span>`).join("") : "<span>No rates set yet</span>"}
+              </div>
+              <p>
+                ${rule.holiday_only ? "Holiday only" : "Normal day"}${rule.notes ? ` · ${this._escapeHtml(String(rule.notes))}` : ""}
+              </p>
+            </article>
+          `;
+        }).join("")
+      : '<article class="pricing-rule pricing-rule--empty"><strong>No pricing rules saved yet.</strong><span>Use the form to add the first fixed or dynamic tariff entry.</span></article>';
+    const holidayChips = holidayDates.length
+      ? holidayDates.map((holiday) => `
+          <button
+            type="button"
+            class="pricing-chip"
+            data-pricing-remove-holiday="${this._escapeHtml(String(holiday))}"
+          >
+            ${this._escapeHtml(String(holiday))} ×
+          </button>
+        `).join("")
+      : '<span class="pricing-empty">No holiday dates recorded yet.</span>';
     return `
       <section class="pricing">
         <article class="panel-card panel-card--wide pricing__hero">
           <div class="panel-card__header">
             <h2>Pricing</h2>
-            <span>Future-ready</span>
+            <span>Date-based schedule</span>
           </div>
           <p>
-            Pricing gets its own home so we can handle fixed tariffs, dynamic plans, wear cost,
-            and future export spike pricing without tying the rest of the UI to one model.
+            Pricing is stored as date-effective fixed or dynamic rules so you can move from one
+            plan to another mid-year, add holiday overrides, and keep the schedule visible in HEM.
           </p>
         </article>
 
         <section class="pricing__tiles">
-          ${pricingSummary.map((item) => `
+          ${ruleTiles.map((item) => `
             <article class="pricing-tile">
               <span>${item.label}</span>
               <strong>${item.value}</strong>
@@ -1025,33 +1257,141 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <section class="grid pricing__grid">
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Pricing Snapshot</h2>
-              <span>Tariff layer</span>
+              <h2>Pricing Editor</h2>
+              <span>Fixed or dynamic</span>
             </div>
             <p>
-              Pricing stays separate from energy history so fixed tariffs, time-of-use rates,
-              and dynamic feeds can all retain date-effective records.
+              Add one rule at a time. Each row stores the date, time window, pricing type, and
+              the rate boxes you need for that condition.
             </p>
-            <ul class="key-list key-list--compact">
-              ${this._valueList(pricingItems)}
-            </ul>
+            <div class="pricing-form">
+              <input type="hidden" data-pricing-field="rule_id" value="${this._escapeHtml(String(draft.rule_id || ""))}" />
+              <label>
+                <span>Effective date</span>
+                <input type="date" data-pricing-field="effective_date" value="${this._escapeHtml(String(draft.effective_date || ""))}" />
+              </label>
+              <label>
+                <span>Start time</span>
+                <input type="time" data-pricing-field="effective_time" value="${this._escapeHtml(String(draft.effective_time || "00:00"))}" />
+              </label>
+              <label>
+                <span>End date</span>
+                <input type="date" data-pricing-field="effective_end_date" value="${this._escapeHtml(String(draft.effective_end_date || ""))}" />
+              </label>
+              <label>
+                <span>End time</span>
+                <input type="time" data-pricing-field="effective_end_time" value="${this._escapeHtml(String(draft.effective_end_time || ""))}" />
+              </label>
+              <label>
+                <span>Pricing type</span>
+                <select data-pricing-field="pricing_type">
+                  <option value="fixed" ${String(draft.pricing_type || "fixed") === "fixed" ? "selected" : ""}>Fixed</option>
+                  <option value="dynamic" ${String(draft.pricing_type || "fixed") === "dynamic" ? "selected" : ""}>Dynamic</option>
+                </select>
+              </label>
+              <label>
+                <span>Provider</span>
+                <input type="text" data-pricing-field="provider" value="${this._escapeHtml(String(draft.provider || ""))}" placeholder="Amber, retailer name, etc." />
+              </label>
+              <label>
+                <span>Label</span>
+                <input type="text" data-pricing-field="label" value="${this._escapeHtml(String(draft.label || ""))}" placeholder="Peak, Off-peak, Amber dynamic..." />
+              </label>
+              <label>
+                <span>Import rate</span>
+                <input type="number" step="0.001" data-pricing-field="import_rate" value="${this._escapeHtml(String(draft.import_rate ?? ""))}" />
+              </label>
+              <label>
+                <span>Export rate</span>
+                <input type="number" step="0.001" data-pricing-field="export_rate" value="${this._escapeHtml(String(draft.export_rate ?? ""))}" />
+              </label>
+              <label>
+                <span>Supply charge</span>
+                <input type="number" step="0.001" data-pricing-field="supply_charge" value="${this._escapeHtml(String(draft.supply_charge ?? ""))}" />
+              </label>
+              <label>
+                <span>Controlled load 1</span>
+                <input type="number" step="0.001" data-pricing-field="controlled_load_1" value="${this._escapeHtml(String(draft.controlled_load_1 ?? ""))}" />
+              </label>
+              <label>
+                <span>Controlled load 2</span>
+                <input type="number" step="0.001" data-pricing-field="controlled_load_2" value="${this._escapeHtml(String(draft.controlled_load_2 ?? ""))}" />
+              </label>
+              <label>
+                <span>Additional charge</span>
+                <input type="number" step="0.001" data-pricing-field="additional_charge" value="${this._escapeHtml(String(draft.additional_charge ?? ""))}" />
+              </label>
+              <label class="toggle-row pricing-form__toggle">
+                <span class="toggle-row__label">Holiday only</span>
+                <span class="toggle-row__control">
+                  <input type="checkbox" data-pricing-field="holiday_only" ${draft.holiday_only ? "checked" : ""} />
+                  <span class="toggle-row__switch" aria-hidden="true"></span>
+                </span>
+              </label>
+              <label class="pricing-form__notes">
+                <span>Notes</span>
+                <textarea data-pricing-field="notes" rows="3" placeholder="Optional notes about the rule">${this._escapeHtml(String(draft.notes || ""))}</textarea>
+              </label>
+            </div>
+            <div class="pricing-form__actions">
+              <button type="button" class="theme-pill" data-pricing-save-rule>Save rule</button>
+              <button type="button" class="theme-pill" data-pricing-clear-rule>Clear form</button>
+            </div>
           </article>
           <article class="panel-card">
             <div class="panel-card__header">
-              <h2>Pricing Notes</h2>
-              <span>Planned</span>
+              <h2>Holiday Calendar</h2>
+              <span>Public holidays</span>
             </div>
             <p>
-              The split is deliberate: fixed tariffs, dynamic pricing, and wear cost can evolve
-              independently while keeping the dashboard focused.
+              Record public holiday dates here so holiday-specific rates can override the normal
+              tariff windows. Workday-style imports can land here later.
             </p>
+            <div class="pricing-holiday-form">
+              <label>
+                <span>Holiday source</span>
+                <input type="text" data-pricing-holiday-field="holiday_source" value="${this._escapeHtml(String(draft.holiday_source || "manual"))}" />
+              </label>
+              <label>
+                <span>Region</span>
+                <input type="text" data-pricing-holiday-field="region" value="${this._escapeHtml(String(draft.region || ""))}" placeholder="NSW, VIC, QLD..." />
+              </label>
+              <label>
+                <span>Add holiday date</span>
+                <input type="date" data-pricing-holiday-field="holiday_date" value="${this._escapeHtml(String(draft.holiday_date || ""))}" />
+              </label>
+              <div class="pricing-form__actions">
+                <button type="button" class="theme-pill" data-pricing-add-holiday>Add holiday</button>
+              </div>
+            </div>
+            <div class="pricing-chip-list">
+              ${holidayChips}
+            </div>
+          </article>
+        </section>
+
+        <section class="grid pricing__grid">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Stored Rules</h2>
+              <span>${rules.length} item(s)</span>
+            </div>
+            <div class="pricing-rule-list">
+              ${ruleCards}
+            </div>
+          </article>
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Current Rule</h2>
+              <span>Active match</span>
+            </div>
             <ul class="key-list key-list--compact">
-              ${this._valueList([
-                { label: "Current tariff", value: this._formattedState("tariff_current_price") },
-                { label: "Next tariff", value: this._formattedState("tariff_next_price") },
-                { label: "Pricing page", value: this._pageLabel() },
-              ])}
+              ${this._valueList(activeSummary)}
             </ul>
+            <p>
+              The editor is provider-neutral, so each rule can represent a retailer tariff, a
+              dynamic feed, or a holiday override without tying the panel to one provider.
+            </p>
           </article>
         </section>
       </section>
@@ -1083,7 +1423,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <article class="panel-card">
           <div class="panel-card__header">
             <h2>Forecast Wiring</h2>
-            <span>Generic</span>
+            <span>HEM</span>
           </div>
           <ul class="key-list key-list--compact">
             ${this._valueList([
@@ -1096,7 +1436,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         </article>
         <article class="panel-card">
           <div class="panel-card__header">
-            <h2>Generic Settings</h2>
+            <h2>HEM Settings</h2>
             <span>Local</span>
           </div>
           <div class="settings-toggle">
@@ -1108,7 +1448,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               </span>
             </label>
             <p>
-              Generic settings keeps the panel device-agnostic while still exposing the debug page
+              HEM settings keep the panel device-agnostic while still exposing the debug page
               for deeper inspection, history checks, and provider-specific details.
             </p>
             <button
@@ -1157,7 +1497,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       <article class="panel-card panel-card--wide settings-detail">
         <div class="panel-card__header">
           <h2>${activeFocus.label} Details</h2>
-          <span>Press a metric above</span>
+          <span>Select a metric above</span>
         </div>
         <p>${activeFocus.description}</p>
         <ul class="key-list key-list--compact">
@@ -1193,7 +1533,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </div>
           <p>
             This page is reserved for deeper inspection of the Home Energy Manager (HEM) data model
-            and the embedded debug card. The controls are generic and device-agnostic.
+            and the embedded diagnostics card. The controls stay device-agnostic.
           </p>
         </article>
 
@@ -1204,8 +1544,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Internal</span>
             </div>
             <p>
-              The values below should help confirm the panel is using the generic Home Energy
-              Manager entities and that the provider data is flowing through correctly.
+              The values below should help confirm the panel is using the Home Energy Manager
+              entities and that the provider data is flowing through correctly.
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList(debugItems)}
@@ -1217,8 +1557,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Live</span>
             </div>
             <p>
-              This is the provider-aware debug card used to inspect history, report data, and
-              entity selection in one place.
+              This is the provider-aware diagnostics card used to inspect history, report data,
+              and entity selection in one place.
             </p>
             <div class="panel-card__embedded" data-embedded="debug"></div>
           </article>
@@ -1375,7 +1715,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const connectionName = this._connectionName();
     const connectionLabel = this._hass ? `Connected to ${connectionName}` : `Waiting for ${connectionName}`;
     const title = this._config.title || "Home Energy Manager (HEM)";
-    const subtitle = this._config.subtitle || "Backend-aware control panel with room for custom themes.";
+    const subtitle = this._config.subtitle || "Daily control surface for Home Energy Manager (HEM).";
     const statusMeta = this._page === "settings"
       ? `
           <div class="status__meta">
@@ -1488,6 +1828,150 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (pageButton && !pageButton.disabled) {
         event.preventDefault();
         this._setPage(pageButton.dataset.page);
+        return;
+      }
+
+      const pricingSave = path.find((node) => node?.dataset?.pricingSaveRule !== undefined);
+      if (pricingSave) {
+        event.preventDefault();
+        const draft = this._pricingPayloadFromDraft(this._syncPricingDraftFromInputs());
+        this._savePricingDraft(draft);
+        if (!this._hass) {
+          return;
+        }
+        this._hass.callService("home_energy_manager", "pricing_upsert_rule", {
+          entry_id: this._config?.entry_id,
+          rule_id: draft.rule_id,
+          effective_date: draft.effective_date,
+          effective_time: draft.effective_time,
+          effective_end_date: draft.effective_end_date || undefined,
+          effective_end_time: draft.effective_end_time || undefined,
+          pricing_type: draft.pricing_type,
+          provider: draft.provider,
+          label: draft.label,
+          import_rate: draft.import_rate ?? undefined,
+          export_rate: draft.export_rate ?? undefined,
+          supply_charge: draft.supply_charge ?? undefined,
+          controlled_load_1: draft.controlled_load_1 ?? undefined,
+          controlled_load_2: draft.controlled_load_2 ?? undefined,
+          additional_charge: draft.additional_charge ?? undefined,
+          holiday_only: Boolean(draft.holiday_only),
+          days_of_week: Array.isArray(draft.days_of_week) ? draft.days_of_week : [],
+          notes: draft.notes,
+          region: draft.region,
+          holiday_source: draft.holiday_source,
+        }).catch((error) => {
+          console.error("Failed to save pricing rule", error);
+        });
+        this._holdRenderWindow();
+        return;
+      }
+
+      const pricingClear = path.find((node) => node?.dataset?.pricingClearRule !== undefined);
+      if (pricingClear) {
+        event.preventDefault();
+        this._clearPricingDraft();
+        this._render();
+        return;
+      }
+
+      const pricingLoad = path.find((node) => node?.dataset?.pricingLoadRule);
+      if (pricingLoad) {
+        event.preventDefault();
+        const rule = this._pricingRuleById(pricingLoad.dataset.pricingLoadRule);
+        if (rule) {
+          this._savePricingDraft({
+            ...this._pricingDraftDefaults(),
+            rule_id: String(rule.rule_id || ""),
+            effective_date: String(rule.effective_date || ""),
+            effective_time: String(rule.start_time || "00:00"),
+            effective_end_date: String(rule.effective_end_date || ""),
+            effective_end_time: String(rule.effective_end_time || rule.end_time || ""),
+            pricing_type: String(rule.type || rule.pricing_type || "fixed"),
+            provider: String(rule.provider || ""),
+            label: String(rule.label || ""),
+            import_rate: rule.import_rate ?? "",
+            export_rate: rule.export_rate ?? "",
+            supply_charge: rule.supply_charge ?? "",
+            controlled_load_1: rule.controlled_load_1 ?? "",
+            controlled_load_2: rule.controlled_load_2 ?? "",
+            additional_charge: rule.additional_charge ?? "",
+            holiday_only: Boolean(rule.holiday_only),
+            days_of_week: Array.isArray(rule.days_of_week) ? rule.days_of_week : [],
+            notes: String(rule.notes || ""),
+            region: String(rule.metadata?.region || ""),
+            holiday_source: String(rule.metadata?.holiday_source || "manual"),
+          });
+          this._render();
+        }
+        return;
+      }
+
+      const pricingDelete = path.find((node) => node?.dataset?.pricingDeleteRule);
+      if (pricingDelete) {
+        event.preventDefault();
+        if (!this._hass) {
+          return;
+        }
+        this._hass.callService("home_energy_manager", "pricing_remove_rule", {
+          entry_id: this._config?.entry_id,
+          rule_id: pricingDelete.dataset.pricingDeleteRule,
+        }).catch((error) => {
+          console.error("Failed to delete pricing rule", error);
+        });
+        this._holdRenderWindow();
+        return;
+      }
+
+      const pricingHolidayAdd = path.find((node) => node?.dataset?.pricingAddHoliday !== undefined);
+      if (pricingHolidayAdd) {
+        event.preventDefault();
+        const draft = this._syncPricingDraftFromInputs();
+        if (!this._hass) {
+          return;
+        }
+        const holidayDates = new Set(Array.isArray(this._pricingScheduleData().holidayDates) ? this._pricingScheduleData().holidayDates : []);
+        if (draft.holiday_date) {
+          holidayDates.add(String(draft.holiday_date));
+        }
+        this._hass.callService("home_energy_manager", "pricing_set_holidays", {
+          entry_id: this._config?.entry_id,
+          holiday_dates: Array.from(holidayDates),
+          holiday_source: draft.holiday_source || "manual",
+          region: draft.region || "",
+        }).catch((error) => {
+          console.error("Failed to save holiday dates", error);
+        });
+        this._holdRenderWindow();
+        return;
+      }
+
+      const pricingHolidayRemove = path.find((node) => node?.dataset?.pricingRemoveHoliday);
+      if (pricingHolidayRemove) {
+        event.preventDefault();
+        if (!this._hass) {
+          return;
+        }
+        const current = new Set(Array.isArray(this._pricingScheduleData().holidayDates) ? this._pricingScheduleData().holidayDates : []);
+        current.delete(String(pricingHolidayRemove.dataset.pricingRemoveHoliday || ""));
+        const draft = this._syncPricingDraftFromInputs();
+        this._hass.callService("home_energy_manager", "pricing_set_holidays", {
+          entry_id: this._config?.entry_id,
+          holiday_dates: Array.from(current),
+          holiday_source: draft.holiday_source || "manual",
+          region: draft.region || "",
+        }).catch((error) => {
+          console.error("Failed to remove holiday date", error);
+        });
+        this._holdRenderWindow();
+      }
+    });
+
+    this.shadowRoot.addEventListener("input", (event) => {
+      const target = event.target;
+      if (target?.dataset?.pricingField !== undefined || target?.dataset?.pricingHolidayField !== undefined) {
+        this._savePricingDraft(this._syncPricingDraftFromInputs());
+        this._holdRenderWindow(1200);
       }
     });
 
@@ -1495,6 +1979,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const target = event.target;
       if (target?.dataset?.debugToggle !== undefined) {
         this._setDebugEnabled(Boolean(target.checked));
+        return;
+      }
+
+      if (target?.dataset?.pricingField !== undefined || target?.dataset?.pricingHolidayField !== undefined) {
+        this._savePricingDraft(this._syncPricingDraftFromInputs());
+        this._holdRenderWindow(1200);
         return;
       }
 
@@ -1518,13 +2008,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }, true);
 
     this.shadowRoot.addEventListener("focusin", (event) => {
-      if (event.target?.dataset?.sharedSettingsTarget) {
+      if (event.target?.dataset?.sharedSettingsTarget || event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
         this._holdRenderWindow();
       }
     });
 
     this.shadowRoot.addEventListener("focusout", (event) => {
-      if (event.target?.dataset?.sharedSettingsTarget) {
+      if (event.target?.dataset?.sharedSettingsTarget || event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
         this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 250);
         this._queueDeferredRender();
       }

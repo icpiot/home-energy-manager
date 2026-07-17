@@ -1,4 +1,4 @@
-"""Topology helpers for aggregate vs per-battery Byte-Watt access.
+"""Topology helpers for aggregate vs per-battery access.
 
 The current integration still operates mostly in a single-host mode for
 settings, but dual-battery installs need two distinct concepts:
@@ -19,7 +19,7 @@ from typing import Any
 class StrategyFieldScope(str, Enum):
     """Observed backend scope for a cycle-strategy field.
 
-    The Byte-Watt cloud does not behave like a clean "all fields are shared"
+    The provider cloud does not behave like a clean "all fields are shared"
     or "all fields are per-battery" API. HAR captures from dual-inverter
     systems show a hybrid model, so we keep the observed scope close to the
     topology helpers for future entity/config work.
@@ -51,7 +51,7 @@ def strategy_field_scope(field_name: str) -> StrategyFieldScope:
 
 
 @dataclass(frozen=True)
-class ByteWattScope:
+class HomeEnergyScope:
     """A concrete API scope for either aggregate or per-battery calls."""
 
     system_id: str = ""
@@ -66,7 +66,7 @@ class ByteWattScope:
     settings_sys_sn: str = ""
 
     @classmethod
-    def aggregate_scope(cls, station_id: str = "") -> "ByteWattScope":
+    def aggregate_scope(cls, station_id: str = "") -> "HomeEnergyScope":
         return cls(
             sys_sn="All",
             station_id=station_id,
@@ -121,9 +121,9 @@ class DiscoveredInverter:
         remark = self.remark.lower()
         return "master" in remark or "host" in remark
 
-    def to_settings_scope(self) -> ByteWattScope:
+    def to_settings_scope(self) -> "HomeEnergyScope":
         """Map the discovered record to a future settings target."""
-        return ByteWattScope(
+        return HomeEnergyScope(
             system_id=self.system_id,
             sys_sn=self.sys_sn,
             station_id=self.station_id,
@@ -134,3 +134,7 @@ class DiscoveredInverter:
             settings_system_id=self.system_id,
             settings_sys_sn=self.sys_sn,
         )
+
+
+# Compatibility aliases for existing imports and tests.
+ByteWattScope = HomeEnergyScope

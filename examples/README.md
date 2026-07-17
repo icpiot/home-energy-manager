@@ -2,12 +2,12 @@
 
 This folder contains two UI artifacts linked to the current branch work:
 
-- `lovelace/bytewatt_policy_cards.yaml`
+- `lovelace/home_energy_manager_policy_cards.yaml`
   Immediate-use Lovelace YAML using built-in cards.
-- `lovelace/bytewatt_report_card.yaml`
+- `lovelace/home_energy_manager_report_card.yaml`
   Minimal view config for the custom reporting card.
 - `www/home-energy-manager-policy-card.js`
-  A custom card scaffold that mirrors the Byte-Watt mobile app layout more
+  A custom card scaffold that mirrors the Home Energy Manager app layout more
   closely while keeping unsupported controls visibly marked as not enabled.
 - `www/home-energy-manager-report-card.js`
   A thin loader that imports the current reporting build.
@@ -43,7 +43,7 @@ closer replica of the app screen without pretending the missing controls work.
 
 ## Recommended Setup
 
-For settings changes, do not use the Byte-Watt web portal's `All` selection.
+For settings changes, do not use the portal's `All` selection.
 In parallel-battery systems that path can overwrite shared strategy data in
 unpredictable ways.
 
@@ -117,8 +117,8 @@ aspect_ratio: 180%
 ```
 
 If you are using the repo-managed HA pull script from `scripts/ha_git_pull.sh`,
-it should also deploy `custom_components/bytewatt` at the same time so the
-card and backend stay aligned.
+it should also deploy `custom_components/home_energy_manager` at the same time
+so the card and backend stay aligned.
 
 ## Resource Counter
 
@@ -160,9 +160,9 @@ Current build stamp in this repo:
 
 The examples now default to the current entity set used in this branch:
 
-- prefix: `house_bytewatt_battery_system`
-- submit button: `button.house_bytewatt_battery_system_submit_settings`
-- discard button: `button.house_bytewatt_battery_system_discard_pending_settings`
+- prefix: `house_home_energy_manager_battery_system`
+- submit button: `button.house_home_energy_manager_battery_system_submit_settings`
+- discard button: `button.house_home_energy_manager_battery_system_discard_pending_settings`
 
 The custom card will use those entities automatically if you do not override
 them.

@@ -1,11 +1,16 @@
 """Tests for the vendor-neutral pricing history helpers."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 
-from custom_components.home_energy_manager.pricing import PriceHistory, PriceRecord
+from custom_components.home_energy_manager.pricing import (
+    PriceHistory,
+    PriceRecord,
+    PricingRule,
+    PricingSchedule,
+)
 
 
 def test_price_record_round_trip_preserves_fields():
@@ -135,3 +140,64 @@ def test_price_record_rejects_bad_time_window():
             starts_at=datetime(2026, 7, 14, 9, 0, tzinfo=timezone.utc),
             ends_at=datetime(2026, 7, 14, 8, 0, tzinfo=timezone.utc),
         )
+
+
+def test_pricing_rule_round_trip_preserves_schedule_fields():
+    rule = PricingRule(
+        rule_id="rule-1",
+        effective_date=date(2026, 7, 1),
+        effective_end_date=date(2026, 12, 31),
+        pricing_type="fixed",
+        start_time="13:00",
+        end_time="15:00",
+        provider="Amber",
+        label="Peak afternoon",
+        import_rate=28.5,
+        export_rate=6.25,
+        supply_charge=1.2,
+        controlled_load_1=17.0,
+        controlled_load_2=11.0,
+        additional_charge=0.5,
+        holiday_only=True,
+        notes="Public holiday override",
+        days_of_week=("mon", "tue"),
+        metadata={"region": "NSW"},
+    )
+
+    restored = PricingRule.from_dict(rule.to_dict())
+
+    assert restored == rule
+
+
+def test_pricing_schedule_prefers_holiday_override():
+    schedule = PricingSchedule(
+        rules=[
+            PricingRule(
+                rule_id="base",
+                effective_date=date(2026, 7, 1),
+                pricing_type="fixed",
+                start_time="00:00",
+                end_time="23:59",
+                provider="Retailer",
+                label="Base tariff",
+                import_rate=30.0,
+            ),
+            PricingRule(
+                rule_id="holiday",
+                effective_date=date(2026, 7, 16),
+                pricing_type="fixed",
+                start_time="00:00",
+                end_time="23:59",
+                provider="Retailer",
+                label="Holiday tariff",
+                import_rate=18.0,
+                holiday_only=True,
+            ),
+        ],
+        holiday_dates=[date(2026, 7, 16)],
+    )
+
+    active = schedule.active_rule(datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc))
+
+    assert active is not None
+    assert active.rule_id == "holiday"

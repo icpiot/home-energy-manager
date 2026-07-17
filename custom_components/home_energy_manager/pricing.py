@@ -14,11 +14,13 @@ exist so future pricing storage and card views can reuse the same shape.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime, time
+from uuid import uuid4
 from typing import Any
 
 _FLOW_VALUES = {"import", "export", "net"}
 _MODE_VALUES = {"fixed", "tou", "dynamic", "market"}
+_PRICING_TYPE_VALUES = {"fixed", "dynamic"}
 
 
 def _clean_text(value: Any, default: str = "") -> str:
@@ -42,10 +44,76 @@ def _parse_datetime(value: Any) -> datetime | None:
         return None
 
 
+def _parse_date(value: Any) -> date | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    text = _clean_text(value)
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def _parse_time(value: Any, default: str = "00:00") -> str:
+    text = _clean_text(value, default)
+    if not text:
+        return default
+    if len(text) == 4 and text.isdigit():
+        text = f"{text[:2]}:{text[2:]}"
+    try:
+        parsed = time.fromisoformat(text[:5])
+    except ValueError as err:
+        raise ValueError(f"Invalid time value: {value!r}") from err
+    return parsed.strftime("%H:%M")
+
+
+def _parse_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"Invalid numeric value: {value!r}") from err
+
+
+def _parse_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = _clean_text(value).lower()
+    return text in {"1", "true", "yes", "on"}
+
+
 def _jsonable_datetime(value: datetime | None) -> str | None:
     if value is None:
         return None
     return value.isoformat()
+
+
+def _jsonable_date(value: date | None) -> str | None:
+    if value is None:
+        return None
+    return value.isoformat()
+
+
+def _clean_string_list(values: Any) -> tuple[str, ...]:
+    if not values:
+        return ()
+    if isinstance(values, str):
+        items = values.split(",")
+    else:
+        items = list(values)
+    cleaned = []
+    for item in items:
+        text = _clean_text(item).lower()
+        if text:
+            cleaned.append(text)
+    return tuple(dict.fromkeys(cleaned))
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,3 +248,262 @@ class PriceHistory:
             if isinstance(entry, dict)
         ]
         return cls(entries=records)
+
+
+@dataclass(frozen=True, slots=True)
+class PricingRule:
+    """Date-effective pricing rule for fixed or dynamic tariffs."""
+
+    rule_id: str = ""
+    effective_date: date | None = None
+    pricing_type: str = "fixed"
+    start_time: str = "00:00"
+    end_time: str = ""
+    effective_end_date: date | None = None
+    effective_end_time: str = ""
+    provider: str = ""
+    label: str = ""
+    import_rate: float | None = None
+    export_rate: float | None = None
+    supply_charge: float | None = None
+    controlled_load_1: float | None = None
+    controlled_load_2: float | None = None
+    additional_charge: float | None = None
+    holiday_only: bool = False
+    notes: str = ""
+    priority: int = 0
+    days_of_week: tuple[str, ...] = field(default_factory=tuple)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        pricing_type = _clean_text(self.pricing_type).lower()
+        if pricing_type not in _PRICING_TYPE_VALUES:
+            raise ValueError(f"Unsupported pricing type: {self.pricing_type!r}")
+        effective_date = _parse_date(self.effective_date)
+        if effective_date is None:
+            raise ValueError("effective_date is required")
+        effective_end_date = _parse_date(self.effective_end_date)
+        start_time = _parse_time(self.start_time)
+        end_time = _parse_time(self.end_time, "") if self.end_time else ""
+        effective_end_time = _parse_time(self.effective_end_time, "") if self.effective_end_time else ""
+        if effective_end_date is not None and effective_end_date < effective_date:
+            raise ValueError("effective_end_date must be after effective_date")
+        if effective_end_date is not None and effective_end_date == effective_date:
+            start_dt = datetime.combine(effective_date, time.fromisoformat(start_time))
+            if effective_end_time:
+                end_dt = datetime.combine(effective_end_date, time.fromisoformat(effective_end_time))
+                if end_dt <= start_dt:
+                    raise ValueError("effective_end_time must be after start_time")
+            elif end_time:
+                end_dt = datetime.combine(effective_end_date, time.fromisoformat(end_time))
+                if end_dt <= start_dt:
+                    raise ValueError("end_time must be after start_time")
+        object.__setattr__(self, "rule_id", _clean_text(self.rule_id) or uuid4().hex)
+        object.__setattr__(self, "effective_date", effective_date)
+        object.__setattr__(self, "pricing_type", pricing_type)
+        object.__setattr__(self, "start_time", start_time)
+        object.__setattr__(self, "end_time", end_time)
+        object.__setattr__(self, "effective_end_date", effective_end_date)
+        object.__setattr__(self, "effective_end_time", effective_end_time)
+        object.__setattr__(self, "provider", _clean_text(self.provider))
+        object.__setattr__(self, "label", _clean_text(self.label))
+        object.__setattr__(self, "import_rate", _parse_float(self.import_rate))
+        object.__setattr__(self, "export_rate", _parse_float(self.export_rate))
+        object.__setattr__(self, "supply_charge", _parse_float(self.supply_charge))
+        object.__setattr__(self, "controlled_load_1", _parse_float(self.controlled_load_1))
+        object.__setattr__(self, "controlled_load_2", _parse_float(self.controlled_load_2))
+        object.__setattr__(self, "additional_charge", _parse_float(self.additional_charge))
+        object.__setattr__(self, "holiday_only", _parse_bool(self.holiday_only))
+        object.__setattr__(self, "notes", _clean_text(self.notes))
+        object.__setattr__(self, "priority", int(self.priority or 0))
+        object.__setattr__(self, "days_of_week", _clean_string_list(self.days_of_week))
+        object.__setattr__(self, "metadata", dict(self.metadata or {}))
+
+    @property
+    def effective_key(self) -> str:
+        return self.effective_date.isoformat() if self.effective_date else "unknown"
+
+    def contains(self, at: datetime, *, holiday_dates: set[str] | None = None) -> bool:
+        """Return True when the rule applies to the supplied datetime."""
+        if self.effective_date is None:
+            return False
+        tzinfo = at.tzinfo
+        current_date = at.date()
+        if current_date < self.effective_date:
+            return False
+        if self.effective_end_date is not None and current_date > self.effective_end_date:
+            return False
+        if self.holiday_only and current_date.isoformat() not in (holiday_dates or set()):
+            return False
+        if self.days_of_week:
+            weekday = at.strftime("%a").lower()
+            if weekday not in self.days_of_week and weekday[:3] not in self.days_of_week:
+                return False
+        start_dt = datetime.combine(self.effective_date, time.fromisoformat(self.start_time))
+        if tzinfo is not None:
+            start_dt = start_dt.replace(tzinfo=tzinfo)
+        if at < start_dt:
+            return False
+        if self.effective_end_date is not None and self.effective_end_time:
+            end_dt = datetime.combine(self.effective_end_date, time.fromisoformat(self.effective_end_time))
+            if tzinfo is not None:
+                end_dt = end_dt.replace(tzinfo=tzinfo)
+            return at < end_dt
+        if self.effective_end_date is not None and self.end_time:
+            end_dt = datetime.combine(self.effective_end_date, time.fromisoformat(self.end_time))
+            if tzinfo is not None:
+                end_dt = end_dt.replace(tzinfo=tzinfo)
+            return at < end_dt
+        if self.end_time:
+            end_dt = datetime.combine(self.effective_date, time.fromisoformat(self.end_time))
+            if tzinfo is not None:
+                end_dt = end_dt.replace(tzinfo=tzinfo)
+            if end_dt > start_dt and at >= end_dt:
+                return False
+        return True
+
+    def sort_key(self) -> tuple[Any, ...]:
+        return (
+            self.effective_date or date.min,
+            self.start_time,
+            self.pricing_type,
+            self.priority,
+            self.rule_id,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "rule_id": self.rule_id,
+            "effective_date": _jsonable_date(self.effective_date),
+            "effective_end_date": _jsonable_date(self.effective_end_date),
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "effective_end_time": self.effective_end_time,
+            "type": self.pricing_type,
+            "provider": self.provider,
+            "label": self.label,
+            "import_rate": self.import_rate,
+            "export_rate": self.export_rate,
+            "supply_charge": self.supply_charge,
+            "controlled_load_1": self.controlled_load_1,
+            "controlled_load_2": self.controlled_load_2,
+            "additional_charge": self.additional_charge,
+            "holiday_only": self.holiday_only,
+            "notes": self.notes,
+            "priority": self.priority,
+            "days_of_week": list(self.days_of_week),
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "PricingRule":
+        return cls(
+            rule_id=_clean_text(payload.get("rule_id")),
+            effective_date=_parse_date(payload.get("effective_date")),
+            effective_end_date=_parse_date(payload.get("effective_end_date")),
+            start_time=_clean_text(payload.get("start_time"), "00:00"),
+            end_time=_clean_text(payload.get("end_time")),
+            effective_end_time=_clean_text(payload.get("effective_end_time")),
+            pricing_type=_clean_text(payload.get("type") or payload.get("pricing_type"), "fixed"),
+            provider=_clean_text(payload.get("provider")),
+            label=_clean_text(payload.get("label")),
+            import_rate=payload.get("import_rate"),
+            export_rate=payload.get("export_rate"),
+            supply_charge=payload.get("supply_charge"),
+            controlled_load_1=payload.get("controlled_load_1"),
+            controlled_load_2=payload.get("controlled_load_2"),
+            additional_charge=payload.get("additional_charge"),
+            holiday_only=payload.get("holiday_only"),
+            notes=_clean_text(payload.get("notes")),
+            priority=int(payload.get("priority") or 0),
+            days_of_week=payload.get("days_of_week") or (),
+            metadata=dict(payload.get("metadata") or {}),
+        )
+
+
+@dataclass(slots=True)
+class PricingSchedule:
+    """Ordered collection of date-based pricing rules and holidays."""
+
+    rules: list[PricingRule] = field(default_factory=list)
+    holiday_dates: list[date] = field(default_factory=list)
+    holiday_source: str = ""
+    region: str = ""
+    updated_at: datetime | None = None
+
+    def add_rule(self, rule: PricingRule) -> None:
+        self.rules = [existing for existing in self.rules if existing.rule_id != rule.rule_id]
+        self.rules.append(rule)
+        self.rules.sort(key=lambda item: item.sort_key())
+
+    def remove_rule(self, rule_id: str) -> bool:
+        before = len(self.rules)
+        self.rules = [rule for rule in self.rules if rule.rule_id != _clean_text(rule_id)]
+        return len(self.rules) != before
+
+    def has_holiday(self, value: date | str | None) -> bool:
+        parsed = _parse_date(value)
+        if parsed is None:
+            return False
+        return parsed.isoformat() in {item.isoformat() for item in self.holiday_dates}
+
+    def active_rules(self, at: datetime | None = None) -> list[PricingRule]:
+        at = at or datetime.now()
+        holiday_dates = {item.isoformat() for item in self.holiday_dates}
+        matches = [rule for rule in self.rules if rule.contains(at, holiday_dates=holiday_dates)]
+        return sorted(matches, key=lambda item: item.sort_key())
+
+    def active_rule(self, at: datetime | None = None) -> PricingRule | None:
+        matches = self.active_rules(at)
+        return matches[-1] if matches else None
+
+    def rules_by_date(self) -> dict[str, dict[str, list[dict[str, Any]]]]:
+        grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
+        for rule in self.rules:
+            date_key = rule.effective_key
+            day_bucket = grouped.setdefault(date_key, {"fixed": [], "dynamic": []})
+            day_bucket.setdefault(rule.pricing_type, []).append(rule.to_dict())
+        return grouped
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "version": 1,
+            "updated_at": _jsonable_datetime(self.updated_at),
+            "holiday_source": self.holiday_source,
+            "region": self.region,
+            "holiday_dates": [item.isoformat() for item in self.holiday_dates],
+            "date_map": self.rules_by_date(),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "PricingSchedule":
+        if not isinstance(payload, dict):
+            return cls()
+        holiday_dates = [
+            parsed
+            for parsed in (_parse_date(value) for value in payload.get("holiday_dates") or [])
+            if parsed is not None
+        ]
+        rules: list[PricingRule] = []
+        date_map = payload.get("date_map")
+        if isinstance(date_map, dict):
+            for _, type_map in sorted(date_map.items()):
+                if not isinstance(type_map, dict):
+                    continue
+                for kind in ("fixed", "dynamic"):
+                    for entry in type_map.get(kind) or []:
+                        if isinstance(entry, dict):
+                            rules.append(PricingRule.from_dict(entry))
+        else:
+            for entry in payload.get("rules") or payload.get("entries") or []:
+                if isinstance(entry, dict):
+                    rules.append(PricingRule.from_dict(entry))
+        schedule = cls(
+            rules=sorted(rules, key=lambda item: item.sort_key()),
+            holiday_dates=holiday_dates,
+            holiday_source=_clean_text(payload.get("holiday_source")),
+            region=_clean_text(payload.get("region")),
+        )
+        updated_at = _parse_datetime(payload.get("updated_at") or payload.get("updated"))
+        schedule.updated_at = updated_at
+        return schedule

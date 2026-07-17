@@ -1,4 +1,4 @@
-"""API client for Neovolt battery systems."""
+"""API client for Home Energy Manager provider connections."""
 import logging
 import asyncio
 import aiohttp
@@ -72,7 +72,7 @@ def _stat_value(stats_data, key):
     """Read a numeric field from a stats response, coercing missing / None /
     empty / non-numeric values to 0 so derived arithmetic never raises.
 
-    The Byte-Watt API has dropped fields without warning historically and
+    The provider API has dropped fields without warning historically and
     returns null for sensors with no data yet (e.g. before midnight on day
     one of install). Defensive coercion to a float lets the arithmetic
     complete; the integration's sensor entities surface the underlying
@@ -90,9 +90,9 @@ def _stat_value(stats_data, key):
 
 
 def _is_success_code(code: Any) -> bool:
-    """Return True when a Byte-Watt endpoint reports a success code.
+    """Return True when an endpoint reports a success code.
 
-    The Byte-Watt web app mixes multiple success conventions across endpoint
+    The web app mixes multiple success conventions across endpoint
     families. Older/home endpoints often report ``"000000"`` while newer
     iterate/settings endpoints return integer ``200``. Treating only ``200``
     as success causes account inventory discovery to silently drop valid
@@ -101,7 +101,7 @@ def _is_success_code(code: Any) -> bool:
     return str(code).strip() in {"0", "200", "000000"}
 
 class NeovoltClient:
-    """API Client for Neovolt battery systems."""
+    """API Client for provider connections."""
     
     def __init__(
         self, 
@@ -123,8 +123,8 @@ class NeovoltClient:
         self.host_sys_sn = host_sys_sn         # sysSn of the Host inverter
     
     async def async_login(self) -> bool:
-        """Login to the Neovolt API using encrypted password."""
-        _LOGGER.debug("Logging in to Neovolt API as %s", self.username)
+        """Login to the provider API using encrypted password."""
+        _LOGGER.debug("Logging in to provider API as %s", self.username)
 
         login_url = f"{self.base_url}/api/usercenter/cloud/user/login"
 
@@ -185,11 +185,11 @@ class NeovoltClient:
                         _LOGGER.error("No token found in login response")
                         return False
 
-                    _LOGGER.debug("Successfully logged in to Neovolt API")
+                    _LOGGER.debug("Successfully logged in to provider API")
                     return True
 
         except (asyncio.TimeoutError, aiohttp.ClientError, ValueError) as error:
-            _LOGGER.error("Error connecting to Neovolt API: %s", error)
+            _LOGGER.error("Error connecting to provider API: %s", error)
             return False
     
     async def async_get_device_list(self, _retry_count: int = 0) -> Optional[Dict[str, Any]]:

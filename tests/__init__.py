@@ -1,1 +1,1 @@
-"""Tests package for ByteWatt integration."""
+"""Tests package for Home Energy Manager integration."""

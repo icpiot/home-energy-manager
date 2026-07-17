@@ -119,7 +119,7 @@ Maintenance:
 - `home_energy_manager.toggle_diagnostics` — verbose API logging on/off
 
 All services accept an optional `entry_id` field. If you have a single
-Byte-Watt account configured you can omit it; with multiple accounts it's
+provider account configured you can omit it; with multiple accounts it's
 required (the call will tell you which entry_ids exist).
 
 ## Example automations
@@ -161,7 +161,7 @@ automation:
 
 ## Configuration options
 
-After install, Settings → Devices & Services → Byte-Watt → Configure:
+After install, Settings → Devices & Services → Home Energy Manager → Configure:
 
 - **Scan interval** (seconds) — minimum 30, default 60. Changes apply
   immediately (the integration reloads on options changes).
@@ -170,7 +170,7 @@ After install, Settings → Devices & Services → Byte-Watt → Configure:
 
 - **A repair issue says "Host inverter not configured"** — you have more than
   one inverter on the account and no Host has been selected. Reconfigure
-  (Settings → Devices & Services → Byte-Watt → ⋮ → Reconfigure) and pick one.
+  (Settings → Devices & Services → Home Energy Manager → ⋮ → Reconfigure) and pick one.
 - **Submit button shows partial failure** — the notification names which
   batch failed (battery or grid feed-in) and the error reason. Your unsaved
   changes are kept; fix and Submit again.
@@ -209,7 +209,7 @@ logger:
 
 ## Support
 
-Open an issue at https://github.com/candreacchio/neovoltBattery_HomeAssistantPlugin/issues.
+Open an issue at https://github.com/icpiot/home-energy-manager/issues.
 
 ## Credits
 

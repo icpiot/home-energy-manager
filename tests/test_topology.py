@@ -19,14 +19,14 @@ def _load_topology_module():
 
 
 topology = _load_topology_module()
-ByteWattScope = topology.ByteWattScope
+HomeEnergyScope = topology.ByteWattScope
 DiscoveredInverter = topology.DiscoveredInverter
 StrategyFieldScope = topology.StrategyFieldScope
 strategy_field_scope = topology.strategy_field_scope
 
 
 def test_aggregate_scope_uses_all_sys_sn():
-    scope = ByteWattScope.aggregate_scope()
+    scope = HomeEnergyScope.aggregate_scope()
     assert scope.aggregate is True
     assert scope.effective_sys_sn == "All"
     assert scope.label == "All systems"

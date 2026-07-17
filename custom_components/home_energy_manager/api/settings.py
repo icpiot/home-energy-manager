@@ -48,7 +48,7 @@ class BatterySettingsAPI:
     def _host_id(self) -> str:
         """Return the configured host systemId, or empty for single-inverter installs.
 
-        The Byte-Watt API tolerates ``id=`` (empty) for accounts with one
+        The provider API tolerates ``id=`` (empty) for accounts with one
         inverter — confirmed against HAR captures. For multi-inverter
         accounts the behaviour is undefined; we warn ONCE per process so
         operators see the signal in the log without spamming it on every
@@ -60,7 +60,7 @@ class BatterySettingsAPI:
                 "Battery settings requests are using an empty host_system_id. "
                 "This is safe for single-inverter accounts but ambiguous for "
                 "multi-inverter accounts — open Settings → Devices & Services "
-                "→ Byte-Watt → Reconfigure to pick the Host inverter explicitly."
+                "→ Home Energy Manager → Reconfigure to pick the Host inverter explicitly."
             )
             self._client._warned_empty_host_id = True
         return host_id

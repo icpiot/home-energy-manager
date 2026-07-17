@@ -50,6 +50,9 @@ SERVICE_STOP_FEEDIN_NOW = "stop_feedin_now"
 SERVICE_FORCE_RECONNECT = "force_reconnect"  # Force client reconnection for troubleshooting
 SERVICE_HEALTH_CHECK = "health_check"  # Check connection health and return diagnostics
 SERVICE_TOGGLE_DIAGNOSTICS = "toggle_diagnostics"  # Toggle diagnostic logging
+SERVICE_PRICING_UPSERT_RULE = "pricing_upsert_rule"
+SERVICE_PRICING_REMOVE_RULE = "pricing_remove_rule"
+SERVICE_PRICING_SET_HOLIDAYS = "pricing_set_holidays"
 
 # Service attributes
 ATTR_END_DISCHARGE = "end_discharge"
@@ -59,6 +62,26 @@ ATTR_END_CHARGE = "end_charge"
 ATTR_MINIMUM_SOC = "minimum_soc"
 ATTR_CHARGE_CAP = "charge_cap"
 ATTR_ENTRY_ID = "entry_id"
+ATTR_RULE_ID = "rule_id"
+ATTR_EFFECTIVE_DATE = "effective_date"
+ATTR_EFFECTIVE_TIME = "effective_time"
+ATTR_EFFECTIVE_END_DATE = "effective_end_date"
+ATTR_EFFECTIVE_END_TIME = "effective_end_time"
+ATTR_PRICING_TYPE = "pricing_type"
+ATTR_PROVIDER = "provider"
+ATTR_LABEL = "label"
+ATTR_IMPORT_RATE = "import_rate"
+ATTR_EXPORT_RATE = "export_rate"
+ATTR_SUPPLY_CHARGE = "supply_charge"
+ATTR_CONTROLLED_LOAD_1 = "controlled_load_1"
+ATTR_CONTROLLED_LOAD_2 = "controlled_load_2"
+ATTR_ADDITIONAL_CHARGE = "additional_charge"
+ATTR_HOLIDAY_ONLY = "holiday_only"
+ATTR_DAYS_OF_WEEK = "days_of_week"
+ATTR_NOTES = "notes"
+ATTR_HOLIDAY_DATES = "holiday_dates"
+ATTR_HOLIDAY_SOURCE = "holiday_source"
+ATTR_REGION = "region"
 
 # Sensor types
 SENSOR_SOC = "soc"
@@ -103,6 +126,7 @@ SENSOR_EXPORT_SPIKE_PRICE = "export_spike_price"
 SENSOR_BATTERY_WEAR_COST = "battery_wear_cost"
 SENSOR_DAILY_COST_ESTIMATE = "daily_cost_estimate"
 SENSOR_DAILY_INCOME_ESTIMATE = "daily_income_estimate"
+SENSOR_PRICING_SCHEDULE = "pricing_schedule"
 
 # Grid stats sensor types
 SENSOR_TOTAL_SOLAR = "total_solar_generation"
@@ -175,3 +199,8 @@ FEEDIN_MAX_POWER_W = 20000
 def signal_pending_changed(entry_id: str) -> str:
     """Dispatcher signal name for pending-store changes on a given entry."""
     return f"bytewatt_pending_{entry_id}"
+
+
+def signal_pricing_changed(entry_id: str) -> str:
+    """Dispatcher signal name for pricing-store changes on a given entry."""
+    return f"bytewatt_pricing_{entry_id}"

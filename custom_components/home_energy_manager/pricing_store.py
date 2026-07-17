@@ -10,12 +10,13 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from .pricing import PriceHistory, PriceRecord
+from .pricing import PriceHistory, PriceRecord, PricingRule, PricingSchedule
 
 _LOGGER = logging.getLogger(__name__)
 
 PRICING_DIR_NAME = "home-energy-manager-pricing"
 PRICING_FILE_NAME = "pricing.json"
+PRICING_SCHEDULE_FILE_NAME = "pricing_schedule.json"
 
 
 def _safe_filename(value: str) -> str:
@@ -134,3 +135,102 @@ class PriceHistoryStore:
                 ],
             }
         )
+
+
+class PricingScheduleStore:
+    """Persist date-based pricing rules and holiday dates."""
+
+    def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
+        self.hass = hass
+        self.entry_id = entry_id
+        self.base_dir = Path(hass.config.path("www", PRICING_DIR_NAME, entry_id))
+        self.schedule_file = self.base_dir / PRICING_SCHEDULE_FILE_NAME
+
+    async def async_schedule(self) -> PricingSchedule:
+        """Return the stored pricing schedule."""
+        try:
+            return await self.hass.async_add_executor_job(self._schedule_sync)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to read pricing schedule for %s: %s", self.entry_id, err)
+            return PricingSchedule()
+
+    async def async_upsert_rule(self, rule: PricingRule) -> PricingSchedule:
+        """Insert or replace a pricing rule and persist the schedule."""
+        try:
+            return await self.hass.async_add_executor_job(self._upsert_rule_sync, rule)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to store pricing rule for %s: %s", self.entry_id, err)
+            return PricingSchedule()
+
+    async def async_remove_rule(self, rule_id: str) -> PricingSchedule:
+        """Remove a pricing rule and persist the schedule."""
+        try:
+            return await self.hass.async_add_executor_job(self._remove_rule_sync, rule_id)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to remove pricing rule for %s: %s", self.entry_id, err)
+            return PricingSchedule()
+
+    async def async_set_holidays(
+        self,
+        *,
+        holiday_dates: list[str],
+        holiday_source: str = "",
+        region: str = "",
+    ) -> PricingSchedule:
+        """Replace the holiday calendar and persist the schedule."""
+        try:
+            return await self.hass.async_add_executor_job(
+                self._set_holidays_sync,
+                holiday_dates,
+                holiday_source,
+                region,
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to update holiday dates for %s: %s", self.entry_id, err)
+            return PricingSchedule()
+
+    def _schedule_sync(self) -> PricingSchedule:
+        payload = load_pricing_history_file(self.schedule_file)
+        return PricingSchedule.from_dict(payload)
+
+    def _save_schedule_sync(self, schedule: PricingSchedule) -> None:
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        payload = schedule.to_dict()
+        payload["version"] = 1
+        payload["updated"] = dt_util.utcnow().isoformat()
+        write_pricing_history_file(self.schedule_file, payload)
+
+    def _upsert_rule_sync(self, rule: PricingRule) -> PricingSchedule:
+        schedule = self._schedule_sync()
+        schedule.add_rule(rule)
+        schedule.updated_at = dt_util.utcnow()
+        self._save_schedule_sync(schedule)
+        return schedule
+
+    def _remove_rule_sync(self, rule_id: str) -> PricingSchedule:
+        schedule = self._schedule_sync()
+        schedule.remove_rule(rule_id)
+        schedule.updated_at = dt_util.utcnow()
+        self._save_schedule_sync(schedule)
+        return schedule
+
+    def _set_holidays_sync(
+        self,
+        holiday_dates: list[str],
+        holiday_source: str,
+        region: str,
+    ) -> PricingSchedule:
+        schedule = self._schedule_sync()
+        from .pricing import _parse_date
+
+        parsed_dates = [
+            parsed
+            for parsed in (_parse_date(value) for value in holiday_dates)
+            if parsed is not None
+        ]
+        schedule.holiday_dates = parsed_dates
+        schedule.holiday_source = str(holiday_source or "").strip()
+        schedule.region = str(region or "").strip()
+        schedule.updated_at = dt_util.utcnow()
+        self._save_schedule_sync(schedule)
+        return schedule

@@ -21,10 +21,13 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
 from .bytewatt_client import ByteWattClient
 from .coordinator import ByteWattDataUpdateCoordinator
+from .pricing import PricingRule
+from .pricing_store import PricingScheduleStore
 from .reporting import ByteWattReportHistory, build_reporting_payload
 from .settings_manager import SettingsManager, SettingsValidationError
 from .topology import DiscoveredInverter
@@ -74,6 +77,9 @@ from .const import (
     SERVICE_SET_GRID_FEEDIN_ENABLED,
     SERVICE_SET_GRID_FEEDIN_CUTOFF_SOC,
     SERVICE_UPDATE_GRID_FEEDIN_SLOT,
+    SERVICE_PRICING_UPSERT_RULE,
+    SERVICE_PRICING_REMOVE_RULE,
+    SERVICE_PRICING_SET_HOLIDAYS,
     ATTR_FEEDIN_ENABLED,
     ATTR_FEEDIN_CUTOFF_SOC,
     ATTR_FEEDIN_SLOT,
@@ -81,6 +87,27 @@ from .const import (
     ATTR_FEEDIN_END,
     ATTR_FEEDIN_POWER,
     ATTR_ENTRY_ID,
+    ATTR_RULE_ID,
+    ATTR_EFFECTIVE_DATE,
+    ATTR_EFFECTIVE_TIME,
+    ATTR_EFFECTIVE_END_DATE,
+    ATTR_EFFECTIVE_END_TIME,
+    ATTR_PRICING_TYPE,
+    ATTR_PROVIDER,
+    ATTR_LABEL,
+    ATTR_IMPORT_RATE,
+    ATTR_EXPORT_RATE,
+    ATTR_SUPPLY_CHARGE,
+    ATTR_CONTROLLED_LOAD_1,
+    ATTR_CONTROLLED_LOAD_2,
+    ATTR_ADDITIONAL_CHARGE,
+    ATTR_HOLIDAY_ONLY,
+    ATTR_DAYS_OF_WEEK,
+    ATTR_NOTES,
+    ATTR_HOLIDAY_DATES,
+    ATTR_HOLIDAY_SOURCE,
+    ATTR_REGION,
+    signal_pricing_changed,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
     CONF_HISTORY_BACKFILL_YEARS,
@@ -97,7 +124,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=050"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=051"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -122,7 +149,7 @@ PANEL_CUSTOM_CONFIG = {
     }
 }
 PANEL_PROVIDER_LABELS = {
-    PROVIDER_BYTEWATT: "ByteWatt",
+    PROVIDER_BYTEWATT: "Home Energy Manager",
 }
 
 # Services are domain-level; registered once via hass.services.has_service() guard.
@@ -151,6 +178,7 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
         frontend_url_path=PANEL_FRONTEND_URL_PATH,
         config={
             **PANEL_CONFIG,
+            "entry_id": entry.entry_id,
             "provider": PANEL_PROVIDER_LABELS.get(
                 entry.data.get(CONF_PROVIDER),
                 str(entry.data.get(CONF_PROVIDER, "Configured provider")).title(),
@@ -208,6 +236,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         host_sys_sn=host_sys_sn,
     )
     manager = SettingsManager(hass, client.api_client, entry.entry_id)
+    pricing_store = PricingScheduleStore(hass, entry.entry_id)
     coordinator = ByteWattDataUpdateCoordinator(
         hass,
         client=client,
@@ -220,6 +249,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "client": client,
         "coordinator": coordinator,
         "manager": manager,
+        "pricing_store": pricing_store,
     }
 
     inverters: list[DiscoveredInverter] = []
@@ -692,6 +722,20 @@ def _manager_for(hass: HomeAssistant, call: ServiceCall) -> SettingsManager:
     return hass.data[DOMAIN][entry_id]["manager"]
 
 
+def _pricing_store_for(hass: HomeAssistant, call: ServiceCall) -> tuple[PricingScheduleStore, str]:
+    entry_id = _resolve_entry_id(hass, call)
+    entry_data = hass.data[DOMAIN][entry_id]
+    store = entry_data.get("pricing_store")
+    if store is None:
+        store = PricingScheduleStore(hass, entry_id)
+        entry_data["pricing_store"] = store
+    return store, entry_id
+
+
+def _notify_pricing_changed(hass: HomeAssistant, entry_id: str) -> None:
+    async_dispatcher_send(hass, signal_pricing_changed(entry_id))
+
+
 async def _submit_battery_service(
     hass: HomeAssistant, call: ServiceCall, **fields: Any
 ) -> bool:
@@ -930,6 +974,54 @@ def _register_services(hass: HomeAssistant) -> None:
                 force=force,
             )
 
+    async def handle_pricing_upsert_rule(call: ServiceCall) -> None:
+        store, entry_id = _pricing_store_for(hass, call)
+        rule = PricingRule.from_dict({
+            "rule_id": call.data.get(ATTR_RULE_ID),
+            "effective_date": call.data.get(ATTR_EFFECTIVE_DATE),
+            "effective_end_date": call.data.get(ATTR_EFFECTIVE_END_DATE),
+            "start_time": call.data.get(ATTR_EFFECTIVE_TIME) or "00:00",
+            "end_time": call.data.get(ATTR_EFFECTIVE_END_TIME) or "",
+            "pricing_type": call.data.get(ATTR_PRICING_TYPE) or "fixed",
+            "provider": call.data.get(ATTR_PROVIDER) or "",
+            "label": call.data.get(ATTR_LABEL) or "",
+            "import_rate": call.data.get(ATTR_IMPORT_RATE),
+            "export_rate": call.data.get(ATTR_EXPORT_RATE),
+            "supply_charge": call.data.get(ATTR_SUPPLY_CHARGE),
+            "controlled_load_1": call.data.get(ATTR_CONTROLLED_LOAD_1),
+            "controlled_load_2": call.data.get(ATTR_CONTROLLED_LOAD_2),
+            "additional_charge": call.data.get(ATTR_ADDITIONAL_CHARGE),
+            "holiday_only": call.data.get(ATTR_HOLIDAY_ONLY, False),
+            "days_of_week": call.data.get(ATTR_DAYS_OF_WEEK) or [],
+            "notes": call.data.get(ATTR_NOTES) or "",
+            "metadata": {
+                "region": call.data.get(ATTR_REGION) or "",
+                "holiday_source": call.data.get(ATTR_HOLIDAY_SOURCE) or "",
+            },
+        })
+        await store.async_upsert_rule(rule)
+        _notify_pricing_changed(hass, entry_id)
+
+    async def handle_pricing_remove_rule(call: ServiceCall) -> None:
+        store, entry_id = _pricing_store_for(hass, call)
+        rule_id = str(call.data.get(ATTR_RULE_ID) or "").strip()
+        if not rule_id:
+            raise HomeAssistantError("rule_id is required")
+        await store.async_remove_rule(rule_id)
+        _notify_pricing_changed(hass, entry_id)
+
+    async def handle_pricing_set_holidays(call: ServiceCall) -> None:
+        store, entry_id = _pricing_store_for(hass, call)
+        holiday_dates = call.data.get(ATTR_HOLIDAY_DATES) or []
+        if isinstance(holiday_dates, str):
+            holiday_dates = [item.strip() for item in holiday_dates.split(",") if item.strip()]
+        await store.async_set_holidays(
+            holiday_dates=list(holiday_dates),
+            holiday_source=str(call.data.get(ATTR_HOLIDAY_SOURCE) or ""),
+            region=str(call.data.get(ATTR_REGION) or ""),
+        )
+        _notify_pricing_changed(hass, entry_id)
+
     # ---------- Schemas ----------
 
     _time_schema = vol.All(cv.string)
@@ -941,6 +1033,34 @@ def _register_services(hass: HomeAssistant) -> None:
         vol.Required("start_date"): cv.string,
         vol.Required("end_date"): cv.string,
         vol.Optional("force", default=False): cv.boolean,
+        **_entry_id_opt,
+    })
+    _pricing_rule_schema = vol.Schema({
+        vol.Optional(ATTR_RULE_ID): cv.string,
+        vol.Required(ATTR_EFFECTIVE_DATE): cv.string,
+        vol.Optional(ATTR_EFFECTIVE_TIME, default="00:00"): cv.string,
+        vol.Optional(ATTR_EFFECTIVE_END_DATE): cv.string,
+        vol.Optional(ATTR_EFFECTIVE_END_TIME): cv.string,
+        vol.Optional(ATTR_PRICING_TYPE, default="fixed"): vol.In(["fixed", "dynamic"]),
+        vol.Optional(ATTR_PROVIDER, default=""): cv.string,
+        vol.Optional(ATTR_LABEL, default=""): cv.string,
+        vol.Optional(ATTR_IMPORT_RATE): vol.Coerce(float),
+        vol.Optional(ATTR_EXPORT_RATE): vol.Coerce(float),
+        vol.Optional(ATTR_SUPPLY_CHARGE): vol.Coerce(float),
+        vol.Optional(ATTR_CONTROLLED_LOAD_1): vol.Coerce(float),
+        vol.Optional(ATTR_CONTROLLED_LOAD_2): vol.Coerce(float),
+        vol.Optional(ATTR_ADDITIONAL_CHARGE): vol.Coerce(float),
+        vol.Optional(ATTR_HOLIDAY_ONLY, default=False): cv.boolean,
+        vol.Optional(ATTR_DAYS_OF_WEEK, default=[]): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(ATTR_NOTES, default=""): cv.string,
+        vol.Optional(ATTR_REGION, default=""): cv.string,
+        vol.Optional(ATTR_HOLIDAY_SOURCE, default=""): cv.string,
+        **_entry_id_opt,
+    })
+    _pricing_holiday_schema = vol.Schema({
+        vol.Required(ATTR_HOLIDAY_DATES): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(ATTR_HOLIDAY_SOURCE, default=""): cv.string,
+        vol.Optional(ATTR_REGION, default=""): cv.string,
         **_entry_id_opt,
     })
 
@@ -1023,6 +1143,18 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_TOGGLE_DIAGNOSTICS, handle_toggle_diagnostics,
         schema=vol.Schema({vol.Optional("enable"): cv.boolean, **_entry_id_opt}),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_PRICING_UPSERT_RULE, handle_pricing_upsert_rule,
+        schema=_pricing_rule_schema,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_PRICING_REMOVE_RULE, handle_pricing_remove_rule,
+        schema=vol.Schema({vol.Required(ATTR_RULE_ID): cv.string, **_entry_id_opt}),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_PRICING_SET_HOLIDAYS, handle_pricing_set_holidays,
+        schema=_pricing_holiday_schema,
     )
     hass.services.async_register(
         DOMAIN, "ensure_report_history", handle_ensure_report_history,

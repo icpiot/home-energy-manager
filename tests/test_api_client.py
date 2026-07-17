@@ -1,4 +1,4 @@
-"""Tests for low-level neovolt_client helpers and the encryption fail-loud contract.
+"""Tests for low-level API client helpers and the encryption fail-loud contract.
 
 Load the relevant modules directly via importlib so the test suite doesn't
 need the full integration package to be importable (which would pull in
@@ -11,29 +11,29 @@ import os
 
 import pytest
 
-# neovolt_auth needs pycryptodome at module load; neovolt_client also imports it.
+# auth helper needs pycryptodome at module load; the API client also imports it.
 pytest.importorskip("Crypto.Cipher")
 pytest.importorskip("aiohttp")
 
 
-# neovolt_client imports homeassistant.helpers.aiohttp_client at module load —
+# the API client imports homeassistant.helpers.aiohttp_client at module load —
 # skip cleanly when HA isn't installed (bare sandbox).
 try:
-    neovolt_auth = importlib.import_module(
+    api_auth = importlib.import_module(
         "custom_components.home_energy_manager.api.neovolt_auth"
     )
-    neovolt_client = importlib.import_module(
+    api_client = importlib.import_module(
         "custom_components.home_energy_manager.api.neovolt_client"
     )
 except ModuleNotFoundError as exc:
     pytest.skip(f"Module not installed in this environment: {exc.name}", allow_module_level=True)
 
-EncryptionError = neovolt_auth.EncryptionError
-encrypt_password = neovolt_auth.encrypt_password
-ByteWattAPIError = neovolt_client.ByteWattAPIError
-_stat_value = neovolt_client._stat_value
-_decode_json_object = neovolt_client._decode_json_object
-NeovoltClient = neovolt_client.NeovoltClient
+EncryptionError = api_auth.EncryptionError
+encrypt_password = api_auth.encrypt_password
+ApiError = api_client.ByteWattAPIError
+_stat_value = api_client._stat_value
+_decode_json_object = api_client._decode_json_object
+ApiClient = api_client.NeovoltClient
 
 
 def test_stat_value_returns_value_when_present():
@@ -84,9 +84,9 @@ def test_encryption_error_is_runtime_error_subclass():
     assert issubclass(EncryptionError, RuntimeError)
 
 
-def test_bytewatt_api_error_is_exception_subclass():
-    """The coordinator catches Exception broadly — ByteWattAPIError must match."""
-    assert issubclass(ByteWattAPIError, Exception)
+def test_api_error_is_exception_subclass():
+    """The coordinator catches Exception broadly — the API error must match."""
+    assert issubclass(ApiError, Exception)
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +170,7 @@ class _FakeSession:
 
 @pytest.mark.asyncio
 async def test_async_get_logs_in_before_request_when_token_missing(monkeypatch):
-    client = NeovoltClient.__new__(NeovoltClient)
+    client = ApiClient.__new__(ApiClient)
     client.base_url = "https://monitor.byte-watt.com"
     client.session = _FakeSession(_FakeGetResponse(json_value={"code": 200, "data": []}))
     client.token = None
