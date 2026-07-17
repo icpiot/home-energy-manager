@@ -2,14 +2,16 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "051";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "052";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
 const HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
 const HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY = "home-energy-manager.panel.pricing.draft";
+const HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
+const HOME_ENERGY_MANAGER_SYNC_POLL_MS = 5000;
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
   { value: "midnight", label: "Midnight" },
   { value: "sunrise", label: "Sunrise" },
@@ -39,6 +41,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._page = this._loadPage();
     this._renderHoldUntil = 0;
     this._deferredRenderTimer = null;
+    this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
     this._boundLocationChange = this._handleLocationChange.bind(this);
   }
@@ -84,6 +87,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   disconnectedCallback() {
     window.removeEventListener("hashchange", this._boundLocationChange);
     window.removeEventListener("popstate", this._boundLocationChange);
+    this._clearSyncLogTimer();
   }
 
   _shouldHoldRender() {
@@ -238,6 +242,60 @@ class HomeEnergyManagerPanel extends HTMLElement {
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
+  }
+
+  _syncLogPath() {
+    return HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL;
+  }
+
+  _clearSyncLogTimer() {
+    if (this._syncLogTimer) {
+      window.clearInterval(this._syncLogTimer);
+      this._syncLogTimer = null;
+    }
+  }
+
+  async _loadSyncLog() {
+    if (!this.shadowRoot) {
+      return;
+    }
+
+    const logEl = this.shadowRoot.querySelector("[data-sync-log]");
+    const metaEl = this.shadowRoot.querySelector("[data-sync-log-meta]");
+    if (!logEl || !metaEl) {
+      return;
+    }
+
+    metaEl.textContent = "Refreshing...";
+
+    try {
+      const response = await fetch(`${this._syncLogPath()}?_=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const text = await response.text();
+      logEl.textContent = text || "(log is empty)";
+      metaEl.textContent = `Updated ${new Date().toLocaleString()}`;
+    } catch (error) {
+      logEl.textContent = `Unable to load sync log: ${error.message}`;
+      metaEl.textContent = `Updated ${new Date().toLocaleString()}`;
+    }
+  }
+
+  _startSyncLogPolling() {
+    if (this._page !== "settings") {
+      this._clearSyncLogTimer();
+      return;
+    }
+
+    if (this._syncLogTimer) {
+      return;
+    }
+
+    this._syncLogTimer = window.setInterval(() => {
+      this._loadSyncLog();
+    }, HOME_ENERGY_MANAGER_SYNC_POLL_MS);
   }
 
   _loadPricingDraft() {
@@ -1478,6 +1536,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
             `).join("")}
           </div>
         </article>
+        <article class="panel-card panel-card--wide sync-status">
+          <div class="panel-card__header">
+            <h2>Sync Status</h2>
+            <span data-sync-log-meta>Latest pull output</span>
+          </div>
+          <p>
+            This shows the latest result from the Home Energy Manager pull script. If a pull
+            fails, the reason appears here without opening the log file directly.
+          </p>
+          <div class="sync-status__actions">
+            <button type="button" class="panel-nav__item" data-sync-refresh>Refresh sync status</button>
+          </div>
+          <pre class="sync-status__log" data-sync-log>Loading latest sync status...</pre>
+        </article>
       </section>
 
       <section class="settings-metrics" aria-label="Panel metrics">
@@ -1809,6 +1881,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
       };
     });
 
+    this.shadowRoot.querySelectorAll('[data-sync-refresh]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        this._loadSyncLog();
+      };
+    });
+
     if (this._delegatedHandlersBound) {
       return;
     }
@@ -1965,6 +2044,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
         });
         this._holdRenderWindow();
       }
+
+      const syncRefresh = path.find((node) => node?.dataset?.syncRefresh !== undefined);
+      if (syncRefresh) {
+        event.preventDefault();
+        this._loadSyncLog();
+      }
     });
 
     this.shadowRoot.addEventListener("input", (event) => {
@@ -2019,6 +2104,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._queueDeferredRender();
       }
     });
+
+    this._loadSyncLog();
+    this._startSyncLogPolling();
   }
 
   _escapeHtml(value) {

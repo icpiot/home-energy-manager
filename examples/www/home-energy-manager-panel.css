@@ -871,6 +871,32 @@
   width: 100%;
 }
 
+.sync-status {
+  display: grid;
+  gap: 14px;
+}
+
+.sync-status__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sync-status__log {
+  margin: 0;
+  padding: 14px 16px;
+  min-height: 220px;
+  max-height: 460px;
+  overflow: auto;
+  border-radius: 16px;
+  background: rgba(8, 14, 24, 0.9);
+  border: 1px solid var(--hem-panel-border);
+  color: var(--hem-panel-text);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .embedded-fallback {
   display: grid;
   gap: 6px;
