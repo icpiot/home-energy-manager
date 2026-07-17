@@ -2088,18 +2088,18 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this.shadowRoot.addEventListener("mousedown", (event) => {
       if (event.target?.dataset?.sharedSettingsTarget) {
-        this._holdRenderWindow();
+        this._holdRenderWindow(5000);
       }
     }, true);
 
     this.shadowRoot.addEventListener("focusin", (event) => {
       if (event.target?.dataset?.sharedSettingsTarget || event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
-        this._holdRenderWindow();
+        this._holdRenderWindow(event.target?.dataset?.sharedSettingsTarget ? 5000 : 1800);
       }
     });
 
     this.shadowRoot.addEventListener("focusout", (event) => {
-      if (event.target?.dataset?.sharedSettingsTarget || event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
+      if (event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
         this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 250);
         this._queueDeferredRender();
       }
