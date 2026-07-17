@@ -40,6 +40,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._debugEnabled = this._loadDebugEnabled();
     this._page = this._loadPage();
     this._renderHoldUntil = 0;
+    this._batterySelectorHoldUntil = 0;
     this._deferredRenderTimer = null;
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
@@ -54,7 +55,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    if (this._isSharedBatterySelectorActive()) {
+    if (this._isSharedBatterySelectorHeld()) {
       this._holdRenderWindow(5000);
       return;
     }
@@ -101,6 +102,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _holdRenderWindow(duration = HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS) {
     this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + duration);
     this._queueDeferredRender();
+  }
+
+  _holdBatterySelectorWindow(duration = 8000) {
+    this._batterySelectorHoldUntil = Math.max(this._batterySelectorHoldUntil, Date.now() + duration);
+    this._holdRenderWindow(duration);
   }
 
   _queueDeferredRender() {
@@ -1748,7 +1754,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return this._hass?.states?.[this._settingsTargetId()] || null;
   }
 
-  _isSharedBatterySelectorActive() {
+  _isSharedBatterySelectorHeld() {
+    if (Date.now() < this._batterySelectorHoldUntil) {
+      return true;
+    }
+
     if (!this.shadowRoot) {
       return false;
     }
@@ -2092,11 +2102,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
       }
 
       if (target?.dataset?.sharedSettingsTarget) {
-        this._holdRenderWindow();
+        this._holdBatterySelectorWindow();
         if (!this._hass) {
           return;
         }
         this._saveBatterySelection(target.value);
+        this._holdBatterySelectorWindow(10000);
         await this._hass.callService("select", "select_option", {
           entity_id: target.dataset.sharedSettingsTarget,
           option: target.value,
@@ -2106,13 +2117,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this.shadowRoot.addEventListener("mousedown", (event) => {
       if (event.target?.dataset?.sharedSettingsTarget) {
-        this._holdRenderWindow(5000);
+        this._holdBatterySelectorWindow();
       }
     }, true);
 
     this.shadowRoot.addEventListener("focusin", (event) => {
       if (event.target?.dataset?.sharedSettingsTarget || event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
-        this._holdRenderWindow(event.target?.dataset?.sharedSettingsTarget ? 5000 : 1800);
+        if (event.target?.dataset?.sharedSettingsTarget) {
+          this._holdBatterySelectorWindow();
+          return;
+        }
+        this._holdRenderWindow(1800);
       }
     });
 
