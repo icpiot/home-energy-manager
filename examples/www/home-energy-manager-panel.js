@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "054";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "055";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -40,6 +40,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._debugEnabled = this._loadDebugEnabled();
     this._page = this._loadPage();
     this._renderHoldUntil = 0;
+    this._batterySelectorHoldUntil = 0;
     this._deferredRenderTimer = null;
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
@@ -54,6 +55,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    if (this._isSharedBatterySelectorHeld()) {
+      this._holdRenderWindow(5000);
+      return;
+    }
     if (this._shouldHoldRender()) {
       this._queueDeferredRender();
       return;
@@ -97,6 +102,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _holdRenderWindow(duration = HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS) {
     this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + duration);
     this._queueDeferredRender();
+  }
+
+  _holdBatterySelectorWindow(duration = 8000) {
+    this._batterySelectorHoldUntil = Math.max(this._batterySelectorHoldUntil, Date.now() + duration);
+    this._holdRenderWindow(duration);
   }
 
   _queueDeferredRender() {
@@ -1744,6 +1754,24 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return this._hass?.states?.[this._settingsTargetId()] || null;
   }
 
+  _isSharedBatterySelectorHeld() {
+    if (Date.now() < this._batterySelectorHoldUntil) {
+      return true;
+    }
+
+    if (!this.shadowRoot) {
+      return false;
+    }
+
+    const selector = this.shadowRoot.querySelector("[data-shared-settings-target]");
+    if (!selector) {
+      return false;
+    }
+
+    const activeElement = this.shadowRoot.activeElement || selector.ownerDocument?.activeElement;
+    return activeElement === selector || selector.matches(":focus") || selector.matches(":focus-within");
+  }
+
   _renderSharedBatterySelector() {
     const selector = this._settingsTargetState();
     const options = Array.isArray(selector?.attributes?.options) ? selector.attributes.options : [];
@@ -1757,29 +1785,24 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const hasOptions = options.length > 0;
     return `
       <div class="shared-selector">
-        <div class="shared-selector__label">Battery Selection</div>
-        <div class="shared-selector__options" role="group" aria-label="Battery Selection">
+        <label class="shared-selector__label" for="hem-shared-battery-select">Battery Selection</label>
+        <select
+          id="hem-shared-battery-select"
+          class="shared-selector__control"
+          data-shared-settings-target="${this._settingsTargetId()}"
+          ${hasOptions ? "" : "disabled"}
+        >
           ${
             hasOptions
               ? options
                   .map((option) => {
-                    const selected = option === selectedOption ? "is-active" : "";
-                    return `
-                      <button
-                        type="button"
-                        class="shared-selector__option ${selected}"
-                        data-shared-battery-option="${this._escapeHtml(option)}"
-                        data-shared-settings-target="${this._settingsTargetId()}"
-                        aria-pressed="${option === selectedOption ? "true" : "false"}"
-                      >
-                        ${this._escapeHtml(option)}
-                      </button>
-                    `;
+                    const selected = option === selectedOption ? "selected" : "";
+                    return `<option value="${this._escapeHtml(option)}" ${selected}>${this._escapeHtml(option)}</option>`;
                   })
                   .join("")
-              : '<div class="shared-selector__empty">No batteries available</div>'
+              : '<option value="" selected>No batteries available</option>'
           }
-        </div>
+        </select>
       </div>
     `;
   }
@@ -1899,6 +1922,58 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this._delegatedHandlersBound = true;
 
+    this.shadowRoot.addEventListener("change", async (event) => {
+      const target = event.target;
+      if (target?.dataset?.sharedSettingsTarget) {
+        this._holdBatterySelectorWindow();
+        if (!this._hass) {
+          return;
+        }
+        this._saveBatterySelection(target.value);
+        this._holdBatterySelectorWindow(10000);
+        await this._hass.callService("select", "select_option", {
+          entity_id: target.dataset.sharedSettingsTarget,
+          option: target.value,
+        });
+        return;
+      }
+
+      if (target?.dataset?.debugToggle !== undefined) {
+        this._setDebugEnabled(Boolean(target.checked));
+        return;
+      }
+
+      if (target?.dataset?.pricingField !== undefined || target?.dataset?.pricingHolidayField !== undefined) {
+        this._savePricingDraft(this._syncPricingDraftFromInputs());
+        this._holdRenderWindow(1200);
+        return;
+      }
+
+    });
+
+    this.shadowRoot.addEventListener("mousedown", (event) => {
+      if (event.target?.dataset?.sharedSettingsTarget) {
+        this._holdBatterySelectorWindow();
+      }
+    }, true);
+
+    this.shadowRoot.addEventListener("focusin", (event) => {
+      if (event.target?.dataset?.sharedSettingsTarget || event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
+        if (event.target?.dataset?.sharedSettingsTarget) {
+          this._holdBatterySelectorWindow();
+          return;
+        }
+        this._holdRenderWindow(1800);
+      }
+    });
+
+    this.shadowRoot.addEventListener("focusout", (event) => {
+      if (event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
+        this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 250);
+        this._queueDeferredRender();
+      }
+    });
+
     this.shadowRoot.addEventListener("click", async (event) => {
       const path = event.composedPath?.() || [];
       const themeButton = path.find((node) => node?.dataset?.theme);
@@ -1912,13 +1987,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (pageButton && !pageButton.disabled) {
         event.preventDefault();
         this._setPage(pageButton.dataset.page);
-        return;
-      }
-
-      const batteryButton = path.find((node) => node?.dataset?.sharedBatteryOption !== undefined);
-      if (batteryButton) {
-        event.preventDefault();
-        await this._selectSharedBatteryOption(batteryButton.dataset.sharedBatteryOption);
         return;
       }
 
@@ -2072,21 +2140,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       }
     });
 
-    this.shadowRoot.addEventListener("change", async (event) => {
-      const target = event.target;
-      if (target?.dataset?.debugToggle !== undefined) {
-        this._setDebugEnabled(Boolean(target.checked));
-        return;
-      }
-
-      if (target?.dataset?.pricingField !== undefined || target?.dataset?.pricingHolidayField !== undefined) {
-        this._savePricingDraft(this._syncPricingDraftFromInputs());
-        this._holdRenderWindow(1200);
-        return;
-      }
-
-    });
-
     this._loadSyncLog();
     this._startSyncLogPolling();
   }
@@ -2110,7 +2163,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     } catch (error) {
       console.error("Failed to update battery selection", error);
     } finally {
-      this._holdRenderWindow(400);
+      this._holdBatterySelectorWindow(10000);
     }
   }
 
