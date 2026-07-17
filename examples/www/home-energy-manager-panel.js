@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "055";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "056";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -357,6 +357,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _normalizePage(page) {
     const availablePages = this._availablePages();
+    const syncStatusVisible = this._page === "settings" && this._debugEnabled;
     const requested = String(page || "overview").trim().toLowerCase();
     return availablePages.some((item) => item.value === requested) ? requested : "overview";
   }
@@ -1546,20 +1547,22 @@ class HomeEnergyManagerPanel extends HTMLElement {
             `).join("")}
           </div>
         </article>
-        <article class="panel-card panel-card--wide sync-status">
-          <div class="panel-card__header">
-            <h2>Sync Status</h2>
-            <span data-sync-log-meta>Latest pull output</span>
-          </div>
-          <p>
-            This shows the latest result from the Home Energy Manager pull script. If a pull
-            fails, the reason appears here without opening the log file directly.
-          </p>
-          <div class="sync-status__actions">
-            <button type="button" class="panel-nav__item" data-sync-refresh>Refresh sync status</button>
-          </div>
-          <pre class="sync-status__log" data-sync-log>Loading latest sync status...</pre>
-        </article>
+        ${syncStatusVisible ? `
+          <article class="panel-card panel-card--wide sync-status">
+            <div class="panel-card__header">
+              <h2>Sync Status</h2>
+              <span data-sync-log-meta>Latest pull output</span>
+            </div>
+            <p>
+              This shows the latest result from the Home Energy Manager pull script. If a pull
+              fails, the reason appears here without opening the log file directly.
+            </p>
+            <div class="sync-status__actions">
+              <button type="button" class="panel-nav__item" data-sync-refresh>Refresh sync status</button>
+            </div>
+            <pre class="sync-status__log" data-sync-log>Loading latest sync status...</pre>
+          </article>
+        ` : ""}
       </section>
 
       <section class="settings-metrics" aria-label="Panel metrics">
@@ -2140,8 +2143,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
       }
     });
 
-    this._loadSyncLog();
-    this._startSyncLogPolling();
+    if (this._page === "settings" && this._debugEnabled) {
+      this._loadSyncLog();
+      this._startSyncLogPolling();
+    } else {
+      this._clearSyncLogTimer();
+    }
   }
 
   async _selectSharedBatteryOption(option) {
