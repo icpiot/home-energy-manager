@@ -1,6 +1,26 @@
 #!/bin/bash
 
-CONFIG_DIR="${CONFIG_DIR:-/config}"
+resolve_config_dir() {
+  if [ -n "${CONFIG_DIR:-}" ] && [ -d "$CONFIG_DIR" ]; then
+    printf '%s\n' "$CONFIG_DIR"
+    return 0
+  fi
+
+  if [ -d /config ]; then
+    printf '%s\n' /config
+    return 0
+  fi
+
+  if [ -d /h ]; then
+    printf '%s\n' /h
+    return 0
+  fi
+
+  printf '%s\n' "${CONFIG_DIR:-/config}"
+  return 1
+}
+
+CONFIG_DIR="$(resolve_config_dir)"
 
 cd "$CONFIG_DIR" || exit 1
 
