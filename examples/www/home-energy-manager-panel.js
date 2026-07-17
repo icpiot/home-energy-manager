@@ -54,6 +54,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    if (this._isSharedBatterySelectorActive()) {
+      this._holdRenderWindow(5000);
+      return;
+    }
     if (this._shouldHoldRender()) {
       this._queueDeferredRender();
       return;
@@ -1742,6 +1746,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _settingsTargetState() {
     return this._hass?.states?.[this._settingsTargetId()] || null;
+  }
+
+  _isSharedBatterySelectorActive() {
+    if (!this.shadowRoot) {
+      return false;
+    }
+
+    const selector = this.shadowRoot.querySelector("[data-shared-settings-target]");
+    if (!selector) {
+      return false;
+    }
+
+    const activeElement = this.shadowRoot.activeElement || selector.ownerDocument?.activeElement;
+    return activeElement === selector || selector.matches(":focus") || selector.matches(":focus-within");
   }
 
   _renderSharedBatterySelector() {
