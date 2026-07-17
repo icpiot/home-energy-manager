@@ -326,10 +326,10 @@
 
 .shared-selector {
   display: grid;
-  grid-template-columns: auto minmax(240px, 340px);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
-  align-items: center;
-  width: fit-content;
+  align-items: start;
+  width: 100%;
   max-width: 100%;
   padding-top: 2px;
 }
@@ -339,48 +339,40 @@
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.01em;
+  padding-top: 10px;
 }
 
-.shared-selector__control {
-  appearance: none;
-  -webkit-appearance: none;
-  min-height: 42px;
+.shared-selector__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   min-width: 0;
-  padding: 10px 40px 10px 14px;
+}
+
+.shared-selector__option {
+  appearance: none;
   border: 1px solid var(--hem-panel-border);
-  border-radius: 12px;
+  border-radius: 999px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
-    linear-gradient(45deg, transparent 50%, var(--hem-panel-accent) 50%),
-    linear-gradient(135deg, var(--hem-panel-accent) 50%, transparent 50%),
     var(--hem-panel-surface);
-  background-repeat: no-repeat;
-  background-position:
-    0 0,
-    calc(100% - 18px) calc(50% - 2px),
-    calc(100% - 12px) calc(50% - 2px),
-    0 0;
-  background-size:
-    100% 100%,
-    6px 6px,
-    6px 6px,
-    100% 100%;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
   color: var(--hem-panel-text);
-  background-color: rgba(17, 30, 50, 0.94);
   cursor: pointer;
   font: inherit;
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1.2;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  min-height: 42px;
+  padding: 10px 16px;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 140ms ease;
 }
 
-.shared-selector__control:hover {
+.shared-selector__option:hover {
   border-color: rgba(153, 190, 255, 0.32);
+  transform: translateY(-1px);
 }
 
-.shared-selector__control:focus {
+.shared-selector__option:focus {
   outline: none;
   border-color: var(--hem-panel-accent);
   box-shadow:
@@ -388,20 +380,17 @@
     0 14px 30px rgba(0, 0, 0, 0.18);
 }
 
-.shared-selector__control:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
+.shared-selector__option.is-active {
+  border-color: var(--hem-panel-accent);
+  background: rgba(111, 178, 255, 0.16);
 }
 
-.shared-selector__control option {
-  background: #122033;
-  color: #eef4ff;
-}
-
-.shared-selector__control option:checked,
-.shared-selector__control option:hover {
-  background: #1c3454;
-  color: #ffffff;
+.shared-selector__empty {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--hem-panel-muted);
+  padding: 0 2px;
 }
 
 .status__banner {
