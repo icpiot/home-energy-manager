@@ -21,6 +21,34 @@ resolve_config_dir() {
 }
 
 CONFIG_DIR="$(resolve_config_dir)"
+REPO_DIR="${REPO_DIR:-$CONFIG_DIR/repos/home-energy-manager}"
+
+detach_if_running_from_repo() {
+  if [ -n "${HOME_ENERGY_MANAGER_SCRIPT_DETACHED:-}" ]; then
+    return 0
+  fi
+
+  local script_source script_abs script_dir tmp_script
+  script_source="${BASH_SOURCE[0]:-$0}"
+  if command -v realpath >/dev/null 2>&1; then
+    script_abs="$(realpath "$script_source" 2>/dev/null || printf '%s\n' "$script_source")"
+  else
+    script_dir="$(cd "$(dirname "$script_source")" 2>/dev/null && pwd)"
+    script_abs="$script_dir/$(basename "$script_source")"
+  fi
+
+  case "$script_abs" in
+    "$REPO_DIR"/*)
+      tmp_script="$(mktemp "${TMPDIR:-/tmp}/home-energy-manager-git-push.XXXXXX.sh")"
+      cp "$script_abs" "$tmp_script"
+      chmod +x "$tmp_script"
+      export HOME_ENERGY_MANAGER_SCRIPT_DETACHED=1
+      exec bash "$tmp_script" "$@"
+      ;;
+  esac
+}
+
+detach_if_running_from_repo "$@"
 
 cd "$CONFIG_DIR" || exit 1
 
