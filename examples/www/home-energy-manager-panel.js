@@ -1508,10 +1508,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Local</span>
           </div>
           <div class="settings-toggle">
-            <label class="toggle-row">
+            <label class="toggle-row" for="hem-debug-toggle">
               <span class="toggle-row__label">Enable Debug</span>
               <span class="toggle-row__control">
-                <input type="checkbox" data-debug-toggle ${this._debugEnabled ? "checked" : ""} />
+                <input id="hem-debug-toggle" type="checkbox" data-debug-toggle aria-label="Enable debug mode" ${this._debugEnabled ? "checked" : ""} />
                 <span class="toggle-row__switch" aria-hidden="true"></span>
               </span>
             </label>
