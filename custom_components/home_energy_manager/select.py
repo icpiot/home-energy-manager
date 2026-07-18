@@ -87,7 +87,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         manager: SettingsManager,
     ) -> None:
         super().__init__(coordinator)
-        self.hass = hass
+        self._hass = hass
         self._config_entry = config_entry
         self._manager = manager
         self._attr_name = "Settings Target"
@@ -104,7 +104,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         }
 
     def _inventory(self) -> list[DiscoveredInverter]:
-        inventory = self.hass.data[DOMAIN][self._config_entry.entry_id].get("inverters", [])
+        inventory = self._hass.data[DOMAIN][self._config_entry.entry_id].get("inverters", [])
         if inventory:
             return inventory
         current_id = self._manager.current_settings_target_id
@@ -125,7 +125,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         return options
 
     def _selected_scope(self) -> ByteWattScope | None:
-        entry_data = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id, {})
+        entry_data = self._hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id, {})
         scope = entry_data.get("settings_scope")
         return scope if isinstance(scope, ByteWattScope) else None
 
@@ -198,7 +198,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             "enabled": True,
             "base_url": f"/local/home-energy-manager-history/{self._config_entry.entry_id}/",
             "status": str(
-                self.hass.data.get(DOMAIN, {})
+                self._hass.data.get(DOMAIN, {})
                 .get(self._config_entry.entry_id, {})
                 .get("history_status", "")
             ).strip(),
@@ -307,7 +307,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
                 settings_sys_sn="",
             )
             await self._manager.async_select_settings_target(scope)
-            self.hass.data[DOMAIN][self._config_entry.entry_id]["settings_scope"] = scope
+            self._hass.data[DOMAIN][self._config_entry.entry_id]["settings_scope"] = scope
             await self.coordinator.async_request_refresh()
             self.async_write_ha_state()
             return
@@ -316,7 +316,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             raise HomeAssistantError(f"Unknown settings target: {option}")
 
         await self._manager.async_select_settings_target(inverter.to_settings_scope())
-        self.hass.data[DOMAIN][self._config_entry.entry_id]["settings_scope"] = (
+        self._hass.data[DOMAIN][self._config_entry.entry_id]["settings_scope"] = (
             inverter.to_settings_scope()
         )
         await self.coordinator.async_request_refresh()
