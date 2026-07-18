@@ -202,3 +202,65 @@ Suggested migration:
 - Should `public_holiday` records be allowed to overlap standard weekday records
   because they are overrides, or should they remain fully isolated by day type as
   they are in V064?
+
+## Implementation checklist
+
+1. Extend `custom_components/home_energy_manager/pricing.py`.
+   - Add `PricingRateRecord`.
+   - Add `PricingRateGroup`.
+   - Add version 2 parsing/serialization to `PricingSchedule`.
+   - Keep version 1 rule parsing for migration/backward compatibility.
+   - Add active-group and active-record lookup helpers.
+   - Add backend overlap validation.
+
+2. Extend `custom_components/home_energy_manager/pricing_store.py`.
+   - Add group upsert/remove methods.
+   - Add record upsert/remove methods.
+   - Persist version 2 schedules to the same `pricing_schedule.json` file.
+   - Keep reading old schedules without data loss.
+
+3. Extend `custom_components/home_energy_manager/const.py`.
+   - Add service constants:
+     - `SERVICE_PRICING_UPSERT_GROUP`
+     - `SERVICE_PRICING_REMOVE_GROUP`
+     - `SERVICE_PRICING_UPSERT_RECORD`
+     - `SERVICE_PRICING_REMOVE_RECORD`
+   - Add attribute constants for `group_id`, `record_id`,
+     `effective_start_date`, `day_types`, and group-level charges.
+
+4. Extend `custom_components/home_energy_manager/__init__.py`.
+   - Register the four new services.
+   - Validate duplicate group start dates.
+   - Validate record overlaps before saving.
+   - Fire the existing pricing-changed dispatcher after group/record changes.
+
+5. Extend `custom_components/home_energy_manager/services.yaml`.
+   - Document the four new services and fields.
+   - Leave old services documented until migration is complete.
+
+6. Extend `custom_components/home_energy_manager/sensor.py`.
+   - Expose `group_count`, `record_count`, `groups`, `active_group`, and
+     `active_record`.
+   - Keep `rule_count`, `rules`, and `date_map` attributes during transition.
+
+7. Update the panel after backend model approval.
+   - Load initial groups from the pricing schedule sensor.
+   - Replace localStorage save/delete actions with Home Assistant service calls.
+   - Keep localStorage only as an unsaved form draft fallback.
+   - Show backend validation errors in the existing warning banner.
+
+8. Add/extend tests.
+   - `tests/test_pricing.py`: group/record validation, active lookup, migration.
+   - `tests/test_pricing_store.py`: persist/load/upsert/delete groups and records.
+   - `tests/test_panel_contract.py`: panel calls the new service names.
+   - `tests/test_pricing_panel_ui_logic.py`: keep UI overlap/delete behavior.
+
+## Suggested implementation order
+
+1. Backend dataclasses and pure validation tests.
+2. Store persistence tests.
+3. Service registration and schemas.
+4. Sensor attributes.
+5. Panel service wiring.
+6. HA deploy/restart.
+7. Chrome live test with cache-busted version loop.
