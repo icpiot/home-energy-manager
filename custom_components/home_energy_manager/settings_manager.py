@@ -352,6 +352,8 @@ class SettingsManager:
             return bool(c.ctr_dis_cycle)
         if field == "ups_reserve":
             return bool(c.ups_reserve)
+        if field == "execute_cycle_type":
+            return c.execute_cycle_type
         if field == "charge_power":
             return c.charge_slots[0].charge_power if c.charge_slots else default
         if field == "discharge_power":

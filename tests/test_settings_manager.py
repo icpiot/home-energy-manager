@@ -228,6 +228,7 @@ def test_effective_battery_reads_from_cache(manager, populated_cache):
     assert manager.effective_battery("charge_start_time") == "01:00"
     assert manager.effective_battery("discharge_end_time") == "22:00"
     assert manager.effective_battery("ups_reserve") is False
+    assert manager.effective_battery("execute_cycle_type") == 0
 
 
 def test_effective_battery_pending_overrides_cache(manager, populated_cache):
