@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "056";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "057";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -41,6 +41,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._page = this._loadPage();
     this._renderHoldUntil = 0;
     this._batterySelectorHoldUntil = 0;
+    this._batterySelectorOpen = false;
     this._deferredRenderTimer = null;
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
@@ -441,7 +442,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return "Home Energy Manager";
     }
 
-    if (/^(home energy manager|bytewatt)$/i.test(normalized)) {
+    if (/^home energy manager$/i.test(normalized)) {
       return "Home Energy Manager";
     }
 
@@ -1477,6 +1478,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const focusKey = this._loadSettingsFocus();
     const focusCards = this._settingsFocusCards();
     const activeFocus = this._settingsFocusDetail(focusKey);
+    const syncStatusVisible = this._debugEnabled;
     return `
       <section class="grid grid--two">
         <article class="panel-card panel-card--wide">
@@ -1765,13 +1767,22 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return false;
     }
 
-    const selector = this.shadowRoot.querySelector("[data-shared-settings-target]");
+    const selector = this.shadowRoot.querySelector("[data-shared-settings-target], [data-shared-settings-target-toggle]");
     if (!selector) {
       return false;
     }
 
     const activeElement = this.shadowRoot.activeElement || selector.ownerDocument?.activeElement;
     return activeElement === selector || selector.matches(":focus") || selector.matches(":focus-within");
+  }
+
+  _closeSharedBatterySelector() {
+    if (!this._batterySelectorOpen) {
+      return;
+    }
+    this._batterySelectorOpen = false;
+    this._holdBatterySelectorWindow(600);
+    this._render();
   }
 
   _renderSharedBatterySelector() {
@@ -1785,14 +1796,51 @@ class HomeEnergyManagerPanel extends HTMLElement {
         ? current
         : "All systems";
     const hasOptions = options.length > 0;
+    const selectedLabel = hasOptions ? selectedOption : "No batteries available";
+    const dropdown = this._batterySelectorOpen && hasOptions
+      ? `
+          <div class="shared-selector__menu" role="listbox" aria-label="Battery Selection">
+            ${options
+              .map((option) => {
+                const selected = option === selectedOption;
+                return `
+                  <button
+                    type="button"
+                    class="shared-selector__option ${selected ? "is-selected" : ""}"
+                    role="option"
+                    aria-selected="${selected ? "true" : "false"}"
+                    data-shared-settings-target-option="${this._escapeHtml(option)}"
+                  >
+                    ${this._escapeHtml(option)}
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
+        `
+      : "";
     return `
       <div class="shared-selector">
-        <label class="shared-selector__label" for="hem-shared-battery-select">Battery Selection</label>
+        <div class="shared-selector__label" id="hem-shared-battery-label">Battery Selection</div>
+        <div class="shared-selector__picker">
+          <button
+            type="button"
+            class="shared-selector__control"
+            aria-haspopup="listbox"
+            aria-expanded="${this._batterySelectorOpen && hasOptions ? "true" : "false"}"
+            aria-labelledby="hem-shared-battery-label"
+            data-shared-settings-target-toggle="${this._settingsTargetId()}"
+            ${hasOptions ? "" : "disabled"}
+          >
+            <span>${this._escapeHtml(selectedLabel)}</span>
+          </button>
+          ${dropdown}
+        </div>
         <select
-          id="hem-shared-battery-select"
-          class="shared-selector__control"
+          class="shared-selector__native"
           data-shared-settings-target="${this._settingsTargetId()}"
-          ${hasOptions ? "" : "disabled"}
+          tabindex="-1"
+          aria-hidden="true"
         >
           ${
             hasOptions
@@ -1956,7 +2004,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
     });
 
     this.shadowRoot.addEventListener("mousedown", (event) => {
-      if (event.target?.dataset?.sharedSettingsTarget) {
+      const path = event.composedPath?.() || [];
+      if (path.some((node) => node?.dataset?.sharedSettingsTargetToggle || node?.dataset?.sharedSettingsTargetOption)) {
         this._holdBatterySelectorWindow();
       }
     }, true);
@@ -1980,6 +2029,30 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this.shadowRoot.addEventListener("click", async (event) => {
       const path = event.composedPath?.() || [];
+      const sharedBatteryToggle = path.find((node) => node?.dataset?.sharedSettingsTargetToggle);
+      if (sharedBatteryToggle) {
+        event.preventDefault();
+        this._batterySelectorOpen = !this._batterySelectorOpen;
+        this._holdBatterySelectorWindow();
+        this._render();
+        return;
+      }
+
+      const sharedBatteryOption = path.find((node) => node?.dataset?.sharedSettingsTargetOption !== undefined);
+      if (sharedBatteryOption) {
+        event.preventDefault();
+        const option = String(sharedBatteryOption.dataset.sharedSettingsTargetOption || "");
+        this._batterySelectorOpen = false;
+        this._holdBatterySelectorWindow(10000);
+        await this._selectSharedBatteryOption(option);
+        this._render();
+        return;
+      }
+
+      if (this._batterySelectorOpen && !path.some((node) => node?.classList?.contains?.("shared-selector"))) {
+        this._closeSharedBatterySelector();
+      }
+
       const themeButton = path.find((node) => node?.dataset?.theme);
       if (themeButton) {
         event.preventDefault();

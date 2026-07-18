@@ -344,6 +344,7 @@
 .shared-selector__control {
   appearance: none;
   -webkit-appearance: none;
+  width: 100%;
   min-height: 42px;
   min-width: 0;
   padding: 10px 40px 10px 14px;
@@ -373,7 +374,20 @@
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1.2;
+  text-align: left;
   transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.shared-selector__picker {
+  position: relative;
+  min-width: 240px;
+}
+
+.shared-selector__control span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shared-selector__control:hover {
@@ -391,6 +405,46 @@
 .shared-selector__control:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.shared-selector__native {
+  display: none;
+}
+
+.shared-selector__menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--hem-panel-border);
+  border-radius: 12px;
+  background: #122033;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+  padding: 6px;
+}
+
+.shared-selector__option {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #eef4ff;
+  cursor: pointer;
+  font: inherit;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.shared-selector__option:hover,
+.shared-selector__option:focus,
+.shared-selector__option.is-selected {
+  outline: none;
+  background: #1c3454;
+  color: #ffffff;
 }
 
 .shared-selector__control option {
@@ -991,6 +1045,10 @@
   }
 
   .shared-selector__control {
+    width: 100%;
+  }
+
+  .shared-selector__picker {
     width: 100%;
   }
 
