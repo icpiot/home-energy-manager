@@ -100,10 +100,14 @@ def test_pricing_ui_exposes_rate_groups_records_and_overlap_guard():
     assert "_pricingUiRuleDefaults()" in panel_source
     assert "_pricingRulesOverlap(ruleA, ruleB)" in panel_source
     assert "_pricingUiValidationForRule(group, candidateRule" in panel_source
+    assert "_handlePricingUiAddGroup()" in panel_source
+    assert "_handlePricingUiAddRule()" in panel_source
     assert 'data-pricing-ui-add-group' in panel_source
     assert 'data-pricing-ui-delete-group' in panel_source
     assert 'data-pricing-ui-add-rule' in panel_source
     assert 'data-pricing-ui-delete-rule' in panel_source
+    assert "this._handlePricingUiAddGroup()" in panel_source
+    assert "this._handlePricingUiDeleteRule(button.dataset.pricingUiDeleteRule)" in panel_source
     assert '"public_holiday"' in panel_source
     assert "data-pricing-rule-day" in panel_source
     assert 'model.warning = warning' in panel_source

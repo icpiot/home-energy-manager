@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "063";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "064";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -705,6 +705,84 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return [...(Array.isArray(model.groups) ? model.groups : [])].sort((a, b) => (
       String(b.effective_start_date || "").localeCompare(String(a.effective_start_date || ""))
     ));
+  }
+
+  _handlePricingUiAddGroup() {
+    const model = this._loadPricingUi();
+    const group = this._readPricingUiGroupForm();
+    if (!group.effective_start_date) {
+      model.warning = "Rate group effective start date is required.";
+      this._savePricingUi(model);
+      this._render();
+      return;
+    }
+    if ((model.groups || []).some((item) => String(item.effective_start_date || "") === group.effective_start_date)) {
+      model.warning = `A rate group already starts on ${group.effective_start_date}. Delete it or choose a different start date.`;
+      this._savePricingUi(model);
+      this._render();
+      return;
+    }
+    model.groups = [...(model.groups || []), group];
+    model.activeGroupId = group.group_id;
+    model.warning = "";
+    this._savePricingUi(model);
+    this._render();
+  }
+
+  _handlePricingUiSelectGroup(groupId) {
+    const model = this._loadPricingUi();
+    model.activeGroupId = String(groupId || "");
+    model.warning = "";
+    this._savePricingUi(model);
+    this._render();
+  }
+
+  _handlePricingUiDeleteGroup(groupId) {
+    const model = this._loadPricingUi();
+    const deleteGroupId = String(groupId || "");
+    model.groups = (model.groups || []).filter((group) => String(group.group_id || "") !== deleteGroupId);
+    if (String(model.activeGroupId || "") === deleteGroupId) {
+      model.activeGroupId = model.groups[0]?.group_id || "";
+    }
+    model.warning = "";
+    this._savePricingUi(model);
+    this._render();
+  }
+
+  _handlePricingUiAddRule() {
+    const model = this._loadPricingUi();
+    const group = this._pricingUiActiveGroup(model);
+    if (!group) {
+      model.warning = "Add or select a rate group before adding records.";
+      this._savePricingUi(model);
+      this._render();
+      return;
+    }
+    const rule = this._readPricingUiRuleForm();
+    const warning = this._pricingUiValidationForRule(group, rule);
+    if (warning) {
+      model.warning = warning;
+      this._savePricingUi(model);
+      this._render();
+      return;
+    }
+    group.rules = [...(Array.isArray(group.rules) ? group.rules : []), rule];
+    model.warning = "";
+    this._savePricingUi(model);
+    this._render();
+  }
+
+  _handlePricingUiDeleteRule(ruleId) {
+    const model = this._loadPricingUi();
+    const group = this._pricingUiActiveGroup(model);
+    if (!group) {
+      return;
+    }
+    const deleteRuleId = String(ruleId || "");
+    group.rules = (Array.isArray(group.rules) ? group.rules : []).filter((rule) => String(rule.rule_id || "") !== deleteRuleId);
+    model.warning = "";
+    this._savePricingUi(model);
+    this._render();
   }
 
   _pricingDraftDefaults() {
@@ -2185,6 +2263,41 @@ class HomeEnergyManagerPanel extends HTMLElement {
       button.onclick = (event) => {
         event.preventDefault();
         this._loadSyncLog();
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-add-group]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        this._handlePricingUiAddGroup();
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-select-group]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        this._handlePricingUiSelectGroup(button.dataset.pricingUiSelectGroup);
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-delete-group]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        this._handlePricingUiDeleteGroup(button.dataset.pricingUiDeleteGroup);
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-add-rule]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        this._handlePricingUiAddRule();
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-delete-rule]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        this._handlePricingUiDeleteRule(button.dataset.pricingUiDeleteRule);
       };
     });
 
