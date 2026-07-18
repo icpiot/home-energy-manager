@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "058";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "059";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -42,6 +42,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._renderHoldUntil = 0;
     this._batterySelectorHoldUntil = 0;
     this._batterySelectorOpen = false;
+    this._batterySelectorPointerOpened = false;
     this._deferredRenderTimer = null;
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
@@ -1785,6 +1786,21 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._render();
   }
 
+  _toggleSharedBatterySelector(forceOpen = undefined) {
+    this._batterySelectorOpen = forceOpen === undefined
+      ? !this._batterySelectorOpen
+      : Boolean(forceOpen);
+    this._holdBatterySelectorWindow();
+    this._render();
+  }
+
+  async _chooseSharedBatteryOption(option) {
+    this._batterySelectorOpen = false;
+    this._holdBatterySelectorWindow(10000);
+    await this._selectSharedBatteryOption(option);
+    this._render();
+  }
+
   _renderSharedBatterySelector() {
     const selector = this._settingsTargetState();
     const options = Array.isArray(selector?.attributes?.options) ? selector.attributes.options : [];
@@ -1836,23 +1852,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </button>
           ${dropdown}
         </div>
-        <select
-          class="shared-selector__native"
-          data-shared-settings-target="${this._settingsTargetId()}"
-          tabindex="-1"
-          aria-hidden="true"
-        >
-          ${
-            hasOptions
-              ? options
-                  .map((option) => {
-                    const selected = option === selectedOption ? "selected" : "";
-                    return `<option value="${this._escapeHtml(option)}" ${selected}>${this._escapeHtml(option)}</option>`;
-                  })
-                  .join("")
-              : '<option value="" selected>No batteries available</option>'
-          }
-        </select>
       </div>
     `;
   }
@@ -1970,9 +1969,31 @@ class HomeEnergyManagerPanel extends HTMLElement {
       button.onclick = (event) => {
         event.preventDefault();
         event.stopPropagation();
-        this._batterySelectorOpen = !this._batterySelectorOpen;
-        this._holdBatterySelectorWindow();
-        this._render();
+        if (this._batterySelectorPointerOpened) {
+          this._batterySelectorPointerOpened = false;
+          return;
+        }
+        this._toggleSharedBatterySelector();
+      };
+      button.onpointerdown = (event) => {
+        if (button.disabled) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        this._batterySelectorPointerOpened = true;
+        this._toggleSharedBatterySelector(true);
+      };
+      button.onkeydown = (event) => {
+        if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+          event.preventDefault();
+          event.stopPropagation();
+          this._toggleSharedBatterySelector(true);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          this._closeSharedBatterySelector();
+        }
       };
     });
 
@@ -1981,10 +2002,24 @@ class HomeEnergyManagerPanel extends HTMLElement {
         event.preventDefault();
         event.stopPropagation();
         const option = String(button.dataset.sharedSettingsTargetOption || "");
-        this._batterySelectorOpen = false;
+        await this._chooseSharedBatteryOption(option);
+      };
+      button.onpointerdown = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         this._holdBatterySelectorWindow(10000);
-        await this._selectSharedBatteryOption(option);
-        this._render();
+      };
+      button.onkeydown = async (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          const option = String(button.dataset.sharedSettingsTargetOption || "");
+          await this._chooseSharedBatteryOption(option);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          this._closeSharedBatterySelector();
+        }
       };
     });
 
@@ -2003,20 +2038,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this.shadowRoot.addEventListener("change", async (event) => {
       const target = event.target;
-      if (target?.dataset?.sharedSettingsTarget) {
-        this._holdBatterySelectorWindow();
-        if (!this._hass) {
-          return;
-        }
-        this._saveBatterySelection(target.value);
-        this._holdBatterySelectorWindow(10000);
-        await this._hass.callService("select", "select_option", {
-          entity_id: target.dataset.sharedSettingsTarget,
-          option: target.value,
-        });
-        return;
-      }
-
       if (target?.dataset?.pricingField !== undefined || target?.dataset?.pricingHolidayField !== undefined) {
         this._savePricingDraft(this._syncPricingDraftFromInputs());
         this._holdRenderWindow(1200);
@@ -2054,9 +2075,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const sharedBatteryToggle = path.find((node) => node?.dataset?.sharedSettingsTargetToggle);
       if (sharedBatteryToggle) {
         event.preventDefault();
-        this._batterySelectorOpen = !this._batterySelectorOpen;
-        this._holdBatterySelectorWindow();
-        this._render();
+        this._toggleSharedBatterySelector();
         return;
       }
 
@@ -2064,10 +2083,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (sharedBatteryOption) {
         event.preventDefault();
         const option = String(sharedBatteryOption.dataset.sharedSettingsTargetOption || "");
-        this._batterySelectorOpen = false;
-        this._holdBatterySelectorWindow(10000);
-        await this._selectSharedBatteryOption(option);
-        this._render();
+        await this._chooseSharedBatteryOption(option);
         return;
       }
 
