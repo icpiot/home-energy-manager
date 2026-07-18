@@ -357,7 +357,7 @@ class ByteWattExecutionCycleSelect(CoordinatorEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        value = self._manager.effective_battery("execution_cycle_type")
+        value = self._manager.effective_battery("execute_cycle_type")
         if value is None:
             return None
         return _CYCLE_OPTIONS[int(value)] if int(value) in (0, 1) else None
@@ -365,7 +365,7 @@ class ByteWattExecutionCycleSelect(CoordinatorEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         value = 0 if option == "Daily" else 1
         result = await self._manager.submit_battery_one_shot(
-            {"execution_cycle_type": value}
+            {"execute_cycle_type": value}
         )
         if not result.battery_ok:
             detail = result.battery_error or "see logs for details"

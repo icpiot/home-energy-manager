@@ -239,7 +239,12 @@ class SettingsManager:
         execution_cycle = None
         if battery is not None:
             try:
-                execution_cycle = "Daily" if int(battery.execution_cycle_type) == 0 else "Weekly"
+                cycle_type = getattr(
+                    battery,
+                    "execute_cycle_type",
+                    getattr(battery, "execution_cycle_type", 0),
+                )
+                execution_cycle = "Daily" if int(cycle_type) == 0 else "Weekly"
             except (TypeError, ValueError):
                 execution_cycle = None
         charge_slots = getattr(battery, "charge_slots", None) or []
