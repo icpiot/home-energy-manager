@@ -10,6 +10,7 @@
 - [x] Allow deleting individual records.
 - [x] Allow deleting whole groups.
 - [x] Deploy and live-test Pricing UI in Chrome.
+- [x] Draft backend persistence design for user review.
 - [ ] Review and approve the UI data model with the user.
 - [ ] Replace localStorage-only draft storage with Home Assistant persistence.
 - [ ] Add backend rate-group model so a group start date supersedes earlier groups.
