@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "057";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "058";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1963,6 +1963,28 @@ class HomeEnergyManagerPanel extends HTMLElement {
       input.onchange = (event) => {
         event.preventDefault();
         this._setDebugEnabled(Boolean(input.checked));
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-shared-settings-target-toggle]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._batterySelectorOpen = !this._batterySelectorOpen;
+        this._holdBatterySelectorWindow();
+        this._render();
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-shared-settings-target-option]').forEach((button) => {
+      button.onclick = async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const option = String(button.dataset.sharedSettingsTargetOption || "");
+        this._batterySelectorOpen = false;
+        this._holdBatterySelectorWindow(10000);
+        await this._selectSharedBatteryOption(option);
+        this._render();
       };
     });
 
