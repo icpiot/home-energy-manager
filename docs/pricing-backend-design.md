@@ -62,6 +62,8 @@ Pricing should be stored as date-effective rate groups.
 ## Record semantics
 
 - Records apply only inside their parent group.
+- Fixed and dynamic pricing both use records. A fixed-price plan can still vary
+  by day, time, and public holiday status.
 - Records are selected by day type and time window.
 - Supported day types:
   - `mon`
@@ -73,7 +75,8 @@ Pricing should be stored as date-effective rate groups.
   - `sun`
   - `public_holiday`
 - Public holiday records are overrides and should be evaluated before standard
-  weekday/weekend records.
+  weekday/weekend records. They may overlap standard weekday/weekend records
+  because the holiday condition takes precedence.
 - Overnight windows are allowed and should be interpreted as two segments:
   `start_time` to midnight and midnight to `end_time`.
 - A record where `start_time == end_time` is invalid.
@@ -87,8 +90,10 @@ Examples:
 
 - Mon-Fri 14:00-20:00 conflicts with Fri 19:00-21:00.
 - Fri 14:00-20:00 does not conflict with Fri 20:00-23:00.
-- `public_holiday` does not conflict with `mon` unless both records include
-  `public_holiday`.
+- `public_holiday` does not conflict with `mon` because public holiday records
+  are overrides.
+- `public_holiday` 00:00-23:59 conflicts with another `public_holiday`
+  12:00-18:00.
 
 The UI already performs this validation, but the backend must repeat it so API
 or service calls cannot save invalid data.
@@ -139,6 +144,8 @@ Fields:
 - `other_charges`
 - `notes`
 - `entry_id` optional
+
+Rates are stored as dollars/kWh. Example: `0.42` means 42 cents/kWh.
 
 ### `pricing_remove_record`
 
@@ -193,15 +200,13 @@ Suggested migration:
   - `days_of_week` -> `day_types`
 - Store migrated schedules as `version: 2`.
 
-## Open questions for review
+## Approved model decisions
 
-- Should fixed pricing use a single all-day record by default, or should fixed
-  groups hide the record editor until advanced options are needed?
-- Should rates be stored in dollars/kWh or cents/kWh? The UI currently accepts
-  raw decimal values and formats them as rates.
-- Should `public_holiday` records be allowed to overlap standard weekday records
-  because they are overrides, or should they remain fully isolated by day type as
-  they are in V064?
+- Fixed pricing is still based on day, time, and public holiday records.
+- Rates are stored as dollars/kWh, e.g. `0.42`.
+- Public holiday records may overlap standard weekday/weekend records because
+  they override those records. Public holiday records should still be checked
+  against other public holiday records for overlap.
 
 ## Implementation checklist
 

@@ -12,7 +12,7 @@
 - [x] Deploy and live-test Pricing UI in Chrome.
 - [x] Draft backend persistence design for user review.
 - [x] Add backend implementation checklist for Pricing persistence.
-- [ ] Review and approve the UI data model with the user.
+- [x] Review and approve the UI/backend data model with the user.
 - [ ] Replace localStorage-only draft storage with Home Assistant persistence.
 - [ ] Add backend rate-group model so a group start date supersedes earlier groups.
 - [ ] Add Home Assistant services for save/delete rate groups and records.
