@@ -741,7 +741,8 @@
 }
 
 .pricing-form label,
-.pricing-holiday-form label {
+.pricing-holiday-form label,
+.pricing-field-group {
   display: grid;
   gap: 8px;
   color: var(--hem-panel-muted);
@@ -749,7 +750,8 @@
 }
 
 .pricing-form label span,
-.pricing-holiday-form label span {
+.pricing-holiday-form label span,
+.pricing-field-group > span {
   color: var(--hem-panel-text);
   font-weight: 700;
 }
@@ -757,7 +759,9 @@
 .pricing-form input,
 .pricing-form select,
 .pricing-form textarea,
-.pricing-holiday-form input {
+.pricing-holiday-form input,
+.pricing-holiday-form select,
+.pricing-holiday-form textarea {
   width: 100%;
   border-radius: 14px;
   border: 1px solid var(--hem-panel-border);
@@ -767,7 +771,8 @@
   font: inherit;
 }
 
-.pricing-form textarea {
+.pricing-form textarea,
+.pricing-holiday-form textarea {
   resize: vertical;
   min-height: 110px;
 }
@@ -811,6 +816,15 @@
   color: var(--hem-panel-muted);
 }
 
+.pricing-alert {
+  border: 1px solid rgba(251, 191, 36, 0.48);
+  background: rgba(251, 191, 36, 0.12);
+  color: #fde68a;
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-top: 16px;
+}
+
 .pricing-rule-list {
   display: grid;
   gap: 12px;
@@ -824,6 +838,11 @@
   border: 1px solid var(--hem-panel-border);
   background: var(--hem-panel-surface);
   padding: 16px;
+}
+
+.pricing-rule.is-selected {
+  border-color: rgba(96, 165, 250, 0.72);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.26);
 }
 
 .pricing-rule--empty {
@@ -897,6 +916,30 @@
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.06);
   color: var(--hem-panel-text);
+}
+
+.pricing-day-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pricing-day-pill {
+  display: flex !important;
+  align-items: center;
+  grid-template-columns: none !important;
+  gap: 8px;
+  border: 1px solid var(--hem-panel-border);
+  border-radius: 999px;
+  background: var(--hem-panel-surface-strong);
+  color: var(--hem-panel-text) !important;
+  padding: 10px 12px;
+}
+
+.pricing-day-pill input {
+  width: auto;
+  accent-color: var(--hem-panel-accent);
 }
 
 .debug {

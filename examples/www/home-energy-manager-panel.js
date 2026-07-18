@@ -2,13 +2,14 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "062";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "063";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
 const HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
 const HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY = "home-energy-manager.panel.pricing.draft";
+const HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY = "home-energy-manager.panel.pricing.ui";
 const HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
 const HOME_ENERGY_MANAGER_SYNC_POLL_MS = 5000;
@@ -508,6 +509,202 @@ class HomeEnergyManagerPanel extends HTMLElement {
       activeType: String(attributes.active_type || ""),
       activeProvider: String(attributes.active_provider || ""),
     };
+  }
+
+  _pricingUiDefaults() {
+    return {
+      groups: [],
+      activeGroupId: "",
+      warning: "",
+    };
+  }
+
+  _loadPricingUi() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY) || "{}") || {};
+      return {
+        ...this._pricingUiDefaults(),
+        ...parsed,
+        groups: Array.isArray(parsed.groups) ? parsed.groups : [],
+      };
+    } catch (error) {
+      return this._pricingUiDefaults();
+    }
+  }
+
+  _savePricingUi(model) {
+    try {
+      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY, JSON.stringify({
+        ...this._pricingUiDefaults(),
+        ...(model || {}),
+        groups: Array.isArray(model?.groups) ? model.groups : [],
+      }));
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
+  _pricingUiGroupDefaults() {
+    return {
+      group_id: "",
+      label: "",
+      provider: this._connectionName(),
+      plan_name: "",
+      effective_start_date: new Date().toISOString().slice(0, 10),
+      pricing_type: "dynamic",
+      daily_connection_charge: "",
+      other_charges: "",
+      notes: "",
+      rules: [],
+    };
+  }
+
+  _pricingUiRuleDefaults() {
+    return {
+      rule_id: "",
+      label: "",
+      day_types: ["mon", "tue", "wed", "thu", "fri"],
+      start_time: "00:00",
+      end_time: "23:59",
+      import_rate: "",
+      export_rate: "",
+      controlled_load_rate: "",
+      other_charges: "",
+      notes: "",
+    };
+  }
+
+  _pricingUiActiveGroup(model = this._loadPricingUi()) {
+    const groups = Array.isArray(model.groups) ? model.groups : [];
+    return groups.find((group) => String(group.group_id || "") === String(model.activeGroupId || ""))
+      || groups[0]
+      || null;
+  }
+
+  _readPricingUiGroupForm() {
+    const defaults = this._pricingUiGroupDefaults();
+    if (!this.shadowRoot) {
+      return defaults;
+    }
+    const form = {};
+    this.shadowRoot.querySelectorAll("[data-pricing-group-field]").forEach((field) => {
+      const key = field.dataset.pricingGroupField;
+      if (key) {
+        form[key] = String(field.value || "");
+      }
+    });
+    return {
+      ...defaults,
+      ...form,
+      group_id: String(form.group_id || "").trim() || this._generateRuleId(),
+      label: String(form.label || "").trim() || `Rates from ${form.effective_start_date || defaults.effective_start_date}`,
+      provider: String(form.provider || "").trim(),
+      plan_name: String(form.plan_name || "").trim(),
+      effective_start_date: String(form.effective_start_date || defaults.effective_start_date).trim(),
+      pricing_type: String(form.pricing_type || defaults.pricing_type).trim().toLowerCase(),
+      daily_connection_charge: String(form.daily_connection_charge || "").trim(),
+      other_charges: String(form.other_charges || "").trim(),
+      notes: String(form.notes || "").trim(),
+      rules: [],
+    };
+  }
+
+  _readPricingUiRuleForm() {
+    const defaults = this._pricingUiRuleDefaults();
+    if (!this.shadowRoot) {
+      return defaults;
+    }
+    const form = {};
+    this.shadowRoot.querySelectorAll("[data-pricing-rule-field]").forEach((field) => {
+      const key = field.dataset.pricingRuleField;
+      if (!key) {
+        return;
+      }
+      if (field.type === "checkbox") {
+        return;
+      }
+      form[key] = String(field.value || "");
+    });
+    const dayTypes = Array.from(this.shadowRoot.querySelectorAll("[data-pricing-rule-day]:checked"))
+      .map((field) => String(field.dataset.pricingRuleDay || ""))
+      .filter(Boolean);
+    return {
+      ...defaults,
+      ...form,
+      rule_id: String(form.rule_id || "").trim() || this._generateRuleId(),
+      label: String(form.label || "").trim() || "Unnamed rate window",
+      day_types: dayTypes.length ? dayTypes : defaults.day_types,
+      start_time: String(form.start_time || defaults.start_time).trim(),
+      end_time: String(form.end_time || defaults.end_time).trim(),
+      import_rate: String(form.import_rate || "").trim(),
+      export_rate: String(form.export_rate || "").trim(),
+      controlled_load_rate: String(form.controlled_load_rate || "").trim(),
+      other_charges: String(form.other_charges || "").trim(),
+      notes: String(form.notes || "").trim(),
+    };
+  }
+
+  _pricingTimeToMinutes(value) {
+    const match = String(value || "").match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+    return hours * 60 + minutes;
+  }
+
+  _pricingRuleSegments(rule) {
+    const start = this._pricingTimeToMinutes(rule.start_time);
+    const end = this._pricingTimeToMinutes(rule.end_time);
+    if (start === null || end === null || start === end) {
+      return [];
+    }
+    if (end > start) {
+      return [{ start, end }];
+    }
+    return [
+      { start, end: 1440 },
+      { start: 0, end },
+    ];
+  }
+
+  _pricingRulesOverlap(ruleA, ruleB) {
+    const daysA = Array.isArray(ruleA.day_types) ? ruleA.day_types : [];
+    const daysB = Array.isArray(ruleB.day_types) ? ruleB.day_types : [];
+    if (!daysA.some((day) => daysB.includes(day))) {
+      return false;
+    }
+    const segmentsA = this._pricingRuleSegments(ruleA);
+    const segmentsB = this._pricingRuleSegments(ruleB);
+    return segmentsA.some((a) => segmentsB.some((b) => a.start < b.end && b.start < a.end));
+  }
+
+  _pricingUiValidationForRule(group, candidateRule, existingRuleId = "") {
+    if (!candidateRule.label || !candidateRule.start_time || !candidateRule.end_time) {
+      return "Rule label, start time, and end time are required.";
+    }
+    if (this._pricingRuleSegments(candidateRule).length === 0) {
+      return "Rule start and end time must be valid and cannot be the same.";
+    }
+    const rules = Array.isArray(group?.rules) ? group.rules : [];
+    const overlap = rules.find((rule) => (
+      String(rule.rule_id || "") !== String(existingRuleId || "") &&
+      this._pricingRulesOverlap(rule, candidateRule)
+    ));
+    if (overlap) {
+      return `Overlaps with "${overlap.label || "Unnamed rate window"}". Change the day or time before saving.`;
+    }
+    return "";
+  }
+
+  _pricingUiSortedGroups(model = this._loadPricingUi()) {
+    return [...(Array.isArray(model.groups) ? model.groups : [])].sort((a, b) => (
+      String(b.effective_start_date || "").localeCompare(String(a.effective_start_date || ""))
+    ));
   }
 
   _pricingDraftDefaults() {
@@ -1228,79 +1425,95 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _pricingPage() {
-    const schedule = this._pricingScheduleData();
-    const draft = this._pricingDraft();
-    const rules = Array.isArray(schedule.rules) ? schedule.rules : [];
-    const holidayDates = Array.isArray(schedule.holidayDates) ? schedule.holidayDates : [];
-    const activeRule = schedule.activeRule || {};
-    const currentType = String(activeRule.type || activeRule.pricing_type || "none");
-    const currentProvider = String(activeRule.provider || schedule.activeProvider || "Not set");
+    const model = this._loadPricingUi();
+    const groups = this._pricingUiSortedGroups(model);
+    const activeGroup = this._pricingUiActiveGroup({ ...model, groups }) || this._pricingUiGroupDefaults();
+    const activeRules = Array.isArray(activeGroup.rules) ? activeGroup.rules : [];
+    const ruleDraft = this._pricingUiRuleDefaults();
+    const groupDraft = {
+      ...this._pricingUiGroupDefaults(),
+      provider: activeGroup.provider || this._connectionName(),
+    };
+    const overlapWarnings = activeRules
+      .flatMap((rule, index) => activeRules.slice(index + 1).map((other) => [rule, other]))
+      .filter(([rule, other]) => this._pricingRulesOverlap(rule, other))
+      .map(([rule, other]) => `${rule.label || "Unnamed"} overlaps ${other.label || "Unnamed"}`);
     const ruleTiles = [
-      { label: "Stored rules", value: String(schedule.ruleCount || rules.length || 0) },
-      { label: "Holiday dates", value: String(schedule.holidayCount || holidayDates.length || 0) },
-      { label: "Active type", value: currentType === "none" ? "None" : currentType },
-      { label: "Provider", value: currentProvider },
+      { label: "Rate groups", value: String(groups.length) },
+      { label: "Active group rules", value: String(activeRules.length) },
+      { label: "Active type", value: String(activeGroup.pricing_type || "dynamic") },
+      { label: "Effective from", value: String(activeGroup.effective_start_date || "Not set") },
     ];
-    const activeSummary = activeRule && activeRule.rule_id ? [
-      { label: "Date", value: String(activeRule.effective_date || "Not set") },
-      { label: "Type", value: String(activeRule.type || activeRule.pricing_type || "Not set") },
-      { label: "Window", value: `${String(activeRule.start_time || "00:00")} - ${String(activeRule.effective_end_time || activeRule.end_time || "open")}` },
-      { label: "Label", value: String(activeRule.label || "Unnamed rule") },
-    ] : [
-      { label: "Date", value: "No active rule" },
-      { label: "Type", value: "No active rule" },
-      { label: "Window", value: "No active rule" },
-      { label: "Label", value: "No active rule" },
-    ];
-    const ruleCards = rules.length
-      ? rules.map((rule) => {
+    const groupCards = groups.length
+      ? groups.map((group) => {
+          const isActive = String(group.group_id || "") === String(activeGroup.group_id || "");
+          const nextGroup = groups
+            .filter((item) => String(item.effective_start_date || "") > String(group.effective_start_date || ""))
+            .sort((a, b) => String(a.effective_start_date || "").localeCompare(String(b.effective_start_date || "")))[0];
+          return `
+            <article class="pricing-rule ${isActive ? "is-selected" : ""}">
+              <div class="pricing-rule__header">
+                <div>
+                  <strong>${this._escapeHtml(String(group.label || "Unnamed rate group"))}</strong>
+                  <span>${this._escapeHtml(String(group.provider || "Provider not set"))}${group.plan_name ? ` · ${this._escapeHtml(String(group.plan_name))}` : ""}</span>
+                </div>
+                <div class="pricing-rule__actions">
+                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-select-group="${this._escapeHtml(String(group.group_id || ""))}">${isActive ? "Selected" : "Select"}</button>
+                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-delete-group="${this._escapeHtml(String(group.group_id || ""))}">Delete group</button>
+                </div>
+              </div>
+              <dl class="pricing-rule__meta">
+                <div><dt>Starts</dt><dd>${this._escapeHtml(String(group.effective_start_date || "Not set"))}</dd></div>
+                <div><dt>Superseded</dt><dd>${nextGroup ? this._escapeHtml(String(nextGroup.effective_start_date || "")) : "When next group starts"}</dd></div>
+                <div><dt>Type</dt><dd>${this._escapeHtml(String(group.pricing_type || "dynamic"))}</dd></div>
+                <div><dt>Rules</dt><dd>${Array.isArray(group.rules) ? group.rules.length : 0}</dd></div>
+              </dl>
+              <div class="pricing-rule__rates">
+                <span>Daily connection ${this._escapeHtml(this._formatPricingRate(group.daily_connection_charge, "$/day"))}</span>
+                ${group.other_charges ? `<span>${this._escapeHtml(String(group.other_charges))}</span>` : ""}
+              </div>
+            </article>
+          `;
+        }).join("")
+      : '<article class="pricing-rule pricing-rule--empty"><strong>No rate groups yet.</strong><span>Add the first group, e.g. “Rates from Jan 1”.</span></article>';
+    const ruleCards = activeRules.length
+      ? activeRules.map((rule) => {
           const rateBits = [
             rule.import_rate !== null && rule.import_rate !== undefined ? `Import ${this._formatPricingRate(rule.import_rate)}` : null,
             rule.export_rate !== null && rule.export_rate !== undefined ? `Export ${this._formatPricingRate(rule.export_rate)}` : null,
-            rule.supply_charge !== null && rule.supply_charge !== undefined ? `Supply ${this._formatPricingRate(rule.supply_charge, "$/day")}` : null,
-            rule.controlled_load_1 !== null && rule.controlled_load_1 !== undefined ? `CL1 ${this._formatPricingRate(rule.controlled_load_1)}` : null,
-            rule.controlled_load_2 !== null && rule.controlled_load_2 !== undefined ? `CL2 ${this._formatPricingRate(rule.controlled_load_2)}` : null,
-            rule.additional_charge !== null && rule.additional_charge !== undefined ? `Add ${this._formatPricingRate(rule.additional_charge, "$")}` : null,
+            rule.controlled_load_rate !== null && rule.controlled_load_rate !== undefined ? `Controlled ${this._formatPricingRate(rule.controlled_load_rate)}` : null,
+            rule.other_charges ? String(rule.other_charges) : null,
           ].filter(Boolean);
           return `
             <article class="pricing-rule">
               <div class="pricing-rule__header">
                 <div>
                   <strong>${this._escapeHtml(String(rule.label || "Unnamed rule"))}</strong>
-                  <span>${this._escapeHtml(String(rule.provider || "Provider not set"))}</span>
+                  <span>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).join(", ") || "No days selected")}</span>
                 </div>
                 <div class="pricing-rule__actions">
-                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-load-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Load</button>
-                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete</button>
+                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete record</button>
                 </div>
               </div>
               <dl class="pricing-rule__meta">
-                <div><dt>Effective</dt><dd>${this._escapeHtml(String(rule.effective_date || "Not set"))}</dd></div>
-                <div><dt>Type</dt><dd>${this._escapeHtml(String(rule.type || rule.pricing_type || "fixed"))}</dd></div>
+                <div><dt>Days</dt><dd>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).join(", ") || "Not set")}</dd></div>
                 <div><dt>Start</dt><dd>${this._escapeHtml(String(rule.start_time || "00:00"))}</dd></div>
-                <div><dt>End</dt><dd>${this._escapeHtml(String(rule.effective_end_time || rule.end_time || "open"))}</dd></div>
+                <div><dt>End</dt><dd>${this._escapeHtml(String(rule.end_time || "23:59"))}</dd></div>
+                <div><dt>Override</dt><dd>${Array.isArray(rule.day_types) && rule.day_types.includes("public_holiday") ? "Public holiday" : "Standard"}</dd></div>
               </dl>
               <div class="pricing-rule__rates">
                 ${rateBits.length ? rateBits.map((bit) => `<span>${this._escapeHtml(bit)}</span>`).join("") : "<span>No rates set yet</span>"}
               </div>
               <p>
-                ${rule.holiday_only ? "Holiday only" : "Normal day"}${rule.notes ? ` · ${this._escapeHtml(String(rule.notes))}` : ""}
+                ${rule.notes ? this._escapeHtml(String(rule.notes)) : "No notes"}
               </p>
             </article>
           `;
         }).join("")
-      : '<article class="pricing-rule pricing-rule--empty"><strong>No pricing rules saved yet.</strong><span>Use the form to add the first fixed or dynamic tariff entry.</span></article>';
-    const holidayChips = holidayDates.length
-      ? holidayDates.map((holiday) => `
-          <button
-            type="button"
-            class="pricing-chip"
-            data-pricing-remove-holiday="${this._escapeHtml(String(holiday))}"
-          >
-            ${this._escapeHtml(String(holiday))} ×
-          </button>
-        `).join("")
-      : '<span class="pricing-empty">No holiday dates recorded yet.</span>';
+      : '<article class="pricing-rule pricing-rule--empty"><strong>No records in selected group.</strong><span>Add fixed or dynamic rate records below. Public holiday records override normal day records.</span></article>';
+    const warningMarkup = model.warning || overlapWarnings.length
+      ? `<div class="pricing-alert">${this._escapeHtml(model.warning || overlapWarnings.join("; "))}</div>`
+      : "";
     return `
       <section class="pricing">
         <article class="panel-card panel-card--wide pricing__hero">
@@ -1309,8 +1522,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Date-based schedule</span>
           </div>
           <p>
-            Pricing is stored as date-effective fixed or dynamic rules so you can move from one
-            plan to another mid-year, add holiday overrides, and keep the schedule visible in HEM.
+            Build date-effective rate groups here first. Each new group starts on its effective
+            date and supersedes the older group. This is UI-only until we wire persistence and Workday.
           </p>
         </article>
 
@@ -1326,115 +1539,111 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <section class="grid pricing__grid">
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Pricing Editor</h2>
-              <span>Fixed or dynamic</span>
+              <h2>Rate Group</h2>
+              <span>Master effective date</span>
             </div>
             <p>
-              Add one rule at a time. Each row stores the date, time window, pricing type, and
-              the rate boxes you need for that condition.
+              Add a master rate group whenever your provider changes rates. The next group start
+              date automatically supersedes prior rates.
             </p>
+            ${warningMarkup}
             <div class="pricing-form">
-              <input type="hidden" data-pricing-field="rule_id" value="${this._escapeHtml(String(draft.rule_id || ""))}" />
               <label>
-                <span>Effective date</span>
-                <input type="date" data-pricing-field="effective_date" value="${this._escapeHtml(String(draft.effective_date || ""))}" />
+                <span>Group label</span>
+                <input type="text" data-pricing-group-field="label" value="${this._escapeHtml(String(groupDraft.label || ""))}" placeholder="Rates from Jan 1" />
               </label>
               <label>
-                <span>Start time</span>
-                <input type="time" data-pricing-field="effective_time" value="${this._escapeHtml(String(draft.effective_time || "00:00"))}" />
-              </label>
-              <label>
-                <span>End date</span>
-                <input type="date" data-pricing-field="effective_end_date" value="${this._escapeHtml(String(draft.effective_end_date || ""))}" />
-              </label>
-              <label>
-                <span>End time</span>
-                <input type="time" data-pricing-field="effective_end_time" value="${this._escapeHtml(String(draft.effective_end_time || ""))}" />
-              </label>
-              <label>
-                <span>Pricing type</span>
-                <select data-pricing-field="pricing_type">
-                  <option value="fixed" ${String(draft.pricing_type || "fixed") === "fixed" ? "selected" : ""}>Fixed</option>
-                  <option value="dynamic" ${String(draft.pricing_type || "fixed") === "dynamic" ? "selected" : ""}>Dynamic</option>
-                </select>
+                <span>Effective start date</span>
+                <input type="date" data-pricing-group-field="effective_start_date" value="${this._escapeHtml(String(groupDraft.effective_start_date || ""))}" />
               </label>
               <label>
                 <span>Provider</span>
-                <input type="text" data-pricing-field="provider" value="${this._escapeHtml(String(draft.provider || ""))}" placeholder="Amber, retailer name, etc." />
+                <input type="text" data-pricing-group-field="provider" value="${this._escapeHtml(String(groupDraft.provider || ""))}" />
               </label>
               <label>
-                <span>Label</span>
-                <input type="text" data-pricing-field="label" value="${this._escapeHtml(String(draft.label || ""))}" placeholder="Peak, Off-peak, Amber dynamic..." />
+                <span>Plan name</span>
+                <input type="text" data-pricing-group-field="plan_name" value="${this._escapeHtml(String(groupDraft.plan_name || ""))}" placeholder="Optional" />
               </label>
               <label>
-                <span>Import rate</span>
-                <input type="number" step="0.001" data-pricing-field="import_rate" value="${this._escapeHtml(String(draft.import_rate ?? ""))}" />
+                <span>Pricing type</span>
+                <select data-pricing-group-field="pricing_type">
+                  <option value="fixed">Fixed</option>
+                  <option value="dynamic" selected>Dynamic</option>
+                </select>
               </label>
               <label>
-                <span>Export rate</span>
-                <input type="number" step="0.001" data-pricing-field="export_rate" value="${this._escapeHtml(String(draft.export_rate ?? ""))}" />
+                <span>Daily connection charge</span>
+                <input type="number" step="0.001" data-pricing-group-field="daily_connection_charge" value="" />
               </label>
-              <label>
-                <span>Supply charge</span>
-                <input type="number" step="0.001" data-pricing-field="supply_charge" value="${this._escapeHtml(String(draft.supply_charge ?? ""))}" />
-              </label>
-              <label>
-                <span>Controlled load 1</span>
-                <input type="number" step="0.001" data-pricing-field="controlled_load_1" value="${this._escapeHtml(String(draft.controlled_load_1 ?? ""))}" />
-              </label>
-              <label>
-                <span>Controlled load 2</span>
-                <input type="number" step="0.001" data-pricing-field="controlled_load_2" value="${this._escapeHtml(String(draft.controlled_load_2 ?? ""))}" />
-              </label>
-              <label>
-                <span>Additional charge</span>
-                <input type="number" step="0.001" data-pricing-field="additional_charge" value="${this._escapeHtml(String(draft.additional_charge ?? ""))}" />
-              </label>
-              <label class="toggle-row pricing-form__toggle">
-                <span class="toggle-row__label">Holiday only</span>
-                <span class="toggle-row__control">
-                  <input type="checkbox" data-pricing-field="holiday_only" ${draft.holiday_only ? "checked" : ""} />
-                  <span class="toggle-row__switch" aria-hidden="true"></span>
-                </span>
+              <label class="pricing-form__notes">
+                <span>Other charges</span>
+                <textarea data-pricing-group-field="other_charges" rows="2" placeholder="Named daily/usage charges the user wants to record"></textarea>
               </label>
               <label class="pricing-form__notes">
                 <span>Notes</span>
-                <textarea data-pricing-field="notes" rows="3" placeholder="Optional notes about the rule">${this._escapeHtml(String(draft.notes || ""))}</textarea>
+                <textarea data-pricing-group-field="notes" rows="2" placeholder="Optional notes about this rate group"></textarea>
               </label>
             </div>
             <div class="pricing-form__actions">
-              <button type="button" class="theme-pill" data-pricing-save-rule>Save rule</button>
-              <button type="button" class="theme-pill" data-pricing-clear-rule>Clear form</button>
+              <button type="button" class="theme-pill" data-pricing-ui-add-group>Add rate group</button>
             </div>
           </article>
           <article class="panel-card">
             <div class="panel-card__header">
-              <h2>Holiday Calendar</h2>
-              <span>Public holidays</span>
+              <h2>Rate Record</h2>
+              <span>Inside selected group</span>
             </div>
             <p>
-              Record public holiday dates here so holiday-specific rates can override the normal
-              tariff windows. Workday-style imports can land here later.
+              Add fixed or dynamic windows. Public holiday records override normal day records.
+              Overlapping day/time windows are blocked before save.
             </p>
             <div class="pricing-holiday-form">
               <label>
-                <span>Holiday source</span>
-                <input type="text" data-pricing-holiday-field="holiday_source" value="${this._escapeHtml(String(draft.holiday_source || "manual"))}" />
+                <span>Record label</span>
+                <input type="text" data-pricing-rule-field="label" value="${this._escapeHtml(String(ruleDraft.label || ""))}" placeholder="Peak, shoulder, holiday..." />
               </label>
               <label>
-                <span>Region</span>
-                <input type="text" data-pricing-holiday-field="region" value="${this._escapeHtml(String(draft.region || ""))}" placeholder="NSW, VIC, QLD..." />
+                <span>Start time</span>
+                <input type="time" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(ruleDraft.start_time))}" />
               </label>
               <label>
-                <span>Add holiday date</span>
-                <input type="date" data-pricing-holiday-field="holiday_date" value="${this._escapeHtml(String(draft.holiday_date || ""))}" />
+                <span>End time</span>
+                <input type="time" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(ruleDraft.end_time))}" />
+              </label>
+              <label>
+                <span>Import rate</span>
+                <input type="number" step="0.001" data-pricing-rule-field="import_rate" value="" />
+              </label>
+              <label>
+                <span>Export rate</span>
+                <input type="number" step="0.001" data-pricing-rule-field="export_rate" value="" />
+              </label>
+              <label>
+                <span>Controlled load</span>
+                <input type="number" step="0.001" data-pricing-rule-field="controlled_load_rate" value="" />
+              </label>
+              <div class="pricing-field-group pricing-form__notes">
+                <span>Days / override</span>
+                <div class="pricing-day-grid">
+                  ${["mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"].map((day) => `
+                    <label class="pricing-day-pill">
+                      <input type="checkbox" data-pricing-rule-day="${day}" ${ruleDraft.day_types.includes(day) ? "checked" : ""} />
+                      <span>${day === "public_holiday" ? "Public holiday" : day.toUpperCase()}</span>
+                    </label>
+                  `).join("")}
+                </div>
+              </div>
+              <label class="pricing-form__notes">
+                <span>Other charges</span>
+                <textarea data-pricing-rule-field="other_charges" rows="2" placeholder="Optional named charges for this record"></textarea>
+              </label>
+              <label class="pricing-form__notes">
+                <span>Notes</span>
+                <textarea data-pricing-rule-field="notes" rows="2" placeholder="Optional notes about this record"></textarea>
               </label>
               <div class="pricing-form__actions">
-                <button type="button" class="theme-pill" data-pricing-add-holiday>Add holiday</button>
+                <button type="button" class="theme-pill" data-pricing-ui-add-rule ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>Add record</button>
               </div>
-            </div>
-            <div class="pricing-chip-list">
-              ${holidayChips}
             </div>
           </article>
         </section>
@@ -1442,8 +1651,31 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <section class="grid pricing__grid">
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Stored Rules</h2>
-              <span>${rules.length} item(s)</span>
+              <h2>Rate Groups</h2>
+              <span>${groups.length} group(s)</span>
+            </div>
+            <div class="pricing-rule-list">
+              ${groupCards}
+            </div>
+          </article>
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Selected Group</h2>
+              <span>${activeRules.length} record(s)</span>
+            </div>
+            <p>
+              ${activeGroup.group_id
+                ? `${this._escapeHtml(String(activeGroup.label || "Unnamed group"))} starts ${this._escapeHtml(String(activeGroup.effective_start_date || "not set"))}.`
+                : "Add a rate group before adding individual records."}
+            </p>
+          </article>
+        </section>
+
+        <section class="grid pricing__grid">
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Records in Selected Group</h2>
+              <span>${activeRules.length} item(s)</span>
             </div>
             <div class="pricing-rule-list">
               ${ruleCards}
@@ -1451,15 +1683,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </article>
           <article class="panel-card">
             <div class="panel-card__header">
-              <h2>Current Rule</h2>
-              <span>Active match</span>
+              <h2>Outstanding Integration</h2>
+              <span>Later</span>
             </div>
-            <ul class="key-list key-list--compact">
-              ${this._valueList(activeSummary)}
-            </ul>
             <p>
-              The editor is provider-neutral, so each rule can represent a retailer tariff, a
-              dynamic feed, or a holiday override without tying the panel to one provider.
+              This screen is intentionally UI-only. Next pass can connect Workday public holidays
+              and save these groups through Home Assistant services once you approve the model.
             </p>
           </article>
         </section>
@@ -2044,6 +2273,98 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (pageButton && !pageButton.disabled) {
         event.preventDefault();
         this._setPage(pageButton.dataset.page);
+        return;
+      }
+
+      const pricingUiAddGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined);
+      if (pricingUiAddGroup) {
+        event.preventDefault();
+        const model = this._loadPricingUi();
+        const group = this._readPricingUiGroupForm();
+        if (!group.effective_start_date) {
+          model.warning = "Rate group effective start date is required.";
+          this._savePricingUi(model);
+          this._render();
+          return;
+        }
+        if ((model.groups || []).some((item) => String(item.effective_start_date || "") === group.effective_start_date)) {
+          model.warning = `A rate group already starts on ${group.effective_start_date}. Delete it or choose a different start date.`;
+          this._savePricingUi(model);
+          this._render();
+          return;
+        }
+        model.groups = [...(model.groups || []), group];
+        model.activeGroupId = group.group_id;
+        model.warning = "";
+        this._savePricingUi(model);
+        this._render();
+        return;
+      }
+
+      const pricingUiSelectGroup = path.find((node) => node?.dataset?.pricingUiSelectGroup);
+      if (pricingUiSelectGroup) {
+        event.preventDefault();
+        const model = this._loadPricingUi();
+        model.activeGroupId = pricingUiSelectGroup.dataset.pricingUiSelectGroup;
+        model.warning = "";
+        this._savePricingUi(model);
+        this._render();
+        return;
+      }
+
+      const pricingUiDeleteGroup = path.find((node) => node?.dataset?.pricingUiDeleteGroup);
+      if (pricingUiDeleteGroup) {
+        event.preventDefault();
+        const model = this._loadPricingUi();
+        const groupId = String(pricingUiDeleteGroup.dataset.pricingUiDeleteGroup || "");
+        model.groups = (model.groups || []).filter((group) => String(group.group_id || "") !== groupId);
+        if (String(model.activeGroupId || "") === groupId) {
+          model.activeGroupId = model.groups[0]?.group_id || "";
+        }
+        model.warning = "";
+        this._savePricingUi(model);
+        this._render();
+        return;
+      }
+
+      const pricingUiAddRule = path.find((node) => node?.dataset?.pricingUiAddRule !== undefined);
+      if (pricingUiAddRule) {
+        event.preventDefault();
+        const model = this._loadPricingUi();
+        const group = this._pricingUiActiveGroup(model);
+        if (!group) {
+          model.warning = "Add or select a rate group before adding records.";
+          this._savePricingUi(model);
+          this._render();
+          return;
+        }
+        const rule = this._readPricingUiRuleForm();
+        const warning = this._pricingUiValidationForRule(group, rule);
+        if (warning) {
+          model.warning = warning;
+          this._savePricingUi(model);
+          this._render();
+          return;
+        }
+        group.rules = [...(Array.isArray(group.rules) ? group.rules : []), rule];
+        model.warning = "";
+        this._savePricingUi(model);
+        this._render();
+        return;
+      }
+
+      const pricingUiDeleteRule = path.find((node) => node?.dataset?.pricingUiDeleteRule);
+      if (pricingUiDeleteRule) {
+        event.preventDefault();
+        const model = this._loadPricingUi();
+        const group = this._pricingUiActiveGroup(model);
+        if (group) {
+          const ruleId = String(pricingUiDeleteRule.dataset.pricingUiDeleteRule || "");
+          group.rules = (Array.isArray(group.rules) ? group.rules : []).filter((rule) => String(rule.rule_id || "") !== ruleId);
+          model.warning = "";
+          this._savePricingUi(model);
+          this._render();
+        }
         return;
       }
 
