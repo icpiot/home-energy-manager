@@ -90,3 +90,20 @@ def test_legacy_panel_example_keeps_module_url_at_panel_level():
     example = PANEL_EXAMPLE_PATH.read_text(encoding="utf-8")
     assert "\n  module_url:" in example
     assert "\n    module_url:" not in example
+
+
+def test_pricing_ui_exposes_rate_groups_records_and_overlap_guard():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+
+    assert 'HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY = "home-energy-manager.panel.pricing.ui"' in panel_source
+    assert "_pricingUiGroupDefaults()" in panel_source
+    assert "_pricingUiRuleDefaults()" in panel_source
+    assert "_pricingRulesOverlap(ruleA, ruleB)" in panel_source
+    assert "_pricingUiValidationForRule(group, candidateRule" in panel_source
+    assert 'data-pricing-ui-add-group' in panel_source
+    assert 'data-pricing-ui-delete-group' in panel_source
+    assert 'data-pricing-ui-add-rule' in panel_source
+    assert 'data-pricing-ui-delete-rule' in panel_source
+    assert '"public_holiday"' in panel_source
+    assert "data-pricing-rule-day" in panel_source
+    assert 'model.warning = warning' in panel_source
