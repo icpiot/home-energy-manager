@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "066";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "067";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -568,6 +568,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
       end_time: "23:59",
       import_rate: "",
       export_rate: "",
+      export_tier_1_limit: "",
+      export_tier_1_rate: "",
+      export_tier_2_rate: "",
       controlled_load_rate: "",
       other_charges: "",
       notes: "",
@@ -637,7 +640,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       start_time: String(form.start_time || defaults.start_time).trim(),
       end_time: String(form.end_time || defaults.end_time).trim(),
       import_rate: String(form.import_rate || "").trim(),
-      export_rate: String(form.export_rate || "").trim(),
+      export_rate: String(form.export_rate || form.export_tier_1_rate || "").trim(),
+      export_tier_1_limit: String(form.export_tier_1_limit || "").trim(),
+      export_tier_1_rate: String(form.export_tier_1_rate || "").trim(),
+      export_tier_2_rate: String(form.export_tier_2_rate || "").trim(),
       controlled_load_rate: String(form.controlled_load_rate || "").trim(),
       other_charges: String(form.other_charges || "").trim(),
       notes: String(form.notes || "").trim(),
@@ -689,6 +695,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     if (this._pricingRuleSegments(candidateRule).length === 0) {
       return "Rule start and end time must be valid and cannot be the same.";
+    }
+    if (candidateRule.export_tier_1_limit && !candidateRule.export_tier_1_rate) {
+      return "Sell tariff first block rate is required when a first block kWh limit is set.";
+    }
+    if (candidateRule.export_tier_2_rate && (!candidateRule.export_tier_1_limit || !candidateRule.export_tier_1_rate)) {
+      return "Sell tariff remainder rate needs a first block kWh limit and first block rate.";
     }
     const rules = Array.isArray(group?.rules) ? group.rules : [];
     const overlap = rules.find((rule) => (
@@ -1558,7 +1570,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ? activeRules.map((rule) => {
           const rateBits = [
             rule.import_rate !== null && rule.import_rate !== undefined ? `Import ${this._formatPricingRate(rule.import_rate)}` : null,
-            rule.export_rate !== null && rule.export_rate !== undefined ? `Export ${this._formatPricingRate(rule.export_rate)}` : null,
+            rule.export_tier_1_rate || rule.export_tier_2_rate
+              ? `Sell ${rule.export_tier_1_limit ? `first ${rule.export_tier_1_limit} kWh at ` : ""}${this._formatPricingRate(rule.export_tier_1_rate || rule.export_rate)}${rule.export_tier_2_rate ? `, then ${this._formatPricingRate(rule.export_tier_2_rate)}` : ""}`
+              : (rule.export_rate !== null && rule.export_rate !== undefined ? `Sell ${this._formatPricingRate(rule.export_rate)}` : null),
             rule.controlled_load_rate !== null && rule.controlled_load_rate !== undefined ? `Controlled ${this._formatPricingRate(rule.controlled_load_rate)}` : null,
             rule.other_charges ? String(rule.other_charges) : null,
           ].filter(Boolean);
@@ -1700,13 +1714,26 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   <input type="number" step="0.001" data-pricing-rule-field="import_rate" value="" />
                 </label>
                 <label class="pricing-record-form__rate">
-                  <span>Export rate ($/kWh)</span>
-                  <input type="number" step="0.001" data-pricing-rule-field="export_rate" value="" />
-                </label>
-                <label class="pricing-record-form__rate">
                   <span>Controlled load ($/kWh)</span>
                   <input type="number" step="0.001" data-pricing-rule-field="controlled_load_rate" value="" />
                 </label>
+                <div class="pricing-field-group pricing-sell-form">
+                  <span>Sell / feed-in tariff</span>
+                  <div class="pricing-sell-form__grid">
+                    <label>
+                      <span>First block up to (kWh)</span>
+                      <input type="number" step="1" min="0" data-pricing-rule-field="export_tier_1_limit" value="" placeholder="1000" />
+                    </label>
+                    <label>
+                      <span>First block rate ($/kWh)</span>
+                      <input type="number" step="0.001" min="0" data-pricing-rule-field="export_tier_1_rate" value="" placeholder="0.08" />
+                    </label>
+                    <label>
+                      <span>Remainder rate ($/kWh)</span>
+                      <input type="number" step="0.001" min="0" data-pricing-rule-field="export_tier_2_rate" value="" placeholder="0.02" />
+                    </label>
+                  </div>
+                </div>
                 <div class="pricing-field-group pricing-form__notes">
                   <span>Days / override</span>
                   <div class="pricing-day-grid">

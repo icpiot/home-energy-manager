@@ -814,6 +814,24 @@
   grid-column: 1 / -1;
 }
 
+.pricing-sell-form {
+  grid-column: 1 / -1;
+  border: 1px solid var(--hem-panel-border);
+  border-radius: 14px;
+  background: var(--hem-panel-surface-strong);
+  padding: 12px;
+}
+
+.pricing-sell-form__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pricing-sell-form__grid label {
+  min-width: 0;
+}
+
 .pricing-rule-list--attached {
   margin-top: 14px;
 }
@@ -1188,6 +1206,7 @@
   .pricing-form,
   .pricing-holiday-form,
   .pricing-group-card .pricing-form,
+  .pricing-sell-form__grid,
   .pricing-rule__meta {
     grid-template-columns: 1fr;
   }
