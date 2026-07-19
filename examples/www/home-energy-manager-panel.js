@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "084";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "086";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -500,6 +500,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const entity = this._pricingScheduleEntity();
     const attributes = entity?.attributes || {};
     const rules = Array.isArray(attributes.rules) ? attributes.rules : [];
+    const groups = Array.isArray(attributes.groups) ? attributes.groups : [];
     const holidayDates = Array.isArray(attributes.holiday_dates) ? attributes.holiday_dates : [];
     const dateMap = attributes.date_map && typeof attributes.date_map === "object" ? attributes.date_map : {};
     const activeRule = attributes.active_rule && typeof attributes.active_rule === "object"
@@ -514,10 +515,66 @@ class HomeEnergyManagerPanel extends HTMLElement {
       holidayDates,
       dateMap,
       rules,
+      groups,
       activeRule,
+      activeGroup: attributes.active_group && typeof attributes.active_group === "object" ? attributes.active_group : null,
       updatedAt: String(attributes.updated_at || ""),
       activeType: String(attributes.active_type || ""),
       activeProvider: String(attributes.active_provider || ""),
+    };
+  }
+
+  _pricingUiRuleFromBackendRecord(record) {
+    const metadata = record?.metadata && typeof record.metadata === "object" ? record.metadata : {};
+    const sellTiers = metadata.sell_tiers && typeof metadata.sell_tiers === "object" ? metadata.sell_tiers : {};
+    return {
+      ...this._pricingUiRuleDefaults(),
+      rule_id: String(record?.record_id || record?.rule_id || this._generateRuleId()),
+      label: String(record?.label || ""),
+      day_types: Array.isArray(record?.day_types) ? record.day_types : [],
+      start_time: String(record?.start_time || "00:00"),
+      end_time: String(record?.end_time || "23:59"),
+      import_rate: record?.import_rate ?? "",
+      export_rate: record?.export_rate ?? "",
+      export_tier_1_limit: sellTiers.tier_1_limit_kwh ?? record?.export_tier_1_limit ?? "",
+      export_tier_1_rate: sellTiers.tier_1_rate ?? record?.export_tier_1_rate ?? "",
+      export_tier_2_rate: sellTiers.tier_2_rate ?? record?.export_tier_2_rate ?? "",
+      controlled_load_rate: record?.controlled_load_rate ?? "",
+      record_type: String(record?.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy",
+      other_charges: String(record?.other_charges || ""),
+      notes: String(record?.notes || ""),
+    };
+  }
+
+  _pricingUiGroupFromBackendGroup(group) {
+    return {
+      ...this._pricingUiGroupDefaults(),
+      group_id: String(group?.group_id || this._generateRuleId()),
+      label: String(group?.label || ""),
+      provider: String(group?.provider || ""),
+      plan_name: String(group?.plan_name || ""),
+      effective_start_date: String(group?.effective_start_date || ""),
+      pricing_type: String(group?.pricing_type || "dynamic").toLowerCase() === "fixed" ? "fixed" : "dynamic",
+      daily_connection_charge: group?.daily_connection_charge ?? "",
+      other_charges: String(group?.other_charges || ""),
+      notes: String(group?.notes || ""),
+      rules: Array.isArray(group?.records) ? group.records.map((record) => this._pricingUiRuleFromBackendRecord(record)) : [],
+    };
+  }
+
+  _pricingUiFromBackendSchedule() {
+    const schedule = this._pricingScheduleData();
+    const groups = Array.isArray(schedule.groups)
+      ? schedule.groups.map((group) => this._pricingUiGroupFromBackendGroup(group))
+      : [];
+    const activeGroupId = schedule.activeGroup?.group_id
+      || groups.find((group) => group.effective_start_date)?.group_id
+      || groups[0]?.group_id
+      || "";
+    return {
+      ...this._pricingUiDefaults(),
+      groups,
+      activeGroupId,
     };
   }
 
@@ -532,13 +589,18 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _loadPricingUi() {
     try {
       const parsed = JSON.parse(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY) || "{}") || {};
+      const backendModel = this._pricingUiFromBackendSchedule();
+      if (!Array.isArray(parsed.groups) || parsed.groups.length === 0) {
+        return backendModel;
+      }
       return {
         ...this._pricingUiDefaults(),
+        ...backendModel,
         ...parsed,
         groups: Array.isArray(parsed.groups) ? parsed.groups : [],
       };
     } catch (error) {
-      return this._pricingUiDefaults();
+      return this._pricingUiFromBackendSchedule();
     }
   }
 

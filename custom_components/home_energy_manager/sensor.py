@@ -628,6 +628,9 @@ class PricingScheduleSensor(CoordinatorEntity, SensorEntity):
     def native_value(self):
         if self._schedule is None:
             return "Unavailable"
+        if self._schedule.groups:
+            record_count = sum(len(group.records) for group in self._schedule.groups)
+            return f"{len(self._schedule.groups)} group(s), {record_count} record(s)"
         return f"{len(self._schedule.rules)} rule(s)"
 
     @property
@@ -635,18 +638,24 @@ class PricingScheduleSensor(CoordinatorEntity, SensorEntity):
         if self._schedule is None:
             return {}
         active = self._schedule.active_rule(dt_util.now())
+        active_group = self._schedule.active_group(dt_util.now())
+        record_count = sum(len(group.records) for group in self._schedule.groups)
         return {
             "rule_count": len(self._schedule.rules),
+            "group_count": len(self._schedule.groups),
+            "record_count": record_count,
             "holiday_count": len(self._schedule.holiday_dates),
             "holiday_source": self._schedule.holiday_source,
             "region": self._schedule.region,
             "holiday_dates": [item.isoformat() for item in self._schedule.holiday_dates],
             "date_map": self._schedule.rules_by_date(),
             "rules": [rule.to_dict() for rule in self._schedule.rules],
+            "groups": [group.to_dict() for group in self._schedule.groups],
             "active_rule": active.to_dict() if active is not None else None,
+            "active_group": active_group.to_dict() if active_group is not None else None,
             "updated_at": self._schedule.updated_at.isoformat() if self._schedule.updated_at else None,
-            "active_type": active.pricing_type if active is not None else None,
-            "active_provider": active.provider if active is not None else None,
+            "active_type": active_group.pricing_type if active_group is not None else (active.pricing_type if active is not None else None),
+            "active_provider": active_group.provider if active_group is not None else (active.provider if active is not None else None),
         }
 
 

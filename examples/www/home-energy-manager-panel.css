@@ -909,10 +909,13 @@
 
 .pricing-record-section__add:disabled,
 .pricing-record-section__add.is-disabled {
-  background: var(--hem-panel-surface);
-  border-color: var(--hem-panel-border);
-  box-shadow: none;
-  color: var(--hem-panel-muted);
+  background: linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong));
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(0, 229, 255, 0.12);
+  color: #06111f;
+  cursor: not-allowed;
+  filter: saturate(0.7);
+  opacity: 0.58;
 }
 
 .pricing-rule-list--attached {
