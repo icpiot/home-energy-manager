@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "064";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "066";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1614,11 +1614,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
           `).join("")}
         </section>
 
-        <section class="grid pricing__grid">
-          <article class="panel-card panel-card--wide">
+        <section class="grid pricing__grid pricing__grid--editor">
+          <article class="panel-card panel-card--wide pricing-editor-card pricing-group-card">
             <div class="panel-card__header">
               <h2>Rate Group</h2>
-              <span>Master effective date</span>
+              <span>1 active group shown</span>
             </div>
             <p>
               Add a master rate group whenever your provider changes rates. The next group start
@@ -1665,64 +1665,75 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <div class="pricing-form__actions">
               <button type="button" class="theme-pill" data-pricing-ui-add-group>Add rate group</button>
             </div>
-          </article>
-          <article class="panel-card">
-            <div class="panel-card__header">
-              <h2>Rate Record</h2>
-              <span>Inside selected group</span>
+            <div class="pricing-active-group">
+              <span>Active group</span>
+              <strong>${activeGroup.group_id ? this._escapeHtml(String(activeGroup.label || "Unnamed rate group")) : "No group yet"}</strong>
+              <small>${activeGroup.group_id
+                ? `${this._escapeHtml(String(activeGroup.provider || "Provider not set"))}${activeGroup.plan_name ? ` · ${this._escapeHtml(String(activeGroup.plan_name))}` : ""} · starts ${this._escapeHtml(String(activeGroup.effective_start_date || "not set"))}`
+                : "Add a group first, then add rate records to it."}</small>
             </div>
-            <p>
-              Add fixed or dynamic windows. Public holiday records override normal day records.
-              Overlapping day/time windows are blocked before save.
-            </p>
-            <div class="pricing-holiday-form">
-              <label>
-                <span>Record label</span>
-                <input type="text" data-pricing-rule-field="label" value="${this._escapeHtml(String(ruleDraft.label || ""))}" placeholder="Peak, shoulder, holiday..." />
-              </label>
-              <label>
-                <span>Start time</span>
-                <input type="time" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(ruleDraft.start_time))}" />
-              </label>
-              <label>
-                <span>End time</span>
-                <input type="time" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(ruleDraft.end_time))}" />
-              </label>
-              <label>
-                <span>Import rate</span>
-                <input type="number" step="0.001" data-pricing-rule-field="import_rate" value="" />
-              </label>
-              <label>
-                <span>Export rate</span>
-                <input type="number" step="0.001" data-pricing-rule-field="export_rate" value="" />
-              </label>
-              <label>
-                <span>Controlled load</span>
-                <input type="number" step="0.001" data-pricing-rule-field="controlled_load_rate" value="" />
-              </label>
-              <div class="pricing-field-group pricing-form__notes">
-                <span>Days / override</span>
-                <div class="pricing-day-grid">
-                  ${["mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"].map((day) => `
-                    <label class="pricing-day-pill">
-                      <input type="checkbox" data-pricing-rule-day="${day}" ${ruleDraft.day_types.includes(day) ? "checked" : ""} />
-                      <span>${day === "public_holiday" ? "Public holiday" : day.toUpperCase()}</span>
-                    </label>
-                  `).join("")}
+
+            <section class="pricing-group-card__records">
+              <div class="panel-card__header panel-card__header--nested">
+                <h2>Rate Records</h2>
+                <span>${activeRules.length} record(s) attached</span>
+              </div>
+              <p>
+                Add records to the selected group only. Public holiday records override normal day records.
+                Overlapping day/time windows are blocked before save.
+              </p>
+              <div class="pricing-holiday-form pricing-record-form">
+                <label class="pricing-record-form__name">
+                  <span>Tariff label</span>
+                  <input type="text" data-pricing-rule-field="label" value="${this._escapeHtml(String(ruleDraft.label || ""))}" placeholder="Shoulder, PHOL, Peak..." />
+                </label>
+                <label class="pricing-record-form__time">
+                  <span>Start time</span>
+                  <input type="time" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(ruleDraft.start_time))}" />
+                </label>
+                <label class="pricing-record-form__time">
+                  <span>End time</span>
+                  <input type="time" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(ruleDraft.end_time))}" />
+                </label>
+                <label class="pricing-record-form__rate">
+                  <span>Import rate ($/kWh)</span>
+                  <input type="number" step="0.001" data-pricing-rule-field="import_rate" value="" />
+                </label>
+                <label class="pricing-record-form__rate">
+                  <span>Export rate ($/kWh)</span>
+                  <input type="number" step="0.001" data-pricing-rule-field="export_rate" value="" />
+                </label>
+                <label class="pricing-record-form__rate">
+                  <span>Controlled load ($/kWh)</span>
+                  <input type="number" step="0.001" data-pricing-rule-field="controlled_load_rate" value="" />
+                </label>
+                <div class="pricing-field-group pricing-form__notes">
+                  <span>Days / override</span>
+                  <div class="pricing-day-grid">
+                    ${["mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"].map((day) => `
+                      <label class="pricing-day-pill">
+                        <input type="checkbox" data-pricing-rule-day="${day}" ${ruleDraft.day_types.includes(day) ? "checked" : ""} />
+                        <span>${day === "public_holiday" ? "Public holiday" : day.toUpperCase()}</span>
+                      </label>
+                    `).join("")}
+                  </div>
+                </div>
+                <label class="pricing-form__notes">
+                  <span>Other charges</span>
+                  <textarea data-pricing-rule-field="other_charges" rows="2" placeholder="Optional named charges for this record"></textarea>
+                </label>
+                <label class="pricing-form__notes">
+                  <span>Notes</span>
+                  <textarea data-pricing-rule-field="notes" rows="2" placeholder="Optional notes about this record"></textarea>
+                </label>
+                <div class="pricing-form__actions">
+                  <button type="button" class="theme-pill" data-pricing-ui-add-rule ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>Add record</button>
                 </div>
               </div>
-              <label class="pricing-form__notes">
-                <span>Other charges</span>
-                <textarea data-pricing-rule-field="other_charges" rows="2" placeholder="Optional named charges for this record"></textarea>
-              </label>
-              <label class="pricing-form__notes">
-                <span>Notes</span>
-                <textarea data-pricing-rule-field="notes" rows="2" placeholder="Optional notes about this record"></textarea>
-              </label>
-              <div class="pricing-form__actions">
-                <button type="button" class="theme-pill" data-pricing-ui-add-rule ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>Add record</button>
+              <div class="pricing-rule-list pricing-rule-list--attached">
+                ${ruleCards}
               </div>
-            </div>
+            </section>
           </article>
         </section>
 
@@ -1734,29 +1745,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </div>
             <div class="pricing-rule-list">
               ${groupCards}
-            </div>
-          </article>
-          <article class="panel-card">
-            <div class="panel-card__header">
-              <h2>Selected Group</h2>
-              <span>${activeRules.length} record(s)</span>
-            </div>
-            <p>
-              ${activeGroup.group_id
-                ? `${this._escapeHtml(String(activeGroup.label || "Unnamed group"))} starts ${this._escapeHtml(String(activeGroup.effective_start_date || "not set"))}.`
-                : "Add a rate group before adding individual records."}
-            </p>
-          </article>
-        </section>
-
-        <section class="grid pricing__grid">
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Records in Selected Group</h2>
-              <span>${activeRules.length} item(s)</span>
-            </div>
-            <div class="pricing-rule-list">
-              ${ruleCards}
             </div>
           </article>
           <article class="panel-card">
