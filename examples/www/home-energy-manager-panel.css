@@ -817,8 +817,7 @@
 }
 
 .pricing-record-form {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: 12px;
+  grid-template-columns: 1fr;
   row-gap: 14px;
   align-items: start;
 }
@@ -829,26 +828,51 @@
   min-width: 0;
 }
 
+.pricing-record-section,
 .pricing-record-form .pricing-form__notes,
 .pricing-record-form .pricing-form__actions {
   grid-column: 1 / -1;
 }
 
-.pricing-sell-form {
-  grid-column: 1 / -1;
+.pricing-record-section {
   border: 1px solid var(--hem-panel-border);
   border-radius: 14px;
   background: var(--hem-panel-surface-strong);
   padding: 12px;
 }
 
-.pricing-sell-form__grid {
+.pricing-record-section__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.pricing-record-section__heading strong {
+  color: var(--hem-panel-text);
+}
+
+.pricing-record-section__heading span {
+  color: var(--hem-panel-muted);
+  font-size: 0.84rem;
+}
+
+.pricing-record-section__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.pricing-sell-form__grid label {
+.pricing-record-section__grid--details,
+.pricing-record-section__grid--sell {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pricing-record-section__grid--buy {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pricing-record-section__grid label {
   min-width: 0;
 }
 
@@ -1226,7 +1250,7 @@
   .pricing-form,
   .pricing-holiday-form,
   .pricing-group-card .pricing-form,
-  .pricing-sell-form__grid,
+  .pricing-record-section__grid,
   .pricing-rule__meta {
     grid-template-columns: 1fr;
   }

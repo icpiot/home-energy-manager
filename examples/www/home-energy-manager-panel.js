@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "076";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "077";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1831,29 +1831,47 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 Overlapping day/time windows are blocked before save.
               </p>
               <div class="pricing-holiday-form pricing-record-form">
-                <label class="pricing-record-form__name">
-                  <span>Tariff label</span>
-                  <input type="text" data-pricing-rule-field="label" value="${this._escapeHtml(String(ruleDraft.label || ""))}" placeholder="Shoulder, PHOL, Peak..." />
-                </label>
-                <label class="pricing-record-form__time">
-                  <span>Start time</span>
-                  <input type="time" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(ruleDraft.start_time))}" />
-                </label>
-                <label class="pricing-record-form__time">
-                  <span>End time</span>
-                  <input type="time" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(ruleDraft.end_time))}" />
-                </label>
-                <label class="pricing-record-form__rate">
-                  <span>Import rate ($/kWh)</span>
-                  <input type="number" step="0.001" data-pricing-rule-field="import_rate" value="" />
-                </label>
-                <label class="pricing-record-form__rate">
-                  <span>Controlled load ($/kWh)</span>
-                  <input type="number" step="0.001" data-pricing-rule-field="controlled_load_rate" value="" />
-                </label>
-                <div class="pricing-field-group pricing-sell-form">
-                  <span>Sell / feed-in tariff</span>
-                  <div class="pricing-sell-form__grid">
+                <div class="pricing-record-section pricing-record-section--details">
+                  <div class="pricing-record-section__heading">
+                    <strong>Record details</strong>
+                  </div>
+                  <div class="pricing-record-section__grid pricing-record-section__grid--details">
+                    <label class="pricing-record-form__name">
+                      <span>Tariff label</span>
+                      <input type="text" data-pricing-rule-field="label" value="${this._escapeHtml(String(ruleDraft.label || ""))}" placeholder="Shoulder, PHOL, Peak..." />
+                    </label>
+                    <label class="pricing-record-form__time">
+                      <span>Start time</span>
+                      <input type="time" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(ruleDraft.start_time))}" />
+                    </label>
+                    <label class="pricing-record-form__time">
+                      <span>End time</span>
+                      <input type="time" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(ruleDraft.end_time))}" />
+                    </label>
+                  </div>
+                </div>
+                <div class="pricing-record-section pricing-buy-form">
+                  <div class="pricing-record-section__heading">
+                    <strong>Buy electricity</strong>
+                    <span>What you pay</span>
+                  </div>
+                  <div class="pricing-record-section__grid pricing-record-section__grid--buy">
+                    <label class="pricing-record-form__rate">
+                      <span>Import rate ($/kWh)</span>
+                      <input type="number" step="0.001" data-pricing-rule-field="import_rate" value="" />
+                    </label>
+                    <label class="pricing-record-form__rate">
+                      <span>Controlled load ($/kWh)</span>
+                      <input type="number" step="0.001" data-pricing-rule-field="controlled_load_rate" value="" />
+                    </label>
+                  </div>
+                </div>
+                <div class="pricing-record-section pricing-sell-form">
+                  <div class="pricing-record-section__heading">
+                    <strong>Sell electricity</strong>
+                    <span>Feed-in tariff</span>
+                  </div>
+                  <div class="pricing-record-section__grid pricing-record-section__grid--sell">
                     <label>
                       <span>First block up to (kWh)</span>
                       <input type="number" step="1" min="0" data-pricing-rule-field="export_tier_1_limit" value="" placeholder="1000" />
