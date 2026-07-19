@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "067";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "068";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -109,6 +109,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _holdBatterySelectorWindow(duration = 8000) {
     this._batterySelectorHoldUntil = Math.max(this._batterySelectorHoldUntil, Date.now() + duration);
     this._holdRenderWindow(duration);
+  }
+
+  _isPricingInteractionTarget(target) {
+    return target?.dataset?.pricingField !== undefined
+      || target?.dataset?.pricingHolidayField !== undefined
+      || target?.dataset?.pricingGroupField !== undefined
+      || target?.dataset?.pricingRuleField !== undefined
+      || target?.dataset?.pricingRuleDay !== undefined;
   }
 
   _queueDeferredRender() {
@@ -2329,6 +2337,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._holdRenderWindow(1200);
         return;
       }
+      if (this._isPricingInteractionTarget(target)) {
+        this._holdRenderWindow(2500);
+        return;
+      }
 
     });
 
@@ -2337,10 +2349,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (path.some((node) => node?.dataset?.sharedSettingsTargetToggle || node?.dataset?.sharedSettingsTargetOption)) {
         this._holdBatterySelectorWindow();
       }
+      if (path.some((node) => this._isPricingInteractionTarget(node))) {
+        this._holdRenderWindow(8000);
+      }
     }, true);
 
     this.shadowRoot.addEventListener("focusin", (event) => {
-      if (event.target?.dataset?.sharedSettingsTargetToggle || event.target?.dataset?.sharedSettingsTargetOption || event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
+      if (event.target?.dataset?.sharedSettingsTargetToggle || event.target?.dataset?.sharedSettingsTargetOption || this._isPricingInteractionTarget(event.target)) {
         if (event.target?.dataset?.sharedSettingsTargetToggle || event.target?.dataset?.sharedSettingsTargetOption) {
           this._holdBatterySelectorWindow();
           return;
@@ -2350,7 +2365,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     });
 
     this.shadowRoot.addEventListener("focusout", (event) => {
-      if (event.target?.dataset?.pricingField !== undefined || event.target?.dataset?.pricingHolidayField !== undefined) {
+      if (this._isPricingInteractionTarget(event.target)) {
         this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 250);
         this._queueDeferredRender();
       }
@@ -2643,6 +2658,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (target?.dataset?.pricingField !== undefined || target?.dataset?.pricingHolidayField !== undefined) {
         this._savePricingDraft(this._syncPricingDraftFromInputs());
         this._holdRenderWindow(1200);
+        return;
+      }
+      if (this._isPricingInteractionTarget(target)) {
+        this._holdRenderWindow(1800);
       }
     });
 
