@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "075";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "076";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1869,7 +1869,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   </div>
                 </div>
                 <div class="pricing-field-group pricing-form__notes">
-                  <span>Days / override</span>
+                  <span>Days</span>
                   <div class="pricing-day-grid">
                     ${["mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"].map((day) => `
                       <label class="pricing-day-pill">
@@ -1879,14 +1879,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
                     `).join("")}
                   </div>
                 </div>
-                <label class="pricing-form__notes">
-                  <span>Other charges</span>
-                  <textarea data-pricing-rule-field="other_charges" rows="2" placeholder="Optional named charges for this record"></textarea>
-                </label>
-                <label class="pricing-form__notes">
-                  <span>Notes</span>
-                  <textarea data-pricing-rule-field="notes" rows="2" placeholder="Optional notes about this record"></textarea>
-                </label>
                 <div class="pricing-form__actions">
                   <button type="button" class="theme-pill" data-pricing-ui-add-rule ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>Add record</button>
                 </div>
