@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "073";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "074";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1783,7 +1783,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 <span>Plan name</span>
                 <input type="text" data-pricing-group-field="plan_name" value="${this._escapeHtml(String(groupDraft.plan_name || ""))}" placeholder="Optional" />
               </label>
-              ${this._renderPricingTypeSelector(groupDraft.pricing_type || this._pricingGroupDraftType())}
+              ${this._renderPricingTypeSelector(this._pricingGroupDraftType() || groupDraft.pricing_type)}
               <label>
                 <span>Daily connection charge</span>
                 <input type="number" step="0.001" data-pricing-group-field="daily_connection_charge" value="" />
