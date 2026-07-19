@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "083";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "084";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1701,8 +1701,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Active type", value: String(activeGroup.pricing_type || "dynamic") },
       { label: "Effective from", value: String(activeGroup.effective_start_date || "Not set") },
     ];
-    const groupCards = groups.length
-      ? groups.map((group) => {
+    const visibleGroups = activeGroup.group_id ? [activeGroup] : [];
+    const groupCards = visibleGroups.length
+      ? visibleGroups.map((group) => {
           const isActive = String(group.group_id || "") === String(activeGroup.group_id || "");
           const nextGroup = groups
             .filter((item) => String(item.effective_start_date || "") > String(group.effective_start_date || ""))
@@ -1957,8 +1958,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <section class="grid pricing__grid">
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Rate Groups</h2>
-              <span>${groups.length} group(s)</span>
+              <h2>Active Rate Group</h2>
+              <span>1 group shown</span>
             </div>
             <div class="pricing-rule-list">
               ${groupCards}
@@ -2413,7 +2414,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <section class="status">
           <div class="status__banner">${connectionLabel}</div>
           ${statusMeta}
-          ${this._renderSharedBatterySelector()}
+          ${this._page === "pricing" ? "" : this._renderSharedBatterySelector()}
         </section>
 
         ${this._pageContent()}
