@@ -850,10 +850,15 @@
 
 .pricing-record-section__heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
+}
+
+.pricing-record-section__heading > div {
+  display: grid;
+  gap: 3px;
 }
 
 .pricing-record-section__heading strong {
@@ -883,8 +888,9 @@
   min-width: 0;
 }
 
-.pricing-record-section__actions {
-  margin-top: 12px;
+.pricing-record-section__add {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .pricing-rule-list--attached {

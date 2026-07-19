@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "078";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "079";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1861,8 +1861,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 </div>
                 <div class="pricing-record-section pricing-buy-form">
                   <div class="pricing-record-section__heading">
-                    <strong>Buy electricity</strong>
-                    <span>Add as many buy windows as needed</span>
+                    <div>
+                      <strong>Buy prices</strong>
+                      <span>Add as many buy/import prices as needed</span>
+                    </div>
+                    <button type="button" class="theme-pill pricing-record-section__add" data-pricing-ui-add-rule="buy" ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>+ Add buy price</button>
                   </div>
                   <div class="pricing-record-section__grid pricing-record-section__grid--buy">
                     <label class="pricing-record-form__rate">
@@ -1874,14 +1877,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <input type="number" step="0.001" data-pricing-rule-field="controlled_load_rate" value="" />
                     </label>
                   </div>
-                  <div class="pricing-form__actions pricing-record-section__actions">
-                    <button type="button" class="theme-pill" data-pricing-ui-add-rule="buy" ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>Add buy record</button>
-                  </div>
                 </div>
                 <div class="pricing-record-section pricing-sell-form">
                   <div class="pricing-record-section__heading">
-                    <strong>Sell electricity</strong>
-                    <span>Feed-in tariff, independent from buy records</span>
+                    <div>
+                      <strong>Sell prices</strong>
+                      <span>Feed-in prices, independent from buy prices</span>
+                    </div>
+                    <button type="button" class="theme-pill pricing-record-section__add" data-pricing-ui-add-rule="sell" ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>+ Add sell price</button>
                   </div>
                   <div class="pricing-record-section__grid pricing-record-section__grid--sell">
                     <label>
@@ -1896,9 +1899,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <span>Remainder rate ($/kWh)</span>
                       <input type="number" step="0.001" min="0" data-pricing-rule-field="export_tier_2_rate" value="" placeholder="0.02" />
                     </label>
-                  </div>
-                  <div class="pricing-form__actions pricing-record-section__actions">
-                    <button type="button" class="theme-pill" data-pricing-ui-add-rule="sell" ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>Add sell record</button>
                   </div>
                 </div>
                 <div class="pricing-field-group pricing-form__notes">
@@ -1916,14 +1916,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <div class="pricing-rule-list pricing-rule-list--attached">
                 <div class="pricing-record-list-section">
                   <div class="pricing-record-section__heading">
-                    <strong>Buy records</strong>
+                    <strong>Buy prices saved</strong>
                     <span>${buyRules.length} item(s)</span>
                   </div>
                   ${buyRuleCards}
                 </div>
                 <div class="pricing-record-list-section">
                   <div class="pricing-record-section__heading">
-                    <strong>Sell records</strong>
+                    <strong>Sell prices saved</strong>
                     <span>${sellRules.length} item(s)</span>
                   </div>
                   ${sellRuleCards}
