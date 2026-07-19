@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "081";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "083";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -44,6 +44,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._batterySelectorHoldUntil = 0;
     this._batterySelectorOpen = false;
     this._pricingTypeSelectorOpen = false;
+    this._pricingUiRuleDraft = this._pricingUiRuleDefaults();
     this._deferredRenderTimer = null;
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
@@ -724,6 +725,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
       other_charges: String(form.other_charges || "").trim(),
       notes: String(form.notes || "").trim(),
     };
+  }
+
+  _syncPricingUiRuleDraft(recordType = "") {
+    this._pricingUiRuleDraft = this._readPricingUiRuleForm(
+      recordType || this._pricingUiRuleDraft?.record_type || "buy",
+    );
+    return this._pricingUiRuleDraft;
+  }
+
+  _resetPricingUiRuleDraft() {
+    this._pricingUiRuleDraft = this._pricingUiRuleDefaults();
   }
 
   _pricingTimeToMinutes(value) {
@@ -1671,7 +1683,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const activeRules = Array.isArray(activeGroup.rules) ? activeGroup.rules : [];
     const buyRules = activeRules.filter((rule) => String(rule.record_type || "buy") !== "sell");
     const sellRules = activeRules.filter((rule) => String(rule.record_type || "buy") === "sell");
-    const ruleDraft = this._pricingUiRuleDefaults();
+    const ruleDraft = {
+      ...this._pricingUiRuleDefaults(),
+      ...(this._pricingUiRuleDraft || {}),
+    };
     const groupDraft = {
       ...this._pricingUiGroupDefaults(),
       provider: activeGroup.provider || this._connectionName(),
@@ -1720,14 +1735,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
       : '<article class="pricing-rule pricing-rule--empty"><strong>No rate groups yet.</strong><span>Add the first group, e.g. “Rates from Jan 1”.</span></article>';
     const renderRuleCards = (rules, emptyLabel, emptyDescription) => rules.length
       ? rules.map((rule) => {
-          const rateBits = [
-            rule.import_rate !== null && rule.import_rate !== undefined ? `Import ${this._formatPricingRate(rule.import_rate)}` : null,
-            rule.export_tier_1_rate || rule.export_tier_2_rate
-              ? `Sell ${rule.export_tier_1_limit ? `first ${rule.export_tier_1_limit} kWh at ` : ""}${this._formatPricingRate(rule.export_tier_1_rate || rule.export_rate)}${rule.export_tier_2_rate ? `, then ${this._formatPricingRate(rule.export_tier_2_rate)}` : ""}`
-              : (rule.export_rate !== null && rule.export_rate !== undefined ? `Sell ${this._formatPricingRate(rule.export_rate)}` : null),
-            rule.controlled_load_rate !== null && rule.controlled_load_rate !== undefined ? `Controlled ${this._formatPricingRate(rule.controlled_load_rate)}` : null,
-            rule.other_charges ? String(rule.other_charges) : null,
-          ].filter(Boolean);
+          const isSellRule = String(rule.record_type || "buy") === "sell";
+          const rateBits = isSellRule
+            ? [
+                rule.export_tier_1_rate || rule.export_tier_2_rate
+                  ? `Sell ${rule.export_tier_1_limit ? `first ${rule.export_tier_1_limit} kWh at ` : ""}${this._formatPricingRate(rule.export_tier_1_rate || rule.export_rate)}${rule.export_tier_2_rate ? `, then ${this._formatPricingRate(rule.export_tier_2_rate)}` : ""}`
+                  : (rule.export_rate !== null && rule.export_rate !== undefined ? `Sell ${this._formatPricingRate(rule.export_rate)}` : null),
+                rule.other_charges ? String(rule.other_charges) : null,
+              ].filter(Boolean)
+            : [
+                rule.import_rate !== null && rule.import_rate !== undefined ? `Import ${this._formatPricingRate(rule.import_rate)}` : null,
+                rule.controlled_load_rate !== null && rule.controlled_load_rate !== undefined ? `Controlled ${this._formatPricingRate(rule.controlled_load_rate)}` : null,
+                rule.other_charges ? String(rule.other_charges) : null,
+              ].filter(Boolean);
           return `
             <article class="pricing-rule">
               <div class="pricing-rule__header">
@@ -2520,6 +2540,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._holdRenderWindow(1200);
         return;
       }
+      if (target?.dataset?.pricingRuleField !== undefined || target?.dataset?.pricingRuleDay !== undefined) {
+        this._syncPricingUiRuleDraft();
+        this._holdRenderWindow(2500);
+        return;
+      }
       if (this._isPricingInteractionTarget(target)) {
         this._holdRenderWindow(2500);
         return;
@@ -2710,6 +2735,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         model.warning = "";
         this._savePricingUi(model);
         this._callPricingRecordService(group.group_id, rule);
+        this._resetPricingUiRuleDraft();
         this._holdRenderWindow();
         this._render();
         return;
@@ -2879,6 +2905,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (target?.dataset?.pricingField !== undefined || target?.dataset?.pricingHolidayField !== undefined) {
         this._savePricingDraft(this._syncPricingDraftFromInputs());
         this._holdRenderWindow(1200);
+        return;
+      }
+      if (target?.dataset?.pricingRuleField !== undefined || target?.dataset?.pricingRuleDay !== undefined) {
+        this._syncPricingUiRuleDraft();
+        this._holdRenderWindow(1800);
         return;
       }
       if (this._isPricingInteractionTarget(target)) {
