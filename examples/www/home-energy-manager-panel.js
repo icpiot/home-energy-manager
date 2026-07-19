@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "072";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "073";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -619,7 +619,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { value: "dynamic", label: "Dynamic" },
     ];
     return `
-      <label class="pricing-type-selector">
+      <div class="pricing-type-selector">
         <span>Pricing type</span>
         <input type="hidden" data-pricing-group-field="pricing_type" value="${current}" />
         <div class="pricing-type-selector__options" role="group" aria-label="Pricing type">
@@ -637,7 +637,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             `;
           }).join("")}
         </div>
-      </label>
+      </div>
     `;
   }
 
