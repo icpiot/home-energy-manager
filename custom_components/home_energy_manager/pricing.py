@@ -21,6 +21,7 @@ from typing import Any
 _FLOW_VALUES = {"import", "export", "net"}
 _MODE_VALUES = {"fixed", "tou", "dynamic", "market"}
 _PRICING_TYPE_VALUES = {"fixed", "dynamic"}
+_RATE_RECORD_TYPE_VALUES = {"buy", "sell"}
 _DAY_TYPE_VALUES = {"mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"}
 
 
@@ -271,6 +272,7 @@ class PricingRateRecord:
     """One day/time tariff record inside a date-effective pricing group."""
 
     record_id: str = ""
+    record_type: str = "buy"
     label: str = ""
     day_types: tuple[str, ...] = field(default_factory=tuple)
     start_time: str = "00:00"
@@ -287,11 +289,15 @@ class PricingRateRecord:
         invalid_days = [day for day in day_types if day not in _DAY_TYPE_VALUES]
         if invalid_days:
             raise ValueError(f"Unsupported day type(s): {', '.join(invalid_days)}")
+        record_type = _clean_text(self.record_type, "buy").lower()
+        if record_type not in _RATE_RECORD_TYPE_VALUES:
+            raise ValueError(f"Unsupported record_type: {self.record_type!r}")
         start_time = _parse_time(self.start_time)
         end_time = _parse_time(self.end_time, "23:59")
         if not _time_segments(start_time, end_time):
             raise ValueError("end_time must differ from start_time")
         object.__setattr__(self, "record_id", _clean_text(self.record_id) or uuid4().hex)
+        object.__setattr__(self, "record_type", record_type)
         object.__setattr__(self, "label", _clean_text(self.label))
         object.__setattr__(self, "day_types", day_types or ("mon", "tue", "wed", "thu", "fri"))
         object.__setattr__(self, "start_time", start_time)
@@ -309,6 +315,8 @@ class PricingRateRecord:
 
     def overlaps(self, other: "PricingRateRecord") -> bool:
         """Return True when records conflict inside the same override bucket."""
+        if self.record_type != other.record_type:
+            return False
         if self.is_public_holiday != other.is_public_holiday:
             return False
         if not any(day in other.day_types for day in self.day_types):
@@ -332,6 +340,7 @@ class PricingRateRecord:
     def to_dict(self) -> dict[str, Any]:
         return {
             "record_id": self.record_id,
+            "record_type": self.record_type,
             "label": self.label,
             "day_types": list(self.day_types),
             "start_time": self.start_time,
@@ -348,6 +357,7 @@ class PricingRateRecord:
     def from_dict(cls, payload: dict[str, Any]) -> "PricingRateRecord":
         return cls(
             record_id=_clean_text(payload.get("record_id") or payload.get("rule_id")),
+            record_type=_clean_text(payload.get("record_type"), "buy"),
             label=_clean_text(payload.get("label")),
             day_types=payload.get("day_types") or payload.get("days_of_week") or (),
             start_time=_clean_text(payload.get("start_time"), "00:00"),

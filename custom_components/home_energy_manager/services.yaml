@@ -639,6 +639,16 @@ pricing_upsert_record:
       required: false
       selector:
         text:
+    record_type:
+      name: Record Type
+      description: Whether this record is a buy/import price or sell/feed-in price.
+      required: false
+      default: buy
+      selector:
+        select:
+          options:
+            - buy
+            - sell
     label:
       name: Label
       description: Human-friendly record label.

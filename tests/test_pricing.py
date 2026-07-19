@@ -232,6 +232,7 @@ def test_pricing_rate_group_round_trip_preserves_records():
         records=(
             PricingRateRecord(
                 record_id="record-1",
+                record_type="buy",
                 label="Weekday peak",
                 day_types=("mon", "tue", "wed", "thu", "fri"),
                 start_time="14:00",
@@ -253,6 +254,59 @@ def test_pricing_rate_group_round_trip_preserves_records():
     restored = PricingRateGroup.from_dict(group.to_dict())
 
     assert restored == group
+
+
+def test_pricing_rate_group_allows_buy_and_sell_same_time_window():
+    group = PricingRateGroup(
+        group_id="group",
+        effective_start_date=date(2026, 1, 1),
+        records=(
+            PricingRateRecord(
+                record_id="buy-all",
+                record_type="buy",
+                day_types=("mon",),
+                start_time="00:00",
+                end_time="23:59",
+                import_rate=0.42,
+            ),
+            PricingRateRecord(
+                record_id="sell-all",
+                record_type="sell",
+                day_types=("mon",),
+                start_time="00:00",
+                end_time="23:59",
+                export_rate=0.08,
+            ),
+        ),
+    )
+
+    restored = PricingRateGroup.from_dict(group.to_dict())
+
+    assert [record.record_type for record in restored.records] == ["buy", "sell"]
+
+
+def test_overlapping_same_type_rate_records_are_rejected():
+    with pytest.raises(ValueError, match="overlaps"):
+        PricingRateGroup(
+            group_id="group",
+            effective_start_date=date(2026, 1, 1),
+            records=(
+                PricingRateRecord(
+                    record_id="buy-all",
+                    record_type="buy",
+                    day_types=("mon",),
+                    start_time="00:00",
+                    end_time="23:59",
+                ),
+                PricingRateRecord(
+                    record_id="buy-peak",
+                    record_type="buy",
+                    day_types=("mon",),
+                    start_time="12:00",
+                    end_time="18:00",
+                ),
+            ),
+        )
 
 
 def test_pricing_schedule_selects_latest_effective_group():

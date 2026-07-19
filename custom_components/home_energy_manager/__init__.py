@@ -94,6 +94,7 @@ from .const import (
     ATTR_RULE_ID,
     ATTR_GROUP_ID,
     ATTR_RECORD_ID,
+    ATTR_RECORD_TYPE,
     ATTR_EFFECTIVE_DATE,
     ATTR_EFFECTIVE_START_DATE,
     ATTR_EFFECTIVE_TIME,
@@ -139,7 +140,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=080"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=081"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -1073,6 +1074,7 @@ def _register_services(hass: HomeAssistant) -> None:
         try:
             record = PricingRateRecord.from_dict({
                 "record_id": call.data.get(ATTR_RECORD_ID),
+                "record_type": call.data.get(ATTR_RECORD_TYPE) or "buy",
                 "label": call.data.get(ATTR_LABEL) or "",
                 "day_types": day_types,
                 "start_time": call.data.get(ATTR_EFFECTIVE_TIME) or "00:00",
@@ -1171,6 +1173,7 @@ def _register_services(hass: HomeAssistant) -> None:
     _pricing_record_schema = vol.Schema({
         vol.Required(ATTR_GROUP_ID): cv.string,
         vol.Optional(ATTR_RECORD_ID): cv.string,
+        vol.Optional(ATTR_RECORD_TYPE, default="buy"): vol.In(["buy", "sell"]),
         vol.Optional(ATTR_LABEL, default=""): cv.string,
         vol.Required(ATTR_DAY_TYPES): vol.All(cv.ensure_list, [cv.string]),
         vol.Required(ATTR_EFFECTIVE_TIME): cv.string,
