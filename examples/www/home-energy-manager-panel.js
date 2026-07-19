@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "071";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "072";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -618,41 +618,24 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { value: "fixed", label: "Fixed" },
       { value: "dynamic", label: "Dynamic" },
     ];
-    const dropdown = this._pricingTypeSelectorOpen
-      ? `
-          <div class="shared-selector__menu pricing-type-selector__menu" role="listbox" aria-label="Pricing type">
-            ${options.map((option) => {
-              const selected = option.value === current;
-              return `
-                <button
-                  type="button"
-                  class="shared-selector__option ${selected ? "is-selected" : ""}"
-                  role="option"
-                  aria-selected="${selected ? "true" : "false"}"
-                  data-pricing-type-option="${option.value}"
-                >
-                  ${option.label}
-                </button>
-              `;
-            }).join("")}
-          </div>
-        `
-      : "";
     return `
       <label class="pricing-type-selector">
         <span>Pricing type</span>
         <input type="hidden" data-pricing-group-field="pricing_type" value="${current}" />
-        <div class="shared-selector__picker pricing-type-selector__picker">
-          <button
-            type="button"
-            class="shared-selector__control pricing-type-selector__control"
-            aria-haspopup="listbox"
-            aria-expanded="${this._pricingTypeSelectorOpen ? "true" : "false"}"
-            data-pricing-type-toggle
-          >
-            <span>${label}</span>
-          </button>
-          ${dropdown}
+        <div class="pricing-type-selector__options" role="group" aria-label="Pricing type">
+          ${options.map((option) => {
+            const selected = option.value === current;
+            return `
+              <button
+                type="button"
+                class="shared-selector__option pricing-type-selector__option ${selected ? "is-selected" : ""}"
+                aria-pressed="${selected ? "true" : "false"}"
+                data-pricing-type-option="${option.value}"
+              >
+                ${option.label}
+              </button>
+            `;
+          }).join("")}
         </div>
       </label>
     `;
@@ -2419,21 +2402,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       };
     });
 
-    this.shadowRoot.querySelectorAll('[data-pricing-type-toggle]').forEach((button) => {
-      button.onclick = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this._pricingTypeSelectorOpen = !this._pricingTypeSelectorOpen;
-        this._holdRenderWindow(10000);
-        this._render();
-      };
-    });
-
     this.shadowRoot.querySelectorAll('[data-pricing-type-option]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
         event.stopPropagation();
-        this._pricingTypeSelectorOpen = false;
         this._savePricingGroupDraftType(button.dataset.pricingTypeOption);
         this._holdRenderWindow(10000);
         this._render();
@@ -2500,7 +2472,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (path.some((node) => node?.dataset?.sharedSettingsTargetToggle || node?.dataset?.sharedSettingsTargetOption)) {
         this._holdBatterySelectorWindow();
       }
-      if (path.some((node) => node?.dataset?.pricingTypeToggle || node?.dataset?.pricingTypeOption)) {
+      if (path.some((node) => node?.dataset?.pricingTypeOption)) {
         this._holdRenderWindow(8000);
       }
       if (path.some((node) => this._isPricingInteractionTarget(node))) {
@@ -2559,29 +2531,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return;
       }
 
-      const pricingTypeToggle = path.find((node) => node?.dataset?.pricingTypeToggle !== undefined);
-      if (pricingTypeToggle) {
-        event.preventDefault();
-        event.stopPropagation();
-        this._pricingTypeSelectorOpen = !this._pricingTypeSelectorOpen;
-        this._holdRenderWindow(10000);
-        this._render();
-        return;
-      }
-
       const pricingTypeOption = path.find((node) => node?.dataset?.pricingTypeOption);
       if (pricingTypeOption) {
         event.preventDefault();
         event.stopPropagation();
-        this._pricingTypeSelectorOpen = false;
         this._savePricingGroupDraftType(pricingTypeOption.dataset.pricingTypeOption);
         this._holdRenderWindow(10000);
-        this._render();
-        return;
-      }
-
-      if (this._pricingTypeSelectorOpen && !path.some((node) => node?.classList?.contains?.("pricing-type-selector"))) {
-        this._pricingTypeSelectorOpen = false;
         this._render();
         return;
       }

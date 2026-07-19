@@ -756,24 +756,19 @@
   margin-bottom: 0;
 }
 
-.pricing-type-selector {
-  position: relative;
+.pricing-type-selector__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.pricing-type-selector__picker {
-  width: 100%;
-}
-
-.pricing-type-selector__control {
+.pricing-type-selector__option {
+  border: 1px solid var(--hem-panel-border);
+  border-radius: 14px;
+  justify-content: center;
   min-height: 46px;
+  position: static;
   width: 100%;
-}
-
-.pricing-type-selector__menu {
-  left: 0;
-  right: 0;
-  top: calc(100% + 6px);
-  width: auto;
 }
 
 .pricing-active-group {
