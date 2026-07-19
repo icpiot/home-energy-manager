@@ -675,7 +675,37 @@ pricing_upsert_record:
           unit_of_measurement: $/kWh
     export_rate:
       name: Export Rate
-      description: Export rate in dollars/kWh, e.g. 0.05.
+      description: Flat export/feed-in rate in dollars/kWh when the plan does not use tiers.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: $/kWh
+    export_tier_1_limit:
+      name: Export Tier 1 Limit
+      description: First sell/feed-in block size in kWh, e.g. 1000.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100000
+          step: 1
+          unit_of_measurement: kWh
+    export_tier_1_rate:
+      name: Export Tier 1 Rate
+      description: Sell/feed-in rate for the first block in dollars/kWh, e.g. 0.08.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: $/kWh
+    export_tier_2_rate:
+      name: Export Tier 2 Rate
+      description: Sell/feed-in rate after the first block in dollars/kWh, e.g. 0.02.
       required: false
       selector:
         number:

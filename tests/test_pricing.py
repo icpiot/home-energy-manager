@@ -239,6 +239,13 @@ def test_pricing_rate_group_round_trip_preserves_records():
                 import_rate=0.42,
                 export_rate=0.05,
                 controlled_load_rate=0.18,
+                metadata={
+                    "sell_tiers": {
+                        "tier_1_limit_kwh": 1000,
+                        "tier_1_rate": 0.08,
+                        "tier_2_rate": 0.02,
+                    },
+                },
             ),
         ),
     )

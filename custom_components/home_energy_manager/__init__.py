@@ -105,6 +105,9 @@ from .const import (
     ATTR_LABEL,
     ATTR_IMPORT_RATE,
     ATTR_EXPORT_RATE,
+    ATTR_EXPORT_TIER_1_LIMIT,
+    ATTR_EXPORT_TIER_1_RATE,
+    ATTR_EXPORT_TIER_2_RATE,
     ATTR_SUPPLY_CHARGE,
     ATTR_CONTROLLED_LOAD_1,
     ATTR_CONTROLLED_LOAD_2,
@@ -136,7 +139,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=068"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=069"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -1060,6 +1063,13 @@ def _register_services(hass: HomeAssistant) -> None:
         day_types = call.data.get(ATTR_DAY_TYPES) or []
         if isinstance(day_types, str):
             day_types = [item.strip() for item in day_types.split(",") if item.strip()]
+        sell_tiers = {}
+        if call.data.get(ATTR_EXPORT_TIER_1_LIMIT) is not None:
+            sell_tiers["tier_1_limit_kwh"] = call.data.get(ATTR_EXPORT_TIER_1_LIMIT)
+        if call.data.get(ATTR_EXPORT_TIER_1_RATE) is not None:
+            sell_tiers["tier_1_rate"] = call.data.get(ATTR_EXPORT_TIER_1_RATE)
+        if call.data.get(ATTR_EXPORT_TIER_2_RATE) is not None:
+            sell_tiers["tier_2_rate"] = call.data.get(ATTR_EXPORT_TIER_2_RATE)
         try:
             record = PricingRateRecord.from_dict({
                 "record_id": call.data.get(ATTR_RECORD_ID),
@@ -1068,10 +1078,11 @@ def _register_services(hass: HomeAssistant) -> None:
                 "start_time": call.data.get(ATTR_EFFECTIVE_TIME) or "00:00",
                 "end_time": call.data.get(ATTR_EFFECTIVE_END_TIME) or "23:59",
                 "import_rate": call.data.get(ATTR_IMPORT_RATE),
-                "export_rate": call.data.get(ATTR_EXPORT_RATE),
+                "export_rate": call.data.get(ATTR_EXPORT_RATE) if call.data.get(ATTR_EXPORT_RATE) is not None else call.data.get(ATTR_EXPORT_TIER_1_RATE),
                 "controlled_load_rate": call.data.get(ATTR_CONTROLLED_LOAD_RATE),
                 "other_charges": call.data.get(ATTR_OTHER_CHARGES) or "",
                 "notes": call.data.get(ATTR_NOTES) or "",
+                "metadata": {"sell_tiers": sell_tiers} if sell_tiers else {},
             })
         except ValueError as err:
             raise HomeAssistantError(str(err)) from err
@@ -1166,6 +1177,9 @@ def _register_services(hass: HomeAssistant) -> None:
         vol.Required(ATTR_EFFECTIVE_END_TIME): cv.string,
         vol.Optional(ATTR_IMPORT_RATE): vol.Coerce(float),
         vol.Optional(ATTR_EXPORT_RATE): vol.Coerce(float),
+        vol.Optional(ATTR_EXPORT_TIER_1_LIMIT): vol.Coerce(float),
+        vol.Optional(ATTR_EXPORT_TIER_1_RATE): vol.Coerce(float),
+        vol.Optional(ATTR_EXPORT_TIER_2_RATE): vol.Coerce(float),
         vol.Optional(ATTR_CONTROLLED_LOAD_RATE): vol.Coerce(float),
         vol.Optional(ATTR_OTHER_CHARGES, default=""): cv.string,
         vol.Optional(ATTR_NOTES, default=""): cv.string,

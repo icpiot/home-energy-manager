@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "068";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "069";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -803,6 +803,76 @@ class HomeEnergyManagerPanel extends HTMLElement {
     model.warning = "";
     this._savePricingUi(model);
     this._render();
+  }
+
+  _callPricingGroupService(group) {
+    if (!this._hass || !group?.group_id) {
+      return;
+    }
+    this._hass.callService("home_energy_manager", "pricing_upsert_group", {
+      entry_id: this._config?.entry_id,
+      group_id: group.group_id,
+      label: group.label,
+      provider: group.provider,
+      plan_name: group.plan_name,
+      effective_start_date: group.effective_start_date,
+      pricing_type: group.pricing_type,
+      daily_connection_charge: String(group.daily_connection_charge ?? "").trim() === "" ? undefined : Number(group.daily_connection_charge),
+      other_charges: group.other_charges,
+      notes: group.notes,
+    }).catch((error) => {
+      console.error("Failed to save pricing group", error);
+    });
+  }
+
+  _callPricingRemoveGroupService(groupId) {
+    if (!this._hass || !groupId) {
+      return;
+    }
+    this._hass.callService("home_energy_manager", "pricing_remove_group", {
+      entry_id: this._config?.entry_id,
+      group_id: groupId,
+    }).catch((error) => {
+      console.error("Failed to delete pricing group", error);
+    });
+  }
+
+  _callPricingRecordService(groupId, rule) {
+    if (!this._hass || !groupId || !rule?.rule_id) {
+      return;
+    }
+    this._hass.callService("home_energy_manager", "pricing_upsert_record", {
+      entry_id: this._config?.entry_id,
+      group_id: groupId,
+      record_id: rule.rule_id,
+      label: rule.label,
+      day_types: Array.isArray(rule.day_types) ? rule.day_types : [],
+      effective_time: rule.start_time,
+      effective_end_time: rule.end_time,
+      import_rate: String(rule.import_rate ?? "").trim() === "" ? undefined : Number(rule.import_rate),
+      export_rate: String(rule.export_rate ?? "").trim() === "" ? undefined : Number(rule.export_rate),
+      export_tier_1_limit: String(rule.export_tier_1_limit ?? "").trim() === "" ? undefined : Number(rule.export_tier_1_limit),
+      export_tier_1_rate: String(rule.export_tier_1_rate ?? "").trim() === "" ? undefined : Number(rule.export_tier_1_rate),
+      export_tier_2_rate: String(rule.export_tier_2_rate ?? "").trim() === "" ? undefined : Number(rule.export_tier_2_rate),
+      controlled_load_rate: String(rule.controlled_load_rate ?? "").trim() === "" ? undefined : Number(rule.controlled_load_rate),
+      other_charges: rule.other_charges,
+      notes: rule.notes,
+    }).catch((error) => {
+      console.error("Failed to save pricing record", error);
+    });
+  }
+
+  _callPricingRemoveRecordService(groupId, ruleId) {
+    if (!this._hass || !groupId || !ruleId) {
+      return;
+    }
+    this._hass.callService("home_energy_manager", "pricing_remove_record", {
+      entry_id: this._config?.entry_id,
+      group_id: groupId,
+      record_id: ruleId,
+    }).catch((error) => {
+      console.error("Failed to delete pricing record", error);
+    });
   }
 
   _pricingDraftDefaults() {
@@ -2440,6 +2510,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         model.activeGroupId = group.group_id;
         model.warning = "";
         this._savePricingUi(model);
+        this._callPricingGroupService(group);
+        this._holdRenderWindow();
         this._render();
         return;
       }
@@ -2466,6 +2538,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         }
         model.warning = "";
         this._savePricingUi(model);
+        this._callPricingRemoveGroupService(groupId);
+        this._holdRenderWindow();
         this._render();
         return;
       }
@@ -2492,6 +2566,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         group.rules = [...(Array.isArray(group.rules) ? group.rules : []), rule];
         model.warning = "";
         this._savePricingUi(model);
+        this._callPricingRecordService(group.group_id, rule);
+        this._holdRenderWindow();
         this._render();
         return;
       }
@@ -2506,6 +2582,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
           group.rules = (Array.isArray(group.rules) ? group.rules : []).filter((rule) => String(rule.rule_id || "") !== ruleId);
           model.warning = "";
           this._savePricingUi(model);
+          this._callPricingRemoveRecordService(group.group_id, ruleId);
+          this._holdRenderWindow();
           this._render();
         }
         return;
