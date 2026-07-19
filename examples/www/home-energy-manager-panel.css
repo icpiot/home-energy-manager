@@ -756,6 +756,26 @@
   margin-bottom: 0;
 }
 
+.pricing-type-selector {
+  position: relative;
+}
+
+.pricing-type-selector__picker {
+  width: 100%;
+}
+
+.pricing-type-selector__control {
+  min-height: 46px;
+  width: 100%;
+}
+
+.pricing-type-selector__menu {
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  width: auto;
+}
+
 .pricing-active-group {
   display: grid;
   gap: 4px;

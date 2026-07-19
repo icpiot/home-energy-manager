@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "069";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "070";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -43,6 +43,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._renderHoldUntil = 0;
     this._batterySelectorHoldUntil = 0;
     this._batterySelectorOpen = false;
+    this._pricingTypeSelectorOpen = false;
     this._deferredRenderTimer = null;
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
@@ -592,6 +593,71 @@ class HomeEnergyManagerPanel extends HTMLElement {
       || null;
   }
 
+  _pricingGroupDraftType() {
+    try {
+      return localStorage.getItem(`${HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY}.draft_type`) || "dynamic";
+    } catch (error) {
+      return "dynamic";
+    }
+  }
+
+  _savePricingGroupDraftType(value) {
+    const pricingType = String(value || "dynamic").toLowerCase() === "fixed" ? "fixed" : "dynamic";
+    try {
+      localStorage.setItem(`${HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY}.draft_type`, pricingType);
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+    return pricingType;
+  }
+
+  _renderPricingTypeSelector(value = "dynamic") {
+    const current = String(value || "dynamic").toLowerCase() === "fixed" ? "fixed" : "dynamic";
+    const label = current === "fixed" ? "Fixed" : "Dynamic";
+    const options = [
+      { value: "fixed", label: "Fixed" },
+      { value: "dynamic", label: "Dynamic" },
+    ];
+    const dropdown = this._pricingTypeSelectorOpen
+      ? `
+          <div class="shared-selector__menu pricing-type-selector__menu" role="listbox" aria-label="Pricing type">
+            ${options.map((option) => {
+              const selected = option.value === current;
+              return `
+                <button
+                  type="button"
+                  class="shared-selector__option ${selected ? "is-selected" : ""}"
+                  role="option"
+                  aria-selected="${selected ? "true" : "false"}"
+                  data-pricing-type-option="${option.value}"
+                >
+                  ${option.label}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        `
+      : "";
+    return `
+      <label class="pricing-type-selector">
+        <span>Pricing type</span>
+        <input type="hidden" data-pricing-group-field="pricing_type" value="${current}" />
+        <div class="shared-selector__picker pricing-type-selector__picker">
+          <button
+            type="button"
+            class="shared-selector__control pricing-type-selector__control"
+            aria-haspopup="listbox"
+            aria-expanded="${this._pricingTypeSelectorOpen ? "true" : "false"}"
+            data-pricing-type-toggle
+          >
+            <span>${label}</span>
+          </button>
+          ${dropdown}
+        </div>
+      </label>
+    `;
+  }
+
   _readPricingUiGroupForm() {
     const defaults = this._pricingUiGroupDefaults();
     if (!this.shadowRoot) {
@@ -612,7 +678,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       provider: String(form.provider || "").trim(),
       plan_name: String(form.plan_name || "").trim(),
       effective_start_date: String(form.effective_start_date || defaults.effective_start_date).trim(),
-      pricing_type: String(form.pricing_type || defaults.pricing_type).trim().toLowerCase(),
+      pricing_type: String(form.pricing_type || this._pricingGroupDraftType() || defaults.pricing_type).trim().toLowerCase(),
       daily_connection_charge: String(form.daily_connection_charge || "").trim(),
       other_charges: String(form.other_charges || "").trim(),
       notes: String(form.notes || "").trim(),
@@ -1734,13 +1800,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 <span>Plan name</span>
                 <input type="text" data-pricing-group-field="plan_name" value="${this._escapeHtml(String(groupDraft.plan_name || ""))}" placeholder="Optional" />
               </label>
-              <label>
-                <span>Pricing type</span>
-                <select data-pricing-group-field="pricing_type">
-                  <option value="fixed">Fixed</option>
-                  <option value="dynamic" selected>Dynamic</option>
-                </select>
-              </label>
+              ${this._renderPricingTypeSelector(groupDraft.pricing_type || this._pricingGroupDraftType())}
               <label>
                 <span>Daily connection charge</span>
                 <input type="number" step="0.001" data-pricing-group-field="daily_connection_charge" value="" />
@@ -2419,6 +2479,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (path.some((node) => node?.dataset?.sharedSettingsTargetToggle || node?.dataset?.sharedSettingsTargetOption)) {
         this._holdBatterySelectorWindow();
       }
+      if (path.some((node) => node?.dataset?.pricingTypeToggle || node?.dataset?.pricingTypeOption)) {
+        this._holdRenderWindow(8000);
+      }
       if (path.some((node) => this._isPricingInteractionTarget(node))) {
         this._holdRenderWindow(8000);
       }
@@ -2472,6 +2535,33 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
       if (this._batterySelectorOpen && !path.some((node) => node?.classList?.contains?.("shared-selector"))) {
         this._closeSharedBatterySelector();
+        return;
+      }
+
+      const pricingTypeToggle = path.find((node) => node?.dataset?.pricingTypeToggle !== undefined);
+      if (pricingTypeToggle) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._pricingTypeSelectorOpen = !this._pricingTypeSelectorOpen;
+        this._holdRenderWindow(10000);
+        this._render();
+        return;
+      }
+
+      const pricingTypeOption = path.find((node) => node?.dataset?.pricingTypeOption);
+      if (pricingTypeOption) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._pricingTypeSelectorOpen = false;
+        this._savePricingGroupDraftType(pricingTypeOption.dataset.pricingTypeOption);
+        this._holdRenderWindow(10000);
+        this._render();
+        return;
+      }
+
+      if (this._pricingTypeSelectorOpen && !path.some((node) => node?.classList?.contains?.("pricing-type-selector"))) {
+        this._pricingTypeSelectorOpen = false;
+        this._render();
         return;
       }
 
