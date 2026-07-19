@@ -10,7 +10,14 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from .pricing import PriceHistory, PriceRecord, PricingRule, PricingSchedule
+from .pricing import (
+    PriceHistory,
+    PriceRecord,
+    PricingRateGroup,
+    PricingRateRecord,
+    PricingRule,
+    PricingSchedule,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -170,6 +177,48 @@ class PricingScheduleStore:
             _LOGGER.warning("Failed to remove pricing rule for %s: %s", self.entry_id, err)
             return PricingSchedule()
 
+    async def async_upsert_group(self, group: PricingRateGroup) -> PricingSchedule:
+        """Insert or replace a pricing rate group and persist the schedule."""
+        try:
+            return await self.hass.async_add_executor_job(self._upsert_group_sync, group)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to store pricing group for %s: %s", self.entry_id, err)
+            return PricingSchedule()
+
+    async def async_remove_group(self, group_id: str) -> PricingSchedule:
+        """Remove a pricing rate group and persist the schedule."""
+        try:
+            return await self.hass.async_add_executor_job(self._remove_group_sync, group_id)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to remove pricing group for %s: %s", self.entry_id, err)
+            return PricingSchedule()
+
+    async def async_upsert_record(
+        self,
+        *,
+        group_id: str,
+        record: PricingRateRecord,
+    ) -> PricingSchedule:
+        """Insert or replace a pricing record inside a group."""
+        try:
+            return await self.hass.async_add_executor_job(self._upsert_record_sync, group_id, record)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to store pricing record for %s: %s", self.entry_id, err)
+            return PricingSchedule()
+
+    async def async_remove_record(
+        self,
+        *,
+        group_id: str,
+        record_id: str,
+    ) -> PricingSchedule:
+        """Remove one pricing record from a group."""
+        try:
+            return await self.hass.async_add_executor_job(self._remove_record_sync, group_id, record_id)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to remove pricing record for %s: %s", self.entry_id, err)
+            return PricingSchedule()
+
     async def async_set_holidays(
         self,
         *,
@@ -196,7 +245,7 @@ class PricingScheduleStore:
     def _save_schedule_sync(self, schedule: PricingSchedule) -> None:
         self.base_dir.mkdir(parents=True, exist_ok=True)
         payload = schedule.to_dict()
-        payload["version"] = 1
+        payload["version"] = int(payload.get("version") or 1)
         payload["updated"] = dt_util.utcnow().isoformat()
         write_pricing_history_file(self.schedule_file, payload)
 
@@ -210,6 +259,63 @@ class PricingScheduleStore:
     def _remove_rule_sync(self, rule_id: str) -> PricingSchedule:
         schedule = self._schedule_sync()
         schedule.remove_rule(rule_id)
+        schedule.updated_at = dt_util.utcnow()
+        self._save_schedule_sync(schedule)
+        return schedule
+
+    def _upsert_group_sync(self, group: PricingRateGroup) -> PricingSchedule:
+        schedule = self._schedule_sync()
+        schedule.add_group(group)
+        schedule.updated_at = dt_util.utcnow()
+        self._save_schedule_sync(schedule)
+        return schedule
+
+    def _remove_group_sync(self, group_id: str) -> PricingSchedule:
+        schedule = self._schedule_sync()
+        schedule.remove_group(group_id)
+        schedule.updated_at = dt_util.utcnow()
+        self._save_schedule_sync(schedule)
+        return schedule
+
+    def _upsert_record_sync(self, group_id: str, record: PricingRateRecord) -> PricingSchedule:
+        schedule = self._schedule_sync()
+        group_key = str(group_id or "").strip()
+        groups = []
+        found = False
+        for group in schedule.groups:
+            if group.group_id != group_key:
+                groups.append(group)
+                continue
+            found = True
+            records = [existing for existing in group.records if existing.record_id != record.record_id]
+            records.append(record)
+            groups.append(PricingRateGroup.from_dict({
+                **group.to_dict(),
+                "records": [item.to_dict() for item in records],
+            }))
+        if not found:
+            raise ValueError(f"Unknown pricing group: {group_id!r}")
+        schedule.groups = groups
+        schedule._raise_for_duplicate_group_dates()
+        schedule.updated_at = dt_util.utcnow()
+        self._save_schedule_sync(schedule)
+        return schedule
+
+    def _remove_record_sync(self, group_id: str, record_id: str) -> PricingSchedule:
+        schedule = self._schedule_sync()
+        group_key = str(group_id or "").strip()
+        record_key = str(record_id or "").strip()
+        groups = []
+        for group in schedule.groups:
+            if group.group_id != group_key:
+                groups.append(group)
+                continue
+            records = [record for record in group.records if record.record_id != record_key]
+            groups.append(PricingRateGroup.from_dict({
+                **group.to_dict(),
+                "records": [record.to_dict() for record in records],
+            }))
+        schedule.groups = groups
         schedule.updated_at = dt_util.utcnow()
         self._save_schedule_sync(schedule)
         return schedule

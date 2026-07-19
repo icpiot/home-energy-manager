@@ -1,16 +1,60 @@
 """Tests for pricing history persistence helpers."""
 from __future__ import annotations
 
+import importlib.util
+import sys
+import types
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from custom_components.home_energy_manager.pricing import PriceRecord, PricingRule
-from custom_components.home_energy_manager.pricing_store import (
-    PriceHistoryStore,
-    PricingScheduleStore,
-    load_pricing_history_file,
-    write_pricing_history_file,
-)
+
+def _load_pricing_modules():
+    root = Path(__file__).resolve().parents[1]
+    package = types.ModuleType("custom_components.home_energy_manager")
+    package.__path__ = [str(root / "custom_components" / "home_energy_manager")]
+    sys.modules.setdefault("custom_components.home_energy_manager", package)
+
+    homeassistant = types.ModuleType("homeassistant")
+    homeassistant_core = types.ModuleType("homeassistant.core")
+    homeassistant_core.HomeAssistant = object
+    homeassistant_util = types.ModuleType("homeassistant.util")
+    homeassistant_dt = types.ModuleType("homeassistant.util.dt")
+    homeassistant_dt.utcnow = lambda: datetime(2026, 7, 19, 0, 0, tzinfo=timezone.utc)
+    homeassistant_util.dt = homeassistant_dt
+    sys.modules.setdefault("homeassistant", homeassistant)
+    sys.modules.setdefault("homeassistant.core", homeassistant_core)
+    sys.modules.setdefault("homeassistant.util", homeassistant_util)
+    sys.modules.setdefault("homeassistant.util.dt", homeassistant_dt)
+
+    pricing_path = root / "custom_components" / "home_energy_manager" / "pricing.py"
+    pricing_spec = importlib.util.spec_from_file_location(
+        "custom_components.home_energy_manager.pricing",
+        pricing_path,
+    )
+    pricing = importlib.util.module_from_spec(pricing_spec)
+    sys.modules[pricing_spec.name] = pricing
+    pricing_spec.loader.exec_module(pricing)
+
+    store_path = root / "custom_components" / "home_energy_manager" / "pricing_store.py"
+    store_spec = importlib.util.spec_from_file_location(
+        "custom_components.home_energy_manager.pricing_store",
+        store_path,
+    )
+    pricing_store = importlib.util.module_from_spec(store_spec)
+    sys.modules[store_spec.name] = pricing_store
+    store_spec.loader.exec_module(pricing_store)
+    return pricing, pricing_store
+
+
+pricing, pricing_store = _load_pricing_modules()
+PriceRecord = pricing.PriceRecord
+PricingRateGroup = pricing.PricingRateGroup
+PricingRateRecord = pricing.PricingRateRecord
+PricingRule = pricing.PricingRule
+PriceHistoryStore = pricing_store.PriceHistoryStore
+PricingScheduleStore = pricing_store.PricingScheduleStore
+load_pricing_history_file = pricing_store.load_pricing_history_file
+write_pricing_history_file = pricing_store.write_pricing_history_file
 
 
 class _FakeConfig:
@@ -130,3 +174,48 @@ def test_pricing_schedule_store_persists_rules_and_holidays(tmp_path):
     asyncio.run(store.async_remove_rule("rule-1"))
     schedule_after_remove = asyncio.run(store.async_schedule())
     assert schedule_after_remove.rules == []
+
+
+def test_pricing_schedule_store_persists_groups_and_records(tmp_path):
+    store = PricingScheduleStore(_FakeHass(tmp_path), "entry-1")
+    group = PricingRateGroup(
+        group_id="group-1",
+        label="Rates from Jan 1",
+        effective_start_date=date(2026, 1, 1),
+        pricing_type="fixed",
+        daily_connection_charge=1.23,
+    )
+    record = PricingRateRecord(
+        record_id="record-1",
+        label="Peak",
+        day_types=("mon", "tue", "wed", "thu", "fri"),
+        start_time="14:00",
+        end_time="20:00",
+        import_rate=0.42,
+    )
+
+    import asyncio
+
+    asyncio.run(store.async_upsert_group(group))
+    asyncio.run(store.async_upsert_record(group_id="group-1", record=record))
+    schedule = asyncio.run(store.async_schedule())
+
+    assert len(schedule.groups) == 1
+    assert schedule.groups[0].group_id == "group-1"
+    assert schedule.groups[0].daily_connection_charge == 1.23
+    assert len(schedule.groups[0].records) == 1
+    assert schedule.groups[0].records[0] == record
+
+    payload = load_pricing_history_file(
+        tmp_path / "www" / "home-energy-manager-pricing" / "entry-1" / "pricing_schedule.json"
+    )
+    assert payload["version"] == 2
+    assert payload["groups"][0]["records"][0]["import_rate"] == 0.42
+
+    asyncio.run(store.async_remove_record(group_id="group-1", record_id="record-1"))
+    schedule_after_record_remove = asyncio.run(store.async_schedule())
+    assert schedule_after_record_remove.groups[0].records == ()
+
+    asyncio.run(store.async_remove_group("group-1"))
+    schedule_after_group_remove = asyncio.run(store.async_schedule())
+    assert schedule_after_group_remove.groups == []
