@@ -734,6 +734,13 @@
 
 .pricing__grid--editor {
   grid-template-columns: 1fr;
+  justify-items: stretch;
+  max-width: 1380px;
+  width: 100%;
+}
+
+.pricing__grid--editor > .panel-card {
+  width: 100%;
 }
 
 .pricing-form,
@@ -876,8 +883,23 @@
   min-width: 0;
 }
 
+.pricing-record-section__actions {
+  margin-top: 12px;
+}
+
 .pricing-rule-list--attached {
   margin-top: 14px;
+}
+
+.pricing-record-list-section {
+  display: grid;
+  gap: 10px;
+}
+
+.pricing-record-list-section + .pricing-record-list-section {
+  border-top: 1px solid var(--hem-panel-border);
+  margin-top: 14px;
+  padding-top: 14px;
 }
 
 .pricing-form label,

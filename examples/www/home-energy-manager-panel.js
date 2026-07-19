@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "077";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "078";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -581,6 +581,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       export_tier_1_rate: "",
       export_tier_2_rate: "",
       controlled_load_rate: "",
+      record_type: "buy",
       other_charges: "",
       notes: "",
     };
@@ -686,7 +687,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     };
   }
 
-  _readPricingUiRuleForm() {
+  _readPricingUiRuleForm(recordType = "buy") {
     const defaults = this._pricingUiRuleDefaults();
     if (!this.shadowRoot) {
       return defaults;
@@ -719,6 +720,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       export_tier_1_rate: String(form.export_tier_1_rate || "").trim(),
       export_tier_2_rate: String(form.export_tier_2_rate || "").trim(),
       controlled_load_rate: String(form.controlled_load_rate || "").trim(),
+      record_type: String(recordType || form.record_type || defaults.record_type || "buy").trim().toLowerCase(),
       other_charges: String(form.other_charges || "").trim(),
       notes: String(form.notes || "").trim(),
     };
@@ -756,6 +758,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const daysA = Array.isArray(ruleA.day_types) ? ruleA.day_types : [];
     const daysB = Array.isArray(ruleB.day_types) ? ruleB.day_types : [];
     if (!daysA.some((day) => daysB.includes(day))) {
+      return false;
+    }
+    if (String(ruleA.record_type || "buy") !== String(ruleB.record_type || "buy")) {
       return false;
     }
     const segmentsA = this._pricingRuleSegments(ruleA);
@@ -1663,6 +1668,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const groups = this._pricingUiSortedGroups(model);
     const activeGroup = this._pricingUiActiveGroup({ ...model, groups }) || this._pricingUiGroupDefaults();
     const activeRules = Array.isArray(activeGroup.rules) ? activeGroup.rules : [];
+    const buyRules = activeRules.filter((rule) => String(rule.record_type || "buy") !== "sell");
+    const sellRules = activeRules.filter((rule) => String(rule.record_type || "buy") === "sell");
     const ruleDraft = this._pricingUiRuleDefaults();
     const groupDraft = {
       ...this._pricingUiGroupDefaults(),
@@ -1710,8 +1717,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
           `;
         }).join("")
       : '<article class="pricing-rule pricing-rule--empty"><strong>No rate groups yet.</strong><span>Add the first group, e.g. “Rates from Jan 1”.</span></article>';
-    const ruleCards = activeRules.length
-      ? activeRules.map((rule) => {
+    const renderRuleCards = (rules, emptyLabel, emptyDescription) => rules.length
+      ? rules.map((rule) => {
           const rateBits = [
             rule.import_rate !== null && rule.import_rate !== undefined ? `Import ${this._formatPricingRate(rule.import_rate)}` : null,
             rule.export_tier_1_rate || rule.export_tier_2_rate
@@ -1746,7 +1753,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </article>
           `;
         }).join("")
-      : '<article class="pricing-rule pricing-rule--empty"><strong>No records in selected group.</strong><span>Add fixed or dynamic rate records below. Public holiday records override normal day records.</span></article>';
+      : `<article class="pricing-rule pricing-rule--empty"><strong>${emptyLabel}</strong><span>${emptyDescription}</span></article>`;
+    const buyRuleCards = renderRuleCards(buyRules, "No buy records in selected group.", "Add buy/import time windows below.");
+    const sellRuleCards = renderRuleCards(sellRules, "No sell records in selected group.", "Add a sell/feed-in record below.");
     const warningMarkup = model.warning || overlapWarnings.length
       ? `<div class="pricing-alert">${this._escapeHtml(model.warning || overlapWarnings.join("; "))}</div>`
       : "";
@@ -1853,7 +1862,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 <div class="pricing-record-section pricing-buy-form">
                   <div class="pricing-record-section__heading">
                     <strong>Buy electricity</strong>
-                    <span>What you pay</span>
+                    <span>Add as many buy windows as needed</span>
                   </div>
                   <div class="pricing-record-section__grid pricing-record-section__grid--buy">
                     <label class="pricing-record-form__rate">
@@ -1865,11 +1874,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <input type="number" step="0.001" data-pricing-rule-field="controlled_load_rate" value="" />
                     </label>
                   </div>
+                  <div class="pricing-form__actions pricing-record-section__actions">
+                    <button type="button" class="theme-pill" data-pricing-ui-add-rule="buy" ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>Add buy record</button>
+                  </div>
                 </div>
                 <div class="pricing-record-section pricing-sell-form">
                   <div class="pricing-record-section__heading">
                     <strong>Sell electricity</strong>
-                    <span>Feed-in tariff</span>
+                    <span>Feed-in tariff, independent from buy records</span>
                   </div>
                   <div class="pricing-record-section__grid pricing-record-section__grid--sell">
                     <label>
@@ -1885,6 +1897,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <input type="number" step="0.001" min="0" data-pricing-rule-field="export_tier_2_rate" value="" placeholder="0.02" />
                     </label>
                   </div>
+                  <div class="pricing-form__actions pricing-record-section__actions">
+                    <button type="button" class="theme-pill" data-pricing-ui-add-rule="sell" ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>Add sell record</button>
+                  </div>
                 </div>
                 <div class="pricing-field-group pricing-form__notes">
                   <span>Days</span>
@@ -1897,12 +1912,22 @@ class HomeEnergyManagerPanel extends HTMLElement {
                     `).join("")}
                   </div>
                 </div>
-                <div class="pricing-form__actions">
-                  <button type="button" class="theme-pill" data-pricing-ui-add-rule ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>Add record</button>
-                </div>
               </div>
               <div class="pricing-rule-list pricing-rule-list--attached">
-                ${ruleCards}
+                <div class="pricing-record-list-section">
+                  <div class="pricing-record-section__heading">
+                    <strong>Buy records</strong>
+                    <span>${buyRules.length} item(s)</span>
+                  </div>
+                  ${buyRuleCards}
+                </div>
+                <div class="pricing-record-list-section">
+                  <div class="pricing-record-section__heading">
+                    <strong>Sell records</strong>
+                    <span>${sellRules.length} item(s)</span>
+                  </div>
+                  ${sellRuleCards}
+                </div>
               </div>
             </section>
           </article>
@@ -2672,7 +2697,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           this._render();
           return;
         }
-        const rule = this._readPricingUiRuleForm();
+        const rule = this._readPricingUiRuleForm(pricingUiAddRule.dataset.pricingUiAddRule || "buy");
         const warning = this._pricingUiValidationForRule(group, rule);
         if (warning) {
           model.warning = warning;
