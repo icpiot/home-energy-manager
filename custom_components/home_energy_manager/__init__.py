@@ -26,7 +26,7 @@ from homeassistant.util import dt as dt_util
 
 from .bytewatt_client import ByteWattClient
 from .coordinator import ByteWattDataUpdateCoordinator
-from .pricing import PricingRule
+from .pricing import PricingRateGroup, PricingRateRecord, PricingRule
 from .pricing_store import PricingScheduleStore
 from .reporting import ByteWattReportHistory, build_reporting_payload
 from .settings_manager import SettingsManager, SettingsValidationError
@@ -80,6 +80,10 @@ from .const import (
     SERVICE_PRICING_UPSERT_RULE,
     SERVICE_PRICING_REMOVE_RULE,
     SERVICE_PRICING_SET_HOLIDAYS,
+    SERVICE_PRICING_UPSERT_GROUP,
+    SERVICE_PRICING_REMOVE_GROUP,
+    SERVICE_PRICING_UPSERT_RECORD,
+    SERVICE_PRICING_REMOVE_RECORD,
     ATTR_FEEDIN_ENABLED,
     ATTR_FEEDIN_CUTOFF_SOC,
     ATTR_FEEDIN_SLOT,
@@ -88,21 +92,29 @@ from .const import (
     ATTR_FEEDIN_POWER,
     ATTR_ENTRY_ID,
     ATTR_RULE_ID,
+    ATTR_GROUP_ID,
+    ATTR_RECORD_ID,
     ATTR_EFFECTIVE_DATE,
+    ATTR_EFFECTIVE_START_DATE,
     ATTR_EFFECTIVE_TIME,
     ATTR_EFFECTIVE_END_DATE,
     ATTR_EFFECTIVE_END_TIME,
     ATTR_PRICING_TYPE,
     ATTR_PROVIDER,
+    ATTR_PLAN_NAME,
     ATTR_LABEL,
     ATTR_IMPORT_RATE,
     ATTR_EXPORT_RATE,
     ATTR_SUPPLY_CHARGE,
     ATTR_CONTROLLED_LOAD_1,
     ATTR_CONTROLLED_LOAD_2,
+    ATTR_CONTROLLED_LOAD_RATE,
     ATTR_ADDITIONAL_CHARGE,
+    ATTR_DAILY_CONNECTION_CHARGE,
+    ATTR_OTHER_CHARGES,
     ATTR_HOLIDAY_ONLY,
     ATTR_DAYS_OF_WEEK,
+    ATTR_DAY_TYPES,
     ATTR_NOTES,
     ATTR_HOLIDAY_DATES,
     ATTR_HOLIDAY_SOURCE,
@@ -1010,6 +1022,76 @@ def _register_services(hass: HomeAssistant) -> None:
         await store.async_remove_rule(rule_id)
         _notify_pricing_changed(hass, entry_id)
 
+    async def handle_pricing_upsert_group(call: ServiceCall) -> None:
+        store, entry_id = _pricing_store_for(hass, call)
+        try:
+            group = PricingRateGroup.from_dict({
+                "group_id": call.data.get(ATTR_GROUP_ID),
+                "label": call.data.get(ATTR_LABEL) or "",
+                "provider": call.data.get(ATTR_PROVIDER) or "",
+                "plan_name": call.data.get(ATTR_PLAN_NAME) or "",
+                "effective_start_date": call.data.get(ATTR_EFFECTIVE_START_DATE),
+                "pricing_type": call.data.get(ATTR_PRICING_TYPE) or "dynamic",
+                "daily_connection_charge": call.data.get(ATTR_DAILY_CONNECTION_CHARGE),
+                "other_charges": call.data.get(ATTR_OTHER_CHARGES) or "",
+                "notes": call.data.get(ATTR_NOTES) or "",
+            })
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from err
+        try:
+            await store.async_upsert_group(group)
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from err
+        _notify_pricing_changed(hass, entry_id)
+
+    async def handle_pricing_remove_group(call: ServiceCall) -> None:
+        store, entry_id = _pricing_store_for(hass, call)
+        group_id = str(call.data.get(ATTR_GROUP_ID) or "").strip()
+        if not group_id:
+            raise HomeAssistantError("group_id is required")
+        await store.async_remove_group(group_id)
+        _notify_pricing_changed(hass, entry_id)
+
+    async def handle_pricing_upsert_record(call: ServiceCall) -> None:
+        store, entry_id = _pricing_store_for(hass, call)
+        group_id = str(call.data.get(ATTR_GROUP_ID) or "").strip()
+        if not group_id:
+            raise HomeAssistantError("group_id is required")
+        day_types = call.data.get(ATTR_DAY_TYPES) or []
+        if isinstance(day_types, str):
+            day_types = [item.strip() for item in day_types.split(",") if item.strip()]
+        try:
+            record = PricingRateRecord.from_dict({
+                "record_id": call.data.get(ATTR_RECORD_ID),
+                "label": call.data.get(ATTR_LABEL) or "",
+                "day_types": day_types,
+                "start_time": call.data.get(ATTR_EFFECTIVE_TIME) or "00:00",
+                "end_time": call.data.get(ATTR_EFFECTIVE_END_TIME) or "23:59",
+                "import_rate": call.data.get(ATTR_IMPORT_RATE),
+                "export_rate": call.data.get(ATTR_EXPORT_RATE),
+                "controlled_load_rate": call.data.get(ATTR_CONTROLLED_LOAD_RATE),
+                "other_charges": call.data.get(ATTR_OTHER_CHARGES) or "",
+                "notes": call.data.get(ATTR_NOTES) or "",
+            })
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from err
+        try:
+            await store.async_upsert_record(group_id=group_id, record=record)
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from err
+        _notify_pricing_changed(hass, entry_id)
+
+    async def handle_pricing_remove_record(call: ServiceCall) -> None:
+        store, entry_id = _pricing_store_for(hass, call)
+        group_id = str(call.data.get(ATTR_GROUP_ID) or "").strip()
+        record_id = str(call.data.get(ATTR_RECORD_ID) or "").strip()
+        if not group_id:
+            raise HomeAssistantError("group_id is required")
+        if not record_id:
+            raise HomeAssistantError("record_id is required")
+        await store.async_remove_record(group_id=group_id, record_id=record_id)
+        _notify_pricing_changed(hass, entry_id)
+
     async def handle_pricing_set_holidays(call: ServiceCall) -> None:
         store, entry_id = _pricing_store_for(hass, call)
         holiday_dates = call.data.get(ATTR_HOLIDAY_DATES) or []
@@ -1061,6 +1143,32 @@ def _register_services(hass: HomeAssistant) -> None:
         vol.Required(ATTR_HOLIDAY_DATES): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional(ATTR_HOLIDAY_SOURCE, default=""): cv.string,
         vol.Optional(ATTR_REGION, default=""): cv.string,
+        **_entry_id_opt,
+    })
+    _pricing_group_schema = vol.Schema({
+        vol.Optional(ATTR_GROUP_ID): cv.string,
+        vol.Optional(ATTR_LABEL, default=""): cv.string,
+        vol.Optional(ATTR_PROVIDER, default=""): cv.string,
+        vol.Optional(ATTR_PLAN_NAME, default=""): cv.string,
+        vol.Required(ATTR_EFFECTIVE_START_DATE): cv.string,
+        vol.Optional(ATTR_PRICING_TYPE, default="dynamic"): vol.In(["fixed", "dynamic"]),
+        vol.Optional(ATTR_DAILY_CONNECTION_CHARGE): vol.Coerce(float),
+        vol.Optional(ATTR_OTHER_CHARGES, default=""): cv.string,
+        vol.Optional(ATTR_NOTES, default=""): cv.string,
+        **_entry_id_opt,
+    })
+    _pricing_record_schema = vol.Schema({
+        vol.Required(ATTR_GROUP_ID): cv.string,
+        vol.Optional(ATTR_RECORD_ID): cv.string,
+        vol.Optional(ATTR_LABEL, default=""): cv.string,
+        vol.Required(ATTR_DAY_TYPES): vol.All(cv.ensure_list, [cv.string]),
+        vol.Required(ATTR_EFFECTIVE_TIME): cv.string,
+        vol.Required(ATTR_EFFECTIVE_END_TIME): cv.string,
+        vol.Optional(ATTR_IMPORT_RATE): vol.Coerce(float),
+        vol.Optional(ATTR_EXPORT_RATE): vol.Coerce(float),
+        vol.Optional(ATTR_CONTROLLED_LOAD_RATE): vol.Coerce(float),
+        vol.Optional(ATTR_OTHER_CHARGES, default=""): cv.string,
+        vol.Optional(ATTR_NOTES, default=""): cv.string,
         **_entry_id_opt,
     })
 
@@ -1155,6 +1263,26 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_PRICING_SET_HOLIDAYS, handle_pricing_set_holidays,
         schema=_pricing_holiday_schema,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_PRICING_UPSERT_GROUP, handle_pricing_upsert_group,
+        schema=_pricing_group_schema,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_PRICING_REMOVE_GROUP, handle_pricing_remove_group,
+        schema=vol.Schema({vol.Required(ATTR_GROUP_ID): cv.string, **_entry_id_opt}),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_PRICING_UPSERT_RECORD, handle_pricing_upsert_record,
+        schema=_pricing_record_schema,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_PRICING_REMOVE_RECORD, handle_pricing_remove_record,
+        schema=vol.Schema({
+            vol.Required(ATTR_GROUP_ID): cv.string,
+            vol.Required(ATTR_RECORD_ID): cv.string,
+            **_entry_id_opt,
+        }),
     )
     hass.services.async_register(
         DOMAIN, "ensure_report_history", handle_ensure_report_history,

@@ -531,6 +531,212 @@ pricing_remove_rule:
       selector:
         text:
 
+pricing_upsert_group:
+  name: Upsert Pricing Group
+  description: Save or update one date-effective pricing rate group.
+  fields:
+    group_id:
+      name: Group ID
+      description: Optional existing group id for updates. Leave blank for a new group.
+      required: false
+      selector:
+        text:
+    label:
+      name: Label
+      description: Human-friendly group label.
+      required: false
+      selector:
+        text:
+    provider:
+      name: Provider
+      description: Tariff or retailer name.
+      required: false
+      selector:
+        text:
+    plan_name:
+      name: Plan Name
+      description: Optional plan name.
+      required: false
+      selector:
+        text:
+    effective_start_date:
+      name: Effective Start Date
+      description: Date the group starts applying. The next group supersedes this one.
+      required: true
+      selector:
+        date:
+    pricing_type:
+      name: Pricing Type
+      description: Fixed or dynamic pricing. Both use day/time/public-holiday records.
+      required: false
+      default: dynamic
+      selector:
+        select:
+          options:
+            - fixed
+            - dynamic
+    daily_connection_charge:
+      name: Daily Connection Charge
+      description: Daily fixed charge in dollars/day.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: $/day
+    other_charges:
+      name: Other Charges
+      description: Other named charges to record for the group.
+      required: false
+      selector:
+        text:
+    notes:
+      name: Notes
+      description: Optional notes for the group.
+      required: false
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+pricing_remove_group:
+  name: Remove Pricing Group
+  description: Delete one pricing rate group and all of its records.
+  fields:
+    group_id:
+      name: Group ID
+      description: Stored group id to remove.
+      required: true
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+pricing_upsert_record:
+  name: Upsert Pricing Record
+  description: Save or update one day/time pricing record inside a group.
+  fields:
+    group_id:
+      name: Group ID
+      description: Parent pricing group id.
+      required: true
+      selector:
+        text:
+    record_id:
+      name: Record ID
+      description: Optional existing record id for updates. Leave blank for a new record.
+      required: false
+      selector:
+        text:
+    label:
+      name: Label
+      description: Human-friendly record label.
+      required: false
+      selector:
+        text:
+    day_types:
+      name: Day Types
+      description: Comma/list of day types such as mon,tue,wed or public_holiday.
+      required: true
+      selector:
+        text:
+    effective_time:
+      name: Start Time
+      description: Start time for the record.
+      required: true
+      selector:
+        time: {}
+    effective_end_time:
+      name: End Time
+      description: End time for the record.
+      required: true
+      selector:
+        time: {}
+    import_rate:
+      name: Import Rate
+      description: Import rate in dollars/kWh, e.g. 0.42.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: $/kWh
+    export_rate:
+      name: Export Rate
+      description: Export rate in dollars/kWh, e.g. 0.05.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: $/kWh
+    controlled_load_rate:
+      name: Controlled Load Rate
+      description: Controlled load rate in dollars/kWh.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.001
+          unit_of_measurement: $/kWh
+    other_charges:
+      name: Other Charges
+      description: Other named charges to record.
+      required: false
+      selector:
+        text:
+    notes:
+      name: Notes
+      description: Optional notes for the record.
+      required: false
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+pricing_remove_record:
+  name: Remove Pricing Record
+  description: Delete one pricing record from a group.
+  fields:
+    group_id:
+      name: Group ID
+      description: Parent pricing group id.
+      required: true
+      selector:
+        text:
+    record_id:
+      name: Record ID
+      description: Stored record id to remove.
+      required: true
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
 pricing_set_holidays:
   name: Set Holiday Dates
   description: Replace the stored holiday calendar.

@@ -181,6 +181,8 @@ class PricingScheduleStore:
         """Insert or replace a pricing rate group and persist the schedule."""
         try:
             return await self.hass.async_add_executor_job(self._upsert_group_sync, group)
+        except ValueError:
+            raise
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Failed to store pricing group for %s: %s", self.entry_id, err)
             return PricingSchedule()
@@ -202,6 +204,8 @@ class PricingScheduleStore:
         """Insert or replace a pricing record inside a group."""
         try:
             return await self.hass.async_add_executor_job(self._upsert_record_sync, group_id, record)
+        except ValueError:
+            raise
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Failed to store pricing record for %s: %s", self.entry_id, err)
             return PricingSchedule()

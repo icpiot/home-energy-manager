@@ -12,6 +12,8 @@ INIT_PATH = ROOT / "custom_components" / "home_energy_manager" / "__init__.py"
 MANIFEST_PATH = ROOT / "custom_components" / "home_energy_manager" / "manifest.json"
 PANEL_EXAMPLE_PATH = ROOT / "examples" / "panel" / "home-energy-manager-panel_custom.yaml"
 CONFIG_FLOW_PATH = ROOT / "custom_components" / "home_energy_manager" / "config_flow.py"
+CONST_PATH = ROOT / "custom_components" / "home_energy_manager" / "const.py"
+SERVICES_PATH = ROOT / "custom_components" / "home_energy_manager" / "services.yaml"
 
 
 def test_panel_build_matches_registered_cache_version():
@@ -111,3 +113,31 @@ def test_pricing_ui_exposes_rate_groups_records_and_overlap_guard():
     assert '"public_holiday"' in panel_source
     assert "data-pricing-rule-day" in panel_source
     assert 'model.warning = warning' in panel_source
+
+
+def test_pricing_group_services_are_registered_and_documented():
+    integration_source = INIT_PATH.read_text(encoding="utf-8")
+    const_source = CONST_PATH.read_text(encoding="utf-8")
+    services_source = SERVICES_PATH.read_text(encoding="utf-8")
+
+    for service in (
+        "pricing_upsert_group",
+        "pricing_remove_group",
+        "pricing_upsert_record",
+        "pricing_remove_record",
+    ):
+        assert service in const_source
+        assert service in services_source
+        assert service in integration_source
+
+    for attr in (
+        "ATTR_GROUP_ID",
+        "ATTR_RECORD_ID",
+        "ATTR_EFFECTIVE_START_DATE",
+        "ATTR_DAY_TYPES",
+        "ATTR_CONTROLLED_LOAD_RATE",
+        "ATTR_DAILY_CONNECTION_CHARGE",
+        "ATTR_OTHER_CHARGES",
+    ):
+        assert attr in const_source
+        assert attr in integration_source
