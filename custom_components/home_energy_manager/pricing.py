@@ -21,6 +21,7 @@ from typing import Any
 _FLOW_VALUES = {"import", "export", "net"}
 _MODE_VALUES = {"fixed", "tou", "dynamic", "market"}
 _PRICING_TYPE_VALUES = {"fixed", "dynamic"}
+_DAY_TYPE_VALUES = {"mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"}
 
 
 def _clean_text(value: Any, default: str = "") -> str:
@@ -114,6 +115,21 @@ def _clean_string_list(values: Any) -> tuple[str, ...]:
         if text:
             cleaned.append(text)
     return tuple(dict.fromkeys(cleaned))
+
+
+def _time_to_minutes(value: str) -> int:
+    parsed = time.fromisoformat(_parse_time(value))
+    return parsed.hour * 60 + parsed.minute
+
+
+def _time_segments(start_time: str, end_time: str) -> tuple[tuple[int, int], ...]:
+    start = _time_to_minutes(start_time)
+    end = _time_to_minutes(end_time)
+    if start == end:
+        return ()
+    if end > start:
+        return ((start, end),)
+    return ((start, 1440), (0, end))
 
 
 @dataclass(frozen=True, slots=True)
@@ -248,6 +264,197 @@ class PriceHistory:
             if isinstance(entry, dict)
         ]
         return cls(entries=records)
+
+
+@dataclass(frozen=True, slots=True)
+class PricingRateRecord:
+    """One day/time tariff record inside a date-effective pricing group."""
+
+    record_id: str = ""
+    label: str = ""
+    day_types: tuple[str, ...] = field(default_factory=tuple)
+    start_time: str = "00:00"
+    end_time: str = "23:59"
+    import_rate: float | None = None
+    export_rate: float | None = None
+    controlled_load_rate: float | None = None
+    other_charges: str = ""
+    notes: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        day_types = _clean_string_list(self.day_types)
+        invalid_days = [day for day in day_types if day not in _DAY_TYPE_VALUES]
+        if invalid_days:
+            raise ValueError(f"Unsupported day type(s): {', '.join(invalid_days)}")
+        start_time = _parse_time(self.start_time)
+        end_time = _parse_time(self.end_time, "23:59")
+        if not _time_segments(start_time, end_time):
+            raise ValueError("end_time must differ from start_time")
+        object.__setattr__(self, "record_id", _clean_text(self.record_id) or uuid4().hex)
+        object.__setattr__(self, "label", _clean_text(self.label))
+        object.__setattr__(self, "day_types", day_types or ("mon", "tue", "wed", "thu", "fri"))
+        object.__setattr__(self, "start_time", start_time)
+        object.__setattr__(self, "end_time", end_time)
+        object.__setattr__(self, "import_rate", _parse_float(self.import_rate))
+        object.__setattr__(self, "export_rate", _parse_float(self.export_rate))
+        object.__setattr__(self, "controlled_load_rate", _parse_float(self.controlled_load_rate))
+        object.__setattr__(self, "other_charges", _clean_text(self.other_charges))
+        object.__setattr__(self, "notes", _clean_text(self.notes))
+        object.__setattr__(self, "metadata", dict(self.metadata or {}))
+
+    @property
+    def is_public_holiday(self) -> bool:
+        return "public_holiday" in self.day_types
+
+    def overlaps(self, other: "PricingRateRecord") -> bool:
+        """Return True when records conflict inside the same override bucket."""
+        if self.is_public_holiday != other.is_public_holiday:
+            return False
+        if not any(day in other.day_types for day in self.day_types):
+            return False
+        return any(
+            start_a < end_b and start_b < end_a
+            for start_a, end_a in _time_segments(self.start_time, self.end_time)
+            for start_b, end_b in _time_segments(other.start_time, other.end_time)
+        )
+
+    def applies_to(self, at: datetime, *, is_public_holiday: bool = False) -> bool:
+        day_key = "public_holiday" if is_public_holiday else at.strftime("%a").lower()[:3]
+        if day_key not in self.day_types:
+            return False
+        current = at.hour * 60 + at.minute
+        return any(start <= current < end for start, end in _time_segments(self.start_time, self.end_time))
+
+    def sort_key(self) -> tuple[Any, ...]:
+        return (self.is_public_holiday, self.start_time, self.end_time, self.label, self.record_id)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "record_id": self.record_id,
+            "label": self.label,
+            "day_types": list(self.day_types),
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "import_rate": self.import_rate,
+            "export_rate": self.export_rate,
+            "controlled_load_rate": self.controlled_load_rate,
+            "other_charges": self.other_charges,
+            "notes": self.notes,
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "PricingRateRecord":
+        return cls(
+            record_id=_clean_text(payload.get("record_id") or payload.get("rule_id")),
+            label=_clean_text(payload.get("label")),
+            day_types=payload.get("day_types") or payload.get("days_of_week") or (),
+            start_time=_clean_text(payload.get("start_time"), "00:00"),
+            end_time=_clean_text(payload.get("end_time"), "23:59"),
+            import_rate=payload.get("import_rate"),
+            export_rate=payload.get("export_rate"),
+            controlled_load_rate=payload.get("controlled_load_rate") or payload.get("controlled_load_1"),
+            other_charges=_clean_text(payload.get("other_charges")),
+            notes=_clean_text(payload.get("notes")),
+            metadata=dict(payload.get("metadata") or {}),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PricingRateGroup:
+    """Date-effective collection of tariff records."""
+
+    group_id: str = ""
+    label: str = ""
+    provider: str = ""
+    plan_name: str = ""
+    effective_start_date: date | None = None
+    pricing_type: str = "dynamic"
+    daily_connection_charge: float | None = None
+    other_charges: str = ""
+    notes: str = ""
+    records: tuple[PricingRateRecord, ...] = field(default_factory=tuple)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        effective_start_date = _parse_date(self.effective_start_date)
+        if effective_start_date is None:
+            raise ValueError("effective_start_date is required")
+        pricing_type = _clean_text(self.pricing_type, "dynamic").lower()
+        if pricing_type not in _PRICING_TYPE_VALUES:
+            raise ValueError(f"Unsupported pricing type: {self.pricing_type!r}")
+        records = tuple(
+            record if isinstance(record, PricingRateRecord) else PricingRateRecord.from_dict(record)
+            for record in (self.records or ())
+        )
+        self._raise_for_overlaps(records)
+        object.__setattr__(self, "group_id", _clean_text(self.group_id) or uuid4().hex)
+        object.__setattr__(self, "label", _clean_text(self.label))
+        object.__setattr__(self, "provider", _clean_text(self.provider))
+        object.__setattr__(self, "plan_name", _clean_text(self.plan_name))
+        object.__setattr__(self, "effective_start_date", effective_start_date)
+        object.__setattr__(self, "pricing_type", pricing_type)
+        object.__setattr__(self, "daily_connection_charge", _parse_float(self.daily_connection_charge))
+        object.__setattr__(self, "other_charges", _clean_text(self.other_charges))
+        object.__setattr__(self, "notes", _clean_text(self.notes))
+        object.__setattr__(self, "records", tuple(sorted(records, key=lambda item: item.sort_key())))
+        object.__setattr__(self, "metadata", dict(self.metadata or {}))
+
+    @staticmethod
+    def _raise_for_overlaps(records: tuple[PricingRateRecord, ...]) -> None:
+        for index, record in enumerate(records):
+            for other in records[index + 1:]:
+                if record.overlaps(other):
+                    raise ValueError(f"Pricing record {record.label or record.record_id!r} overlaps {other.label or other.record_id!r}")
+
+    def active_records(self, at: datetime, *, holiday_dates: set[str] | None = None) -> list[PricingRateRecord]:
+        is_public_holiday = at.date().isoformat() in (holiday_dates or set())
+        public_holiday_matches = [
+            record for record in self.records
+            if record.is_public_holiday and record.applies_to(at, is_public_holiday=is_public_holiday)
+        ]
+        if public_holiday_matches:
+            return sorted(public_holiday_matches, key=lambda item: item.sort_key())
+        return sorted(
+            [record for record in self.records if record.applies_to(at, is_public_holiday=False)],
+            key=lambda item: item.sort_key(),
+        )
+
+    def active_record(self, at: datetime, *, holiday_dates: set[str] | None = None) -> PricingRateRecord | None:
+        matches = self.active_records(at, holiday_dates=holiday_dates)
+        return matches[-1] if matches else None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "group_id": self.group_id,
+            "label": self.label,
+            "provider": self.provider,
+            "plan_name": self.plan_name,
+            "effective_start_date": _jsonable_date(self.effective_start_date),
+            "pricing_type": self.pricing_type,
+            "daily_connection_charge": self.daily_connection_charge,
+            "other_charges": self.other_charges,
+            "notes": self.notes,
+            "records": [record.to_dict() for record in self.records],
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "PricingRateGroup":
+        return cls(
+            group_id=_clean_text(payload.get("group_id")),
+            label=_clean_text(payload.get("label")),
+            provider=_clean_text(payload.get("provider")),
+            plan_name=_clean_text(payload.get("plan_name")),
+            effective_start_date=_parse_date(payload.get("effective_start_date")),
+            pricing_type=_clean_text(payload.get("pricing_type"), "dynamic"),
+            daily_connection_charge=payload.get("daily_connection_charge"),
+            other_charges=_clean_text(payload.get("other_charges")),
+            notes=_clean_text(payload.get("notes")),
+            records=tuple(PricingRateRecord.from_dict(record) for record in payload.get("records") or [] if isinstance(record, dict)),
+            metadata=dict(payload.get("metadata") or {}),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -426,10 +633,15 @@ class PricingSchedule:
     """Ordered collection of date-based pricing rules and holidays."""
 
     rules: list[PricingRule] = field(default_factory=list)
+    groups: list[PricingRateGroup] = field(default_factory=list)
     holiday_dates: list[date] = field(default_factory=list)
     holiday_source: str = ""
     region: str = ""
     updated_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        self.groups = sorted(self.groups, key=lambda item: item.effective_start_date or date.min)
+        self._raise_for_duplicate_group_dates()
 
     def add_rule(self, rule: PricingRule) -> None:
         self.rules = [existing for existing in self.rules if existing.rule_id != rule.rule_id]
@@ -440,6 +652,25 @@ class PricingSchedule:
         before = len(self.rules)
         self.rules = [rule for rule in self.rules if rule.rule_id != _clean_text(rule_id)]
         return len(self.rules) != before
+
+    def _raise_for_duplicate_group_dates(self) -> None:
+        dates = [group.effective_start_date for group in self.groups if group.effective_start_date is not None]
+        if len(dates) != len(set(dates)):
+            raise ValueError("Pricing groups cannot share the same effective_start_date")
+
+    def add_group(self, group: PricingRateGroup) -> None:
+        replacing = [existing for existing in self.groups if existing.group_id == group.group_id]
+        if not replacing and any(existing.effective_start_date == group.effective_start_date for existing in self.groups):
+            raise ValueError("Pricing groups cannot share the same effective_start_date")
+        self.groups = [existing for existing in self.groups if existing.group_id != group.group_id]
+        self.groups.append(group)
+        self.groups.sort(key=lambda item: item.effective_start_date or date.min)
+        self._raise_for_duplicate_group_dates()
+
+    def remove_group(self, group_id: str) -> bool:
+        before = len(self.groups)
+        self.groups = [group for group in self.groups if group.group_id != _clean_text(group_id)]
+        return len(self.groups) != before
 
     def has_holiday(self, value: date | str | None) -> bool:
         parsed = _parse_date(value)
@@ -457,6 +688,24 @@ class PricingSchedule:
         matches = self.active_rules(at)
         return matches[-1] if matches else None
 
+    def active_group(self, at: datetime | None = None) -> PricingRateGroup | None:
+        at = at or datetime.now()
+        matches = [
+            group for group in self.groups
+            if group.effective_start_date is not None and group.effective_start_date <= at.date()
+        ]
+        return matches[-1] if matches else None
+
+    def active_record(self, at: datetime | None = None) -> PricingRateRecord | None:
+        at = at or datetime.now()
+        group = self.active_group(at)
+        if group is None:
+            return None
+        return group.active_record(
+            at,
+            holiday_dates={item.isoformat() for item in self.holiday_dates},
+        )
+
     def rules_by_date(self) -> dict[str, dict[str, list[dict[str, Any]]]]:
         grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
         for rule in self.rules:
@@ -466,6 +715,15 @@ class PricingSchedule:
         return grouped
 
     def to_dict(self) -> dict[str, Any]:
+        if self.groups:
+            return {
+                "version": 2,
+                "updated_at": _jsonable_datetime(self.updated_at),
+                "holiday_source": self.holiday_source,
+                "region": self.region,
+                "holiday_dates": [item.isoformat() for item in self.holiday_dates],
+                "groups": [group.to_dict() for group in self.groups],
+            }
         return {
             "version": 1,
             "updated_at": _jsonable_datetime(self.updated_at),
@@ -485,6 +743,13 @@ class PricingSchedule:
             if parsed is not None
         ]
         rules: list[PricingRule] = []
+        groups: list[PricingRateGroup] = []
+        if isinstance(payload.get("groups"), list):
+            groups = [
+                PricingRateGroup.from_dict(group)
+                for group in payload.get("groups") or []
+                if isinstance(group, dict)
+            ]
         date_map = payload.get("date_map")
         if isinstance(date_map, dict):
             for _, type_map in sorted(date_map.items()):
@@ -500,6 +765,7 @@ class PricingSchedule:
                     rules.append(PricingRule.from_dict(entry))
         schedule = cls(
             rules=sorted(rules, key=lambda item: item.sort_key()),
+            groups=groups,
             holiday_dates=holiday_dates,
             holiday_source=_clean_text(payload.get("holiday_source")),
             region=_clean_text(payload.get("region")),

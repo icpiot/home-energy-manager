@@ -1,16 +1,33 @@
 """Tests for the vendor-neutral pricing history helpers."""
 from __future__ import annotations
 
+import importlib.util
+import os
+import sys
 from datetime import date, datetime, timezone
 
 import pytest
 
-from custom_components.home_energy_manager.pricing import (
-    PriceHistory,
-    PriceRecord,
-    PricingRule,
-    PricingSchedule,
-)
+
+def _load_pricing_module():
+    here = os.path.dirname(__file__)
+    path = os.path.abspath(os.path.join(
+        here, "..", "custom_components", "home_energy_manager", "pricing.py",
+    ))
+    spec = importlib.util.spec_from_file_location("home_energy_manager_pricing", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+pricing = _load_pricing_module()
+PriceHistory = pricing.PriceHistory
+PriceRecord = pricing.PriceRecord
+PricingRateGroup = pricing.PricingRateGroup
+PricingRateRecord = pricing.PricingRateRecord
+PricingRule = pricing.PricingRule
+PricingSchedule = pricing.PricingSchedule
 
 
 def test_price_record_round_trip_preserves_fields():
@@ -201,3 +218,141 @@ def test_pricing_schedule_prefers_holiday_override():
 
     assert active is not None
     assert active.rule_id == "holiday"
+
+
+def test_pricing_rate_group_round_trip_preserves_records():
+    group = PricingRateGroup(
+        group_id="group-1",
+        label="Rates from Jan 1",
+        provider="Retailer",
+        plan_name="Plan",
+        effective_start_date=date(2026, 1, 1),
+        pricing_type="fixed",
+        daily_connection_charge=1.23,
+        records=(
+            PricingRateRecord(
+                record_id="record-1",
+                label="Weekday peak",
+                day_types=("mon", "tue", "wed", "thu", "fri"),
+                start_time="14:00",
+                end_time="20:00",
+                import_rate=0.42,
+                export_rate=0.05,
+                controlled_load_rate=0.18,
+            ),
+        ),
+    )
+
+    restored = PricingRateGroup.from_dict(group.to_dict())
+
+    assert restored == group
+
+
+def test_pricing_schedule_selects_latest_effective_group():
+    schedule = PricingSchedule(
+        groups=[
+            PricingRateGroup(
+                group_id="jan",
+                effective_start_date=date(2026, 1, 1),
+                records=(PricingRateRecord(record_id="jan-all", day_types=("mon",), import_rate=0.30),),
+            ),
+            PricingRateGroup(
+                group_id="jun",
+                effective_start_date=date(2026, 6, 1),
+                records=(PricingRateRecord(record_id="jun-all", day_types=("mon",), import_rate=0.42),),
+            ),
+        ]
+    )
+
+    active = schedule.active_group(datetime(2026, 7, 6, 12, 0, tzinfo=timezone.utc))
+
+    assert active is not None
+    assert active.group_id == "jun"
+
+
+def test_fixed_pricing_uses_day_time_records():
+    schedule = PricingSchedule(
+        groups=[
+            PricingRateGroup(
+                group_id="fixed",
+                effective_start_date=date(2026, 1, 1),
+                pricing_type="fixed",
+                records=(
+                    PricingRateRecord(
+                        record_id="peak",
+                        day_types=("mon",),
+                        start_time="14:00",
+                        end_time="20:00",
+                        import_rate=0.42,
+                    ),
+                ),
+            )
+        ]
+    )
+
+    active = schedule.active_record(datetime(2026, 7, 6, 15, 0, tzinfo=timezone.utc))
+
+    assert active is not None
+    assert active.record_id == "peak"
+    assert active.import_rate == 0.42
+
+
+def test_public_holiday_record_overrides_standard_day_overlap():
+    group = PricingRateGroup(
+        group_id="group",
+        effective_start_date=date(2026, 1, 1),
+        records=(
+            PricingRateRecord(
+                record_id="weekday",
+                day_types=("mon",),
+                start_time="00:00",
+                end_time="23:59",
+                import_rate=0.42,
+            ),
+            PricingRateRecord(
+                record_id="holiday",
+                day_types=("public_holiday",),
+                start_time="00:00",
+                end_time="23:59",
+                import_rate=0.20,
+            ),
+        ),
+    )
+    schedule = PricingSchedule(groups=[group], holiday_dates=[date(2026, 7, 6)])
+
+    active = schedule.active_record(datetime(2026, 7, 6, 12, 0, tzinfo=timezone.utc))
+
+    assert active is not None
+    assert active.record_id == "holiday"
+
+
+def test_overlapping_public_holiday_records_are_rejected():
+    with pytest.raises(ValueError, match="overlaps"):
+        PricingRateGroup(
+            group_id="group",
+            effective_start_date=date(2026, 1, 1),
+            records=(
+                PricingRateRecord(
+                    record_id="holiday-all",
+                    day_types=("public_holiday",),
+                    start_time="00:00",
+                    end_time="23:59",
+                ),
+                PricingRateRecord(
+                    record_id="holiday-peak",
+                    day_types=("public_holiday",),
+                    start_time="12:00",
+                    end_time="18:00",
+                ),
+            ),
+        )
+
+
+def test_duplicate_group_start_dates_are_rejected():
+    with pytest.raises(ValueError, match="effective_start_date"):
+        PricingSchedule(
+            groups=[
+                PricingRateGroup(group_id="one", effective_start_date=date(2026, 1, 1)),
+                PricingRateGroup(group_id="two", effective_start_date=date(2026, 1, 1)),
+            ]
+        )
